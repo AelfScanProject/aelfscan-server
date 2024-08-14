@@ -947,15 +947,22 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                         crossChainReceived.MergeFrom(logEvent);
                         await SetAddressSet(crossChainReceived.From.ToBase58(), crossChainReceived.To.ToBase58(),
                             dailyData);
-                        if (crossChainReceived.Symbol == "ELF")
+                        if (crossChainReceived.Symbol == "ELF" && chainId == "AELF")
                         {
-                            dailyData.DailyBurnt -= crossChainReceived.Amount;
-                            if (chainId == "AELF")
-                            {
-                                await CalculateSupplyByAddress(crossChainReceived.From.ToBase58(),
-                                    crossChainReceived.To.ToBase58(),
-                                    crossChainReceived.Amount, dailyData, transaction.TransactionId);
-                            }
+                            await CalculateSupplyByAddress(crossChainReceived.From.ToBase58(),
+                                crossChainReceived.To.ToBase58(),
+                                crossChainReceived.Amount, dailyData, transaction.TransactionId);
+                        }
+
+                        break;
+
+                    case nameof(CrossChainTransferred):
+                        var crossChainTransferred = new CrossChainTransferred();
+                        crossChainTransferred.MergeFrom(logEvent);
+
+                        if (crossChainTransferred.Symbol == "ELF")
+                        {
+                            dailyData.DailyBurnt -= crossChainTransferred.Amount;
                         }
 
                         break;

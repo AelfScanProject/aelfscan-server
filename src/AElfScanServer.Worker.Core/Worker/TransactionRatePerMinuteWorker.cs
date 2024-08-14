@@ -19,6 +19,7 @@ public class TransactionRatePerMinuteWorker : AsyncPeriodicBackgroundWorkerBase
         serviceScopeFactory)
     {
         timer.Period = 1000 * 30;
+        timer.RunOnStart = true;
         _logger = logger;
         _transactionService = transactionService;
     }
@@ -26,6 +27,5 @@ public class TransactionRatePerMinuteWorker : AsyncPeriodicBackgroundWorkerBase
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
     {
         await _transactionService.UpdateTransactionRatePerMinuteTaskAsync();
-        
     }
 }

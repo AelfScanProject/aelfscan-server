@@ -404,8 +404,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             }
         }
 
-  
-        
+
         return new DailyHolderResp()
         {
             List = dailyHolders,
@@ -436,7 +435,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             datList[0].Supply = v.TotalSupply;
         }
 
-        datList[0].Rate = (totalStaked / double.Parse(datList[0].Supply) * 100).ToString("F4");
+        if (supplyDic.TryGetValue(datList[0].DateStr, out var dailySupply))
+        {
+            datList[0].Rate = (totalStaked / double.Parse(dailySupply.TotalSupply) * 100).ToString("F4");
+        }
+
         for (var i = 1; i < datList.Count; i++)
         {
             if (supplyDic.TryGetValue(datList[i].DateStr, out var supply))
@@ -508,7 +511,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         {
             marketList = marketList.Skip(_globalOptions.CurrentValue.MarketCapShowOffset).ToList();
         }
-        
+
 
         var resp = new DailyMarketCapResp()
         {
