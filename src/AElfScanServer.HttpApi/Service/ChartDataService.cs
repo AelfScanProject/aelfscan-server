@@ -474,7 +474,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
             var curTotalStaked = curtBpStaked + curtVoteStaked;
 
-            if (!datList[i].Supply.IsNullOrEmpty() || datList[i].Supply != "0")
+            if (!datList[i].Supply.IsNullOrEmpty() && datList[i].Supply != "0")
             {
                 datList[i].Rate = (curTotalStaked / double.Parse(datList[i].Supply) * 100).ToString("F4");
             }
