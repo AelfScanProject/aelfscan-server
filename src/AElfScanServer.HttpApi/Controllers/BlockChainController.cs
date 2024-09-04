@@ -21,16 +21,19 @@ public class BlockChainController : AbpController
     private readonly IBlockChainService _blockChainService;
     private readonly IAddressService _addressService;
     private readonly ISearchService _searchService;
+    private readonly IDynamicTransactionService _dynamicTransactionService;
 
 
     public BlockChainController(IHomePageService homePageService,
         IAddressService addressService,
-        IBlockChainService blockChainService, ISearchService searchService)
+        IBlockChainService blockChainService, ISearchService searchService,
+        IDynamicTransactionService dynamicTransactionService)
     {
         _homePageService = homePageService;
         _blockChainService = blockChainService;
         _searchService = searchService;
         _addressService = addressService;
+        _dynamicTransactionService = dynamicTransactionService;
     }
 
     [HttpGet]
@@ -69,7 +72,7 @@ public class BlockChainController : AbpController
     [HttpGet]
     [Route("transactions")]
     public virtual async Task<TransactionsResponseDto> GetTransactionsAsync(
-        TransactionsRequestDto requestDto) => await _blockChainService.GetTransactionsAsync(requestDto);
+        TransactionsRequestDto requestDto) => await _dynamicTransactionService.GetTransactionsAsync(requestDto);
 
 
     [HttpPost]

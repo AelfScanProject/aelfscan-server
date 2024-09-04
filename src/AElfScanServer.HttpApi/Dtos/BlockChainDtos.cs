@@ -24,6 +24,13 @@ public class MergeBlockInfoReq
     public int MaxResultCount { get; set; }
 }
 
+public class TransactionsByHashRequestDto
+{
+    public List<string> Hashs { get; set; }
+    public long SkipCount { get; set; }
+    public long MaxResultCount { get; set; } = 10;
+}
+
 public class TransactionsRequestDto : BaseInput
 {
     public string TransactionId { get; set; } = "";
@@ -447,7 +454,6 @@ public class TransactionResponseDto
     public string TransactionValue { get; set; }
 
     public string TransactionFee { get; set; }
-    
 }
 
 public class TransactionPerMinuteResponseDto

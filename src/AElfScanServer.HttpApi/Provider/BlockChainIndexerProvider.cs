@@ -19,6 +19,8 @@ public interface IBlockChainIndexerProvider
 
     public Task<long> GetTransactionCount(string chainId);
 
+    public Task<IndexerTransactionListResultDto> GetTransactionsByHashsAsync(TransactionsByHashRequestDto input);
+
     public Task<List<IndexerAddressTransactionCountDto>> GetAddressTransactionCount(string chainId,
         List<string> addressList);
 }
@@ -109,6 +111,48 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
         return indexerResult?.TransactionInfos;
     }
 
+    public async Task<IndexerTransactionListResultDto> GetTransactionsByHashsAsync(TransactionsByHashRequestDto input)
+    {
+        _logger.LogInformation("Hashs:{e}",input.Hashs);
+        var graphQlHelper = _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.BlockChainIndexer);
+
+        var indexerResult = await graphQlHelper.QueryAsync<IndexerTransactionByHashResultDto>(new GraphQLRequest
+        {
+            Query =
+                @"query($hashs:[String!],$skipCount:Int!,$maxResultCount:Int!){
+                    transactionByHash(input: {hashs:$hashs,skipCount:$skipCount,maxResultCount:$maxResultCount})
+                {
+                    totalCount
+                    items {
+                       transactionId
+                          blockHeight
+                          chainId
+                          methodName
+                          status
+                          from
+                          to
+                          transactionValue
+                          fee
+                          metadata {
+                            chainId
+                            block {
+                              blockHash
+                              blockHeight
+                              blockTime
+                            }
+                          }
+                    }
+                }
+            }",
+            Variables = new
+            {
+                skipCount = input.SkipCount, maxResultCount = input.MaxResultCount,
+                hashs = input.Hashs
+            }
+        });
+        return indexerResult?.TransactionByHash;
+    }
+
 
     public async Task<long> GetTransactionCount(string chainId)
     {
@@ -134,7 +178,7 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
         }
         catch (Exception e)
         {
-            _logger.LogError(e,"Get transaction count error from blockchain app plugin:{chainId}", chainId);
+            _logger.LogError(e, "Get transaction count error from blockchain app plugin:{chainId}", chainId);
         }
 
         return 0;
