@@ -478,7 +478,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             {
                 datList[i].Rate = (curTotalStaked / double.Parse(datList[i].Supply) * 100).ToString("F4");
             }
-          
+
             datList[i].TotalStaked = curTotalStaked.ToString("f4");
         }
 
@@ -847,12 +847,10 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         var supplyDic = dailySupplyGrowthRespAsync.List.ToDictionary(c => c.DateStr, c => c);
         foreach (var data in datList)
         {
-            if (supplyDic.TryGetValue(data.DateStr, out var supply))
+            if (supplyDic.ContainsKey(data.DateStr))
             {
-                data.BlockReward = supply.Reward;
+                data.BlockReward = double.Parse(supplyDic[data.DateStr].Reward).ToString("F6");
             }
-
-            data.BlockReward = double.Parse(data.BlockReward).ToString("F6");
         }
 
         var resp = new DailyBlockRewardResp()
@@ -929,7 +927,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
                 .OrderBy(c => c.RoundNumber).ToList();
 
             _logger.LogInformation("InitDailyNetwork chainId:{chainId},date:{dateStr},endStr:{endStr}", request.ChainId,
-                DateTimeHelper.GetDateTimeString(start) + "_count:" + indices.Count, 
+                DateTimeHelper.GetDateTimeString(start) + "_count:" + indices.Count,
                 DateTimeHelper.GetDateTimeString(end));
             if (!indices.IsNullOrEmpty())
             {
@@ -1003,7 +1001,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         }
 
         await _hourNodeBlockProduceRepository.AddOrUpdateManyAsync(hourNodeBlockProduceIndices);
-        _logger.LogInformation("Insert hour node block produce index chainId:{chainId},start date:{dateStr},end date{endStr}", chainId,
+        _logger.LogInformation(
+            "Insert hour node block produce index chainId:{chainId},start date:{dateStr},end date{endStr}", chainId,
             DateTimeHelper.GetDateTimeString(start), DateTimeHelper.GetDateTimeString(end));
     }
 
@@ -1050,7 +1049,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
             if (round.Blcoks == 0 || round.DurationSeconds == 0)
             {
-                _logger.LogWarning("Round duration or blocks is zero,chainId:{chainId},round number:{roundNumber}", chainId,
+                _logger.LogWarning("Round duration or blocks is zero,chainId:{chainId},round number:{roundNumber}",
+                    chainId,
                     round.RoundNumber);
                 continue;
             }

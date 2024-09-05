@@ -159,7 +159,7 @@ public class DailyAvgBlockSize
 public class DailyBlockReward
 {
     public long Date { get; set; }
-    public string BlockReward { get; set; }
+    public string BlockReward { get; set; } = "0";
     public string DateStr { get; set; }
     public long TotalBlockCount { get; set; }
 }

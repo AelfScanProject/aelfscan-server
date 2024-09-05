@@ -42,6 +42,7 @@ using Volo.Abp.ObjectMapping;
 using StackExchange.Redis;
 using Volo.Abp.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Newtonsoft.Json.Linq;
 using Nito.AsyncEx;
 using Volo.Abp;
 using Volo.Abp.Caching;
@@ -52,8 +53,7 @@ public interface IDynamicTransactionService
 {
     public Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestD);
 
-    public  Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request);
-
+    public Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request);
 }
 
 [AggregateExecutionTime]
@@ -115,12 +115,10 @@ public class DynamicTransactionService : IDynamicTransactionService
             NodeTransactionDto transactionDto = new NodeTransactionDto();
 
             var tasks = new List<Task>();
-
-            blockHeight = 100000;
-            // tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
-            // {
-            //     blockHeight = task.Result.BlockHeight;
-            // }));
+            tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
+            {
+                blockHeight = task.Result.BlockHeight;
+            }));
 
 
             tasks.Add(_blockChainProvider.GetTransactionDetailAsync(request.ChainId,
