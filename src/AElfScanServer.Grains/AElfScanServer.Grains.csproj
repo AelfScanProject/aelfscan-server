@@ -8,6 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AElf.EntityMapping" Version="1.1.0" />
+        <PackageReference Include="AElf.EntityMapping.Elasticsearch" Version="1.1.0" />
         <PackageReference Include="Microsoft.Orleans.Reminders" Version="8.1.0" />
         <PackageReference Include="Microsoft.Orleans.Sdk" Version="8.1.0" />
         <PackageReference Include="Microsoft.Orleans.Core.Abstractions" Version="8.1.0" />

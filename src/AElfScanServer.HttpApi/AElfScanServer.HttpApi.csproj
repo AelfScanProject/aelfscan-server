@@ -17,6 +17,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="AElf.EntityMapping" Version="1.1.0" />
+        <PackageReference Include="AElf.EntityMapping.Elasticsearch" Version="1.1.0" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
     </ItemGroup>

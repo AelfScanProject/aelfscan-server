@@ -306,4 +306,19 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
         return response;
     }
+    
+    
+    public async Task<NodeTransactionDto> GeformatTransactionParamAsync(string chainId, string transactionId)
+    {
+        var apiPath = string.Format("/api/contract/formatTransactionParams?transactionId={0}",
+            transactionId);
+
+
+        var response =
+            await _httpProvider.InvokeAsync<NodeTransactionDto>(_globalOptions.ChainNodeHosts[chainId],
+                new ApiInfo(HttpMethod.Post, apiPath));
+
+
+        return response;
+    }
 }

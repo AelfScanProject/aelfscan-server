@@ -52,6 +52,8 @@ public interface IDynamicTransactionService
 {
     public Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestD);
 
+    public  Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request);
+
 }
 
 [AggregateExecutionTime]
