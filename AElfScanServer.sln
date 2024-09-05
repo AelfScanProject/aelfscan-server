@@ -37,6 +37,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AElfScanServer.Application.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AElfScanServer.DbMigrator", "src\AElfScanServer.DbMigrator\AElfScanServer.DbMigrator.csproj", "{7FE8BFF1-4C05-424A-9FF6-334B77057A1B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AElfScan.Plugin.Portkey", "plugins\AElfScan.Plugin.Portkey\AElfScan.Plugin.Portkey.csproj", "{BF01CE1B-31D9-49D4-9AB7-0FCAD041BB7E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -104,6 +106,10 @@ Global
 		{7FE8BFF1-4C05-424A-9FF6-334B77057A1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7FE8BFF1-4C05-424A-9FF6-334B77057A1B}.Release|Any CPU.Build.0 = Release|Any CPU
 	
+		{BF01CE1B-31D9-49D4-9AB7-0FCAD041BB7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF01CE1B-31D9-49D4-9AB7-0FCAD041BB7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF01CE1B-31D9-49D4-9AB7-0FCAD041BB7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF01CE1B-31D9-49D4-9AB7-0FCAD041BB7E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -124,6 +130,7 @@ Global
 		{2585D13E-E9AF-4FFC-B6FD-2F84FE7FF4A5} = {CA9AC87F-097E-4F15-8393-4BC07735A5B0}
 		{7CAC4244-DA1D-496F-91C4-0C222740227F} = {CA9AC87F-097E-4F15-8393-4BC07735A5B0}
 		{7FE8BFF1-4C05-424A-9FF6-334B77057A1B} = {CA9AC87F-097E-4F15-8393-4BC07735A5B0}
+		{BF01CE1B-31D9-49D4-9AB7-0FCAD041BB7E} = {602A39E5-9813-4D02-8E33-E472123309AF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {28315BFD-90E7-4E14-A2EA-F3D23AF4126F}

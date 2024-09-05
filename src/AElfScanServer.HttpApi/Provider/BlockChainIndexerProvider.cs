@@ -113,7 +113,6 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
 
     public async Task<IndexerTransactionListResultDto> GetTransactionsByHashsAsync(TransactionsByHashRequestDto input)
     {
-        _logger.LogInformation("Hashs:{e}",input.Hashs);
         var graphQlHelper = _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.BlockChainIndexer);
 
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTransactionByHashResultDto>(new GraphQLRequest

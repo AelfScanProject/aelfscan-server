@@ -113,7 +113,6 @@ public class DynamicTransactionService : IDynamicTransactionService
 
             var blockHeight = 0l;
             NodeTransactionDto transactionDto = new NodeTransactionDto();
-
             var tasks = new List<Task>();
             tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
             {

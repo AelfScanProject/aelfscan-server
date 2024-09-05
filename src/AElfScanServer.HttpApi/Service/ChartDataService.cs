@@ -849,7 +849,10 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         {
             if (supplyDic.ContainsKey(data.DateStr))
             {
-                data.BlockReward = double.Parse(supplyDic[data.DateStr].Reward).ToString("F6");
+                if (supplyDic[data.DateStr].Reward != null)
+                {
+                    data.BlockReward = double.Parse(supplyDic[data.DateStr].Reward).ToString("F6");
+                }
             }
         }
 
