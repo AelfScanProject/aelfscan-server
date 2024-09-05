@@ -80,7 +80,17 @@ public class NodeTransactionDto
     public long BlockNumber { get; set; }
 }
 
+
+public class NodeParamDto
+{
+    public NodeTransactionInfo Transaction { get; set; }
+    public long BlockNumber { get; set; }
+}
+
 public class NodeTransactionInfo
 {
     public string Params { get; set; }
+    public string From { get; set; }
+    public string To { get; set; }
+    public string MethodName { get; set; }
 }

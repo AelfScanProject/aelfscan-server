@@ -106,7 +106,7 @@ public class BlockChainController : AbpController
     [Route("transactionDetail")]
     public virtual async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(
         TransactionDetailRequestDto requestDto) =>
-        await _blockChainService.GetTransactionDetailAsync(requestDto);
+        await _dynamicTransactionService.GetTransactionDetailAsync(requestDto);
 
 
     [HttpPost]

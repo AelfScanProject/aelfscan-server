@@ -47,6 +47,9 @@ public class GlobalOptions
 
     public Dictionary<string, string> TokenImageUrls { get; set; }
     public Dictionary<string, string> ChainNodeHosts { get; set; }
+    
+    
+    public Dictionary<string, string> ScanChainNodeHosts { get; set; }
 
     public long TransactionCountCacheExpiration { get; set; }
 

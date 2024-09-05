@@ -29,6 +29,9 @@ public interface IHttpProvider : ISingletonDependency
     Task<T> PostAsync<T>(string url, RequestMediaType requestMediaType, object paramObj,
         Dictionary<string, string> headers = null);
 
+    Task<string> PostAsync(string url, RequestMediaType requestMediaType, object paramObj,
+        Dictionary<string, string> headers = null);
+
     // Task<T> InvokeAsync<T>(string domain, ApiInfo apiInfo,
     //     Dictionary<string, string> pathParams = null,
     //     Dictionary<string, string> param = null,
@@ -109,6 +112,13 @@ public class HttpProvider : IHttpProvider
         }
 
         return await PostFormAsync<T>(url, (Dictionary<string, string>)paramObj, headers);
+    }
+
+
+    public async Task<string> PostAsync(string url, RequestMediaType requestMediaType, object paramObj,
+        Dictionary<string, string> headers)
+    {
+        return await PostJsonAsync(url, paramObj, headers);
     }
 
     public async Task<T> PostInternalServerAsync<T>(string url, object paramObj)
@@ -208,6 +218,38 @@ public class HttpProvider : IHttpProvider
 
         throw new UserFriendlyException(content, ((int)response.StatusCode).ToString());
     }
+
+    private async Task<string> PostJsonAsync(string url, object paramObj, Dictionary<string, string> headers)
+    {
+        var requestInput = paramObj == null ? string.Empty : JsonConvert.SerializeObject(paramObj, Formatting.None);
+
+        var requestContent = new StringContent(
+            requestInput,
+            Encoding.UTF8,
+            MediaTypeNames.Application.Json);
+
+        var client = _httpClientFactory.CreateClient();
+
+        if (headers is { Count: > 0 })
+        {
+            foreach (var header in headers)
+            {
+                client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
+
+        var response = await client.PostAsync(url, requestContent);
+        var content = await response.Content.ReadAsStringAsync();
+
+        if (ResponseSuccess(response.StatusCode)) return content;
+
+        _logger.LogError(
+            "Response not success, url:{url}, code:{code}, message: {message}, params:{param}",
+            url, response.StatusCode, content, JsonConvert.SerializeObject(paramObj));
+
+        throw new UserFriendlyException(content, ((int)response.StatusCode).ToString());
+    }
+
 
     private async Task<string> InvokeAsync(HttpMethod method, string url,
         Dictionary<string, string> pathParams = null,

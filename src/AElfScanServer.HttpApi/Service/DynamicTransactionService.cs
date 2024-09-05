@@ -116,11 +116,11 @@ public class DynamicTransactionService : IDynamicTransactionService
 
             var tasks = new List<Task>();
 
-
-            tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
-            {
-                blockHeight = task.Result.BlockHeight;
-            }));
+            blockHeight = 100000;
+            // tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
+            // {
+            //     blockHeight = task.Result.BlockHeight;
+            // }));
 
 
             tasks.Add(_blockChainProvider.GetTransactionDetailAsync(request.ChainId,
