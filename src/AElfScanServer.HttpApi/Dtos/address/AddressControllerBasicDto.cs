@@ -8,7 +8,7 @@ namespace AElfScanServer.HttpApi.Dtos.address;
 
 public class GetDetailBasicDto
 {
-    [Required] public string ChainId { get; set; }
+    public string ChainId { get; set; } = "";
 }
 
 public class GetListInputBasicDto : PagedResultRequestDto

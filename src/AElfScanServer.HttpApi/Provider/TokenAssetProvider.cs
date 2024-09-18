@@ -273,8 +273,16 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
                 var elfPriceDto =
                     await _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency,
                         CurrencyConstant.UsdCurrency);
-                symbolPriceDict[token.Symbol] =
-                    Math.Round(priceDto.Price / elfPriceDto.Price, CommonConstant.ElfValueDecimals);
+                if (symbolPriceDict.TryGetValue(token.Symbol, out var v))
+                {
+                    symbolPriceDict[token.Symbol] += Math.Round(priceDto.Price / elfPriceDto.Price,
+                        CommonConstant.ElfValueDecimals);
+                }
+                else
+                {
+                    symbolPriceDict[token.Symbol] =
+                        Math.Round(priceDto.Price / elfPriceDto.Price, CommonConstant.ElfValueDecimals);
+                }
             }
             else if (token.Type == SymbolType.Nft && !symbolPriceDict.ContainsKey(token.Symbol))
             {
@@ -299,6 +307,7 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         }
     }
 
+   
 
     private static string GetRedisKey(string chainId, string bizDate)
     {

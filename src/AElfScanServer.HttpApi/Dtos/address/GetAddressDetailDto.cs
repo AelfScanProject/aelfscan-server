@@ -9,7 +9,6 @@ namespace AElfScanServer.HttpApi.Dtos.address;
 public class GetAddressDetailInput : GetDetailBasicDto
 {
     [Required] public string Address { get; set; }
-    [Required] public AddressType AddressType { get; set; }
 }
 
 public class GetAddressDetailResultDto
@@ -24,7 +23,7 @@ public class GetAddressDetailResultDto
     public decimal TotalValueOfElf { get; set; }
     public decimal TotalValueOfUsdChangeRate { get; set; }
     public List<string> AddressTypeList { get; set; }
-
+    
     // only address type is caAddress|eocAddress
     public TransactionInfoDto FirstTransactionSend { get; set; }
     public TransactionInfoDto LastTransactionSend { get; set; }

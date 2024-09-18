@@ -418,12 +418,16 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Symbol = symbol
         };
         var indexerNftHolder = await GetTokenHolderInfoAsync(tokenHolderInput);
-        var list = indexerNftHolder.Items.Select(i => new HolderInfo
+
+        var holderInfo = new HolderInfo();
+        foreach (var indexerTokenHolderInfoDto in indexerNftHolder.Items)
         {
-            Balance = i.FormatAmount,
-            Symbol = i.Token.Symbol
-        }).ToList();
-        return list.IsNullOrEmpty() ? new HolderInfo() : list[0];
+            holderInfo.Balance += indexerTokenHolderInfoDto.FormatAmount;
+            holderInfo.Symbol = indexerTokenHolderInfoDto.Token.Symbol;
+        }
+
+
+        return holderInfo;
     }
 
     private async Task<List<HolderInfo>> GetHolderInfosAsync(string chainId, string address, List<SymbolType> types)
@@ -459,6 +463,12 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
             skipCount += tokenHolderInput.MaxResultCount;
         }
+
+        if (chainId.IsNullOrEmpty())
+        {
+            allHolderInfos = allHolderInfos.DistinctBy(c => c.Symbol).ToList();
+        }
+
 
         return allHolderInfos;
     }
