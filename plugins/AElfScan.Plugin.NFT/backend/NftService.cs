@@ -13,10 +13,12 @@ using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
+using Elasticsearch.Net;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Nest;
 using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -52,6 +54,7 @@ public class NftService : INftService, ISingletonDependency
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptionsMonitor;
     private readonly IDistributedCache<string> _distributedCache;
     private readonly IMemoryCache _memoryCache;
+    private readonly IElasticClient _elasticClient;
 
 
     public NftService(ITokenIndexerProvider tokenIndexerProvider, ILogger<NftService> logger,
@@ -60,7 +63,8 @@ public class NftService : INftService, ISingletonDependency
         ITokenPriceService tokenPriceService,
         IOptionsMonitor<ChainOptions> chainOptions, IOptionsMonitor<TokenInfoOptions> tokenInfoOptionsMonitor,
         ITokenInfoProvider tokenInfoProvider, IGenesisPluginProvider genesisPluginProvider,
-        IDistributedCache<string> distributedCache, IMemoryCache memoryCache
+        IDistributedCache<string> distributedCache, IMemoryCache memoryCache,
+        IOptionsMonitor<ElasticsearchOptions> options
     )
     {
         _tokenIndexerProvider = tokenIndexerProvider;
@@ -75,11 +79,20 @@ public class NftService : INftService, ISingletonDependency
         _genesisPluginProvider = genesisPluginProvider;
         _distributedCache = distributedCache;
         _memoryCache = memoryCache;
+        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
+        var connectionPool = new StaticConnectionPool(uris);
+        var settings = new ConnectionSettings(connectionPool);
+        EsIndex.SetElasticClient(_elasticClient);
     }
 
 
     public async Task<ListResponseDto<NftInfoDto>> GetNftCollectionListAsync(TokenListInput input)
     {
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeNftCollectionListAsync(input);
+        }
+
         input.SetDefaultSort();
         input.Types = new List<SymbolType> { SymbolType.Nft_Collection };
         var indexerNftListDto = await _tokenIndexerProvider.GetTokenListAsync(input);

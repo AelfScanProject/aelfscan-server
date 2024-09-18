@@ -213,7 +213,7 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
             JsonConvert.SerializeObject(symbolPriceDict));
 
         // Step 3: Group by user address
-        var userGroups = validTokenHolderInfos.GroupBy(t => t.Address);
+        var userGroups = validTokenHolderInfos.GroupBy(t => t.Address + t.Metadata.ChainId);
 
         var result = new OrderedDictionary<string, AddressAssetDto>();
         foreach (var userGroup in userGroups)
@@ -275,13 +275,21 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
                         CurrencyConstant.UsdCurrency);
                 if (symbolPriceDict.TryGetValue(token.Symbol, out var v))
                 {
-                    symbolPriceDict[token.Symbol] += Math.Round(priceDto.Price / elfPriceDto.Price,
-                        CommonConstant.ElfValueDecimals);
+                    if (priceDto.Price!= 0 && elfPriceDto.Price != 0)
+                    {
+                        symbolPriceDict[token.Symbol] += Math.Round(
+                            priceDto.Price / elfPriceDto.Price,
+                            CommonConstant.ElfValueDecimals);
+                    }
                 }
                 else
                 {
-                    symbolPriceDict[token.Symbol] =
-                        Math.Round(priceDto.Price / elfPriceDto.Price, CommonConstant.ElfValueDecimals);
+                    if (priceDto.Price != 0 && elfPriceDto.Price != 0)
+                    {
+                        symbolPriceDict[token.Symbol] =
+                            Math.Round(priceDto.Price / elfPriceDto.Price,
+                                CommonConstant.ElfValueDecimals);
+                    }
                 }
             }
             else if (token.Type == SymbolType.Nft && !symbolPriceDict.ContainsKey(token.Symbol))
@@ -307,7 +315,6 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         }
     }
 
-   
 
     private static string GetRedisKey(string chainId, string bizDate)
     {
