@@ -150,7 +150,7 @@ public class TokenService : ITokenService, ISingletonDependency
         };
     }
 
-    
+
     public class TokenAggregationResult
     {
         public string Symbol { get; set; }
