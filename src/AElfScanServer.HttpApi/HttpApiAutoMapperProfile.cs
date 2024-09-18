@@ -184,6 +184,12 @@ public class BlockChainAutoMapperProfile : Profile
             .ForMember(t => t.Holders, m => m.MapFrom(u => u.HolderCount))
             .ReverseMap()
             ;
+        CreateMap<TokenInfoIndex, NftInfoDto>()
+            .ForPath(t => t.NftCollection.Name, m => m.MapFrom(u => u.TokenName))
+            .ForPath(t => t.NftCollection.Symbol, m => m.MapFrom(u => u.Symbol))
+            .ForMember(t => t.Holders, m => m.MapFrom(u => u.HolderCount))
+            .ReverseMap()
+            ;
         CreateMap<IndexerTokenInfoDto, NftDetailDto>()
             .ForPath(t => t.NftCollection.Name, m => m.MapFrom(u => u.TokenName))
             .ForPath(t => t.NftCollection.Symbol, m => m.MapFrom(u => u.Symbol))

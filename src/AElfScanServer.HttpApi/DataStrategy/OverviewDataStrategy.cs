@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
+using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.EsIndex;
@@ -133,39 +134,88 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
     }
 
 
-    public async Task<long> GetTokens(string chainId)
+    // public async Task<long> GetTokens(string chainId, SymbolType symbolType, List<string> specialSymbols = null)
+    // {
+    //     try
+    //     {
+    //         var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
+    //             .Index("tokeninfoindex")
+    //             .Query(q => q
+    //                 .Bool(b => b
+    //                     .Must(m =>
+    //                     {
+    //                         return !string.IsNullOrEmpty(chainId)
+    //                             ? m.Terms(t => t.Field("chainId").Terms(chainId))
+    //                             : null;
+    //                     })
+    //                     .Should(
+    //                         s => s.Term(t => t.Field("type").Value(symbolType)),
+    //                         s => s.Terms(t =>
+    //                             t.Field("symbol")
+    //                                 .Terms(specialSymbols))
+    //                     )
+    //                     .MinimumShouldMatch(1)
+    //                 )
+    //             )
+    //             .Aggregations(a => a
+    //                 .Cardinality("unique_symbol", t => t.Field("symbol"))
+    //             );
+    //
+    //         var searchResponse = await _elasticClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
+    //
+    //         var total = searchResponse.Aggregations.Cardinality("unique_symbol").Value;
+    //         DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total}",
+    //             string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total);
+    //         return (long)total;
+    //     }
+    //     catch (Exception e)
+    //     {
+    //         DataStrategyLogger.LogError(e, "get token count err");
+    //     }
+    //
+    //     return 0;
+    // }
+
+
+    public async Task<long> GetTokens(string chainId, SymbolType symbolType, List<string> specialSymbols = null)
     {
         try
         {
             var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
                 .Index("tokeninfoindex")
                 .Query(q => q
-                    .Bool(b => b
-                        .Must(m =>
+                    .Bool(b =>
+                    {
+                        var mustClause = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>();
+                        if (!string.IsNullOrEmpty(chainId))
                         {
-                            return !string.IsNullOrEmpty(chainId)
-                                ? m.Terms(t => t.Field("chainId").Terms(chainId))
-                                : null;
-                        })
-                        .Should(
-                            s => s.Term(t => t.Field("type").Value(0)), // type 为指定的值
-                            s => s.Terms(t =>
-                                t.Field("symbol")
-                                    .Terms(_globalOptions.CurrentValue.SpecialSymbols))
-                        )
-                        .MinimumShouldMatch(1)
-                    )
-                )
-                .Aggregations(a => a
-                    .Cardinality("unique_symbol", t => t.Field("symbol"))
+                            mustClause.Add(m => m.Terms(t => t.Field("chainId").Terms(chainId)));
+                        }
+
+                        var shouldClause = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>
+                        {
+                            s => s.Term(t => t.Field("type").Value(symbolType))
+                        };
+
+                        if (specialSymbols != null && specialSymbols.Any())
+                        {
+                            shouldClause.Add(s => s.Terms(t => t.Field("symbol").Terms(specialSymbols)));
+                        }
+
+                        return b
+                            .Must(mustClause.ToArray())
+                            .Should(shouldClause.ToArray())
+                            .MinimumShouldMatch(1);
+                    })
                 );
 
             var searchResponse = await _elasticClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
 
-            var total = searchResponse.Aggregations.Cardinality("unique_symbol").Value;
+            // 直接获取匹配文档的总数
+            var total = searchResponse.Total;
             DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total}",
                 string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total);
-            return (long)total;
+            return total;
         }
         catch (Exception e)
         {
@@ -175,8 +225,6 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         return 0;
     }
 
-
- 
 
     public async Task<string> GetMarketCap()
     {
@@ -272,14 +320,34 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             }));
 
 
-            tasks.Add(GetTokens("AELF").ContinueWith(task => { overviewResp.MergeTokens.MainChain = task.Result; }));
+            tasks.Add(GetTokens("AELF", SymbolType.Token, _globalOptions.CurrentValue.SpecialSymbols)
+                .ContinueWith(task => { overviewResp.MergeTokens.MainChain = task.Result; }));
 
-            tasks.Add(GetTokens(_globalOptions.CurrentValue.SideChainId).ContinueWith(task =>
+            tasks.Add(GetTokens(_globalOptions.CurrentValue.SideChainId, SymbolType.Token,
+                _globalOptions.CurrentValue.SpecialSymbols).ContinueWith(task =>
             {
                 overviewResp.MergeTokens.SideChain = task.Result;
             }));
 
-            tasks.Add(GetTokens("").ContinueWith(task => { overviewResp.MergeTokens.Total = task.Result; }));
+            tasks.Add(GetTokens("", SymbolType.Token, _globalOptions.CurrentValue.SpecialSymbols).ContinueWith(task =>
+            {
+                overviewResp.MergeTokens.Total = task.Result;
+            }));
+
+
+            tasks.Add(GetTokens("", SymbolType.Nft)
+                .ContinueWith(task => { overviewResp.MergeNfts.Total = task.Result; }));
+
+            tasks.Add(GetTokens("AELF", SymbolType.Nft).ContinueWith(task =>
+            {
+                overviewResp.MergeNfts.MainChain = task.Result;
+            }));
+
+            tasks.Add(GetTokens(_globalOptions.CurrentValue.SideChainId, SymbolType.Nft).ContinueWith(task =>
+            {
+                overviewResp.MergeNfts.SideChain = task.Result;
+            }));
+
 
             await Task.WhenAll(tasks);
             overviewResp.MergeTps.MainChain = mainChainTps.ToString("F2");

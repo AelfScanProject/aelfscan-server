@@ -328,7 +328,7 @@ public class SearchResponseDto
     public List<SearchAccount> Accounts { get; set; } = new();
     public List<SearchContract> Contracts { get; set; } = new();
     public List<SearchBlock> Blocks { get; set; } = new();
-    public SearchTransaction Transaction { get; set; } = new();
+    public SearchTransaction Transaction { get; set; }
 }
 
 public class SearchBlock

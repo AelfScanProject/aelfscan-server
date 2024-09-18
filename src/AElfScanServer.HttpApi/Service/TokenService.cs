@@ -107,8 +107,9 @@ public class TokenService : ITokenService, ISingletonDependency
 
     public async Task<ListResponseDto<TokenCommonDto>> GetMergeTokenListAsync(TokenListInput input)
     {
-        var result = await EsIndex.SearchMergeTokenList(_globalOptions.CurrentValue.SpecialSymbols,
-            (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower());
+        var result = await EsIndex.SearchMergeTokenList(
+            (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
+            _globalOptions.CurrentValue.SpecialSymbols);
 
         if (result.list.IsNullOrEmpty())
         {
