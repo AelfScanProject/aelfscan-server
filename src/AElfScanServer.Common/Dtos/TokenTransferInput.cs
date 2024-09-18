@@ -19,6 +19,8 @@ public class TokenTransferInput : BaseInput
     
     public string FuzzySearch { get; set; } = "";
     
+    public DateTime? BeginBlockTime { get; set; }
+    
     public bool IsSearchAddress()
     {
         return !Search.IsNullOrWhiteSpace() && CommomHelper.IsValidAddress(Search);

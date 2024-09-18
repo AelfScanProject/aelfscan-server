@@ -50,6 +50,7 @@ using Newtonsoft.Json;
 using Nito.AsyncEx;
 using NUglify.Helpers;
 using StackExchange.Redis;
+using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -88,7 +89,7 @@ public interface ITransactionService
 
     public Task BlockSizeTask();
 
-    public Task PullTokenInfo();
+  
 }
 
 public class TransactionService : AbpRedisCache, ITransactionService, ITransientDependency
@@ -136,7 +137,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     private readonly IEntityMappingRepository<TransactionErrInfoIndex, string> _transactionErrInfoIndexRepository;
     private readonly IEntityMappingRepository<DailySupplyChange, string> _dailySupplyChangeRepository;
     private readonly IEntityMappingRepository<DailyTVLIndex, string> _dailyTVLIndexRepository;
-    private readonly IEntityMappingRepository<TokenInfoIndex, string> _tokenInfoRepository;
 
     private readonly IEntityMappingRepository<MonthlyActiveAddressInfoIndex, string>
         _monthlyActiveAddressInfoRepository;
@@ -150,7 +150,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
 
     private readonly IEntityMappingRepository<AddressIndex, string> _addressRepository;
-    private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly NodeProvider _nodeProvider;
 
     private readonly ILogger<TransactionService> _logger;
@@ -208,8 +207,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         IOptionsMonitor<SecretOptions> secretOptions,
         IEntityMappingRepository<MonthlyActiveAddressInfoIndex, string> monthlyActiveAddressInfoRepository,
         IEntityMappingRepository<MonthlyActiveAddressIndex, string> monthlyActiveAddressRepository,
-        IPriceServerProvider priceServerProvider, ITokenIndexerProvider tokenIndexerProvider,
-        IEntityMappingRepository<TokenInfoIndex, string> tokenInfoRepository) :
+        IPriceServerProvider priceServerProvider) :
         base(optionsAccessor)
     {
         _aelfIndexerProvider = aelfIndexerProvider;
@@ -264,8 +262,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         _secretOptions = secretOptions.CurrentValue;
         _monthlyActiveAddressInfoRepository = monthlyActiveAddressInfoRepository;
         _monthlyActiveAddressRepository = monthlyActiveAddressRepository;
-        _tokenIndexerProvider = tokenIndexerProvider;
-        _tokenInfoRepository = tokenInfoRepository;
     }
 
 
@@ -284,74 +280,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    public async Task PullTokenInfo()
-    {
-        try
-        {
-            var skip = 0;
-            var maxResultCount = 100;
-
-
-            TokenInfoIndex lastTokenIndex = null;
-            var tokenListInput = new TokenListInput()
-            {
-                Types = new List<SymbolType>() { SymbolType.Token},
-                SkipCount = skip,
-                MaxResultCount = maxResultCount,
-                Sort = "Desc",
-                OrderBy = "Symbol"
-            };
-            while (true)
-            {
-                tokenListInput.SkipCount = skip;
-                var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
-                if (tokenListAsync.Items.Count == 0)
-                {
-                    break;
-                }
-
-                var tokenInfoList =
-                    _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
-
-                var infoIndex = tokenInfoList.Last();
-
-                if (lastTokenIndex != null)
-                {
-                    tokenInfoList.Add(lastTokenIndex);
-                }
-
-                lastTokenIndex = infoIndex;
-
-                var dic = new Dictionary<string, TokenInfoIndex>();
-                foreach (var tokenInfoIndex in tokenInfoList)
-                {
-                    if (dic.TryGetValue(tokenInfoIndex.Symbol, out var value))
-                    {
-                        value.ChainIds.Add(tokenInfoIndex.ChainId);
-                        value.HolderCount += tokenInfoIndex.HolderCount;
-                        value.TransferCount += tokenInfoIndex.TransferCount;
-                        value.Supply += tokenInfoIndex.Supply;
-                    }
-                    else
-                    {
-                        tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
-                        dic.Add(tokenInfoIndex.Symbol, tokenInfoIndex);
-                    }
-                }
-
-                await _tokenInfoRepository.AddOrUpdateManyAsync(dic.Values.ToList());
-                _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
-
-                skip += maxResultCount;
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "PullTokenInfo error");
-        }
-
-        _logger.LogInformation("PullTokenInfo end");
-    }
+   
 
     public async Task BatchPullLogEventTask()
     {

@@ -10,23 +10,23 @@ namespace AElfScanServer.Worker.Core.Worker.MergeDataWorker;
 public class TokenInfoWorker : AsyncPeriodicBackgroundWorkerBase
 
 {
-    private readonly ITransactionService _transactionService;
+    private readonly IAddressService _addressService;
 
     private readonly ILogger<TokenInfoWorker> _logger;
 
 
     public TokenInfoWorker(AbpAsyncTimer timer, IServiceScopeFactory serviceScopeFactory,
-        ILogger<TokenInfoWorker> logger, ITransactionService transactionService) : base(timer,
+        ILogger<TokenInfoWorker> logger, IAddressService addressService) : base(timer,
         serviceScopeFactory)
     {
         timer.Period = 1000 * 60 * 5;
         timer.RunOnStart = true;
         _logger = logger;
-        _transactionService = transactionService;
+        _addressService = addressService;
     }
 
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
     {
-        await _transactionService.PullTokenInfo();
+        await _addressService.PullTokenInfo();
     }
 }

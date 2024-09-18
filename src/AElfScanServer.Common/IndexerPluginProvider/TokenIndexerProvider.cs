@@ -232,9 +232,9 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         {
             Query =
                 @"query($chainId:String!,$symbol:String!,$address:String,$collectionSymbol:String,
-                    $search:String,$skipCount:Int!,$maxResultCount:Int!,$types:[SymbolType!],
+                    $search:String,$skipCount:Int!,$maxResultCount:Int!,$types:[SymbolType!],$beginBlockTime:DateTime,
                     $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
-                    transferInfo(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,address:$address,types:$types,search:$search,
+                    transferInfo(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,address:$address,types:$types,beginBlockTime:$beginBlockTime,search:$search,
                     skipCount:$skipCount,maxResultCount:$maxResultCount,fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){     
                     totalCount,
                     items{
@@ -258,7 +258,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount,
                 collectionSymbol = input.CollectionSymbol, types = input.Types,
                 sort = input.Sort, orderBy = input.OrderBy, fuzzySearch = input.FuzzySearch,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter,beginBlockTime = input.BeginBlockTime
             }
         });
         return indexerResult == null ? new IndexerTokenTransferListDto() : indexerResult.TransferInfo;
