@@ -70,7 +70,6 @@ public class DynamicTransactionService : IDynamicTransactionService
     private readonly DataStrategyContext<string, HomeOverviewResponseDto> _overviewDataStrategy;
     private IDistributedCache<TransactionDetailResponseDto> _transactionDetailCache;
     private readonly ILogger<HomePageService> _logger;
-    
 
 
     public DynamicTransactionService(
@@ -420,6 +419,7 @@ public class DynamicTransactionService : IDynamicTransactionService
 
         try
         {
+            requestDto.SetDefaultSort();
             var indexerTransactionList = await _blockChainIndexerProvider.GetTransactionsAsync(requestDto);
 
 
@@ -434,16 +434,18 @@ public class DynamicTransactionService : IDynamicTransactionService
                     Method = transactionIndex.MethodName,
                     Status = transactionIndex.Status,
                     TransactionFee = transactionIndex.Fee.ToString(),
+                    BlockTime = transactionIndex.Metadata.Block.BlockTime,
+                    ChainIds = new List<string>() { transactionIndex.Metadata.ChainId }
                 };
 
 
-                transactionRespDto.From = ConvertAddress(transactionIndex.From, requestDto.ChainId);
+                transactionRespDto.From = ConvertAddress(transactionIndex.From, transactionIndex.Metadata.ChainId);
 
-                transactionRespDto.To = ConvertAddress(transactionIndex.To, requestDto.ChainId);
+                transactionRespDto.To = ConvertAddress(transactionIndex.To, transactionIndex.Metadata.ChainId);
                 result.Transactions.Add(transactionRespDto);
             }
 
-            result.Transactions = result.Transactions.OrderByDescending(item => item.BlockHeight)
+            result.Transactions = result.Transactions.OrderByDescending(item => item.BlockTime)
                 .ThenByDescending(item => item.TransactionId)
                 .ToList();
 

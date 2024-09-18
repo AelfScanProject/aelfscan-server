@@ -34,6 +34,8 @@ public class HomePageOverviewWorker : AsyncPeriodicBackgroundWorkerBase
 
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
     {
+        await _overviewDataStrategy.LoadData("");
+
         foreach (var chainId in _workerOptions.CurrentValue.ChainIds)
         {
             _logger.LogInformation("Start to load home page overview data for chain {chainId}", chainId);

@@ -14,6 +14,7 @@ public class IndexerTokenHolderInfoDto
     public long TransferCount { get; set; }
     public string FirstNftTransactionId { get; set; }
     public DateTime? FirstNftTime { get; set; }
+    public MetadataDto Metadata { get; set; }
 }
 
 public class IndexerTokenHolderInfosDto

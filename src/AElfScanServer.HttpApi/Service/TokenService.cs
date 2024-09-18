@@ -9,14 +9,20 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.Dtos.MergeData;
+using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
+using AElfScanServer.HttpApi.Options;
 using AElfScanServer.HttpApi.Provider;
+using Elasticsearch.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Nest;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
 
@@ -45,14 +51,16 @@ public class TokenService : ITokenService, ISingletonDependency
     private readonly IGenesisPluginProvider _genesisPluginProvider;
     private readonly ILogger<TokenService> _logger;
     private readonly IAddressTypeService _addressTypeService;
-
+    private readonly IElasticClient _elasticClient;
+    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
     public TokenService(ITokenIndexerProvider tokenIndexerProvider,
         ITokenHolderPercentProvider tokenHolderPercentProvider, IObjectMapper objectMapper,
         IOptionsMonitor<ChainOptions> chainOptions, ITokenPriceService tokenPriceService,
         IOptionsMonitor<TokenInfoOptions> tokenInfoOptions, ITokenInfoProvider tokenInfoProvider,
         IAddressTypeService addressTypeService,
-        IGenesisPluginProvider genesisPluginProvider, ILogger<TokenService> logger)
+        IGenesisPluginProvider genesisPluginProvider, ILogger<TokenService> logger,
+        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions)
     {
         _objectMapper = objectMapper;
         _chainOptions = chainOptions;
@@ -64,10 +72,21 @@ public class TokenService : ITokenService, ISingletonDependency
         _tokenHolderPercentProvider = tokenHolderPercentProvider;
         _logger = logger;
         _addressTypeService = addressTypeService;
+        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
+        var connectionPool = new StaticConnectionPool(uris);
+        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
+        _elasticClient = new ElasticClient(settings);
+        EsIndex.SetElasticClient(_elasticClient);
+        _globalOptions = globalOptions;
     }
 
     public async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
     {
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeTokenListAsync(input);
+        }
+
         input.SetDefaultSort();
 
         var indexerTokenListDto = await _tokenIndexerProvider.GetTokenListAsync(input);
@@ -85,6 +104,61 @@ public class TokenService : ITokenService, ISingletonDependency
             List = list
         };
     }
+
+    public async Task<ListResponseDto<TokenCommonDto>> GetMergeTokenListAsync(TokenListInput input)
+    {
+        var result = await EsIndex.SearchMergeTokenList(_globalOptions.CurrentValue.SpecialSymbols,
+            (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower());
+
+        if (result.list.IsNullOrEmpty())
+        {
+            return new ListResponseDto<TokenCommonDto>();
+        }
+
+        var tokenHolderCountDic =
+            await _tokenHolderPercentProvider.GetTokenHolderCount("", DateTime.Now.ToString("yyyyMMdd"));
+
+
+        var list = new List<TokenCommonDto>();
+        foreach (var tokenIndex in result.list)
+        {
+            var tokenInfo = _objectMapper.Map<TokenInfoIndex, TokenCommonDto>(tokenIndex);
+
+
+            tokenInfo.TotalSupply = DecimalHelper.Divide(tokenInfo.TotalSupply, tokenIndex.Decimals);
+            tokenInfo.CirculatingSupply =
+                DecimalHelper.Divide(tokenInfo.CirculatingSupply, tokenIndex.Decimals);
+            //handle image url
+            tokenInfo.Token.ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(tokenIndex.Symbol,
+                tokenIndex.IssueChainId, tokenIndex.ExternalInfo);
+
+
+            if (tokenHolderCountDic.TryGetValue(tokenIndex.Symbol, out var beforeCount) && beforeCount != 0)
+            {
+                tokenInfo.HolderPercentChange24H = Math.Round(
+                    (double)(tokenInfo.Holders - beforeCount) / beforeCount * 100,
+                    CommonConstant.PercentageValueDecimals);
+            }
+
+            list.Add(tokenInfo);
+        }
+
+        return new ListResponseDto<TokenCommonDto>
+        {
+            Total = result.totalCount,
+            List = list
+        };
+    }
+
+    
+    public class TokenAggregationResult
+    {
+        public string Symbol { get; set; }
+        public double HolderCount { get; set; }
+        public double Supply { get; set; }
+        public List<string> ChainIds { get; set; }
+    }
+
 
     public async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId)
     {
@@ -228,7 +302,6 @@ public class TokenService : ITokenService, ISingletonDependency
 
             if (tokenHolderCountDic.TryGetValue(indexerTokenInfoDto.Symbol, out var beforeCount) && beforeCount != 0)
             {
-              
                 tokenListDto.HolderPercentChange24H = Math.Round(
                     (double)(tokenListDto.Holders - beforeCount) / beforeCount * 100,
                     CommonConstant.PercentageValueDecimals);

@@ -46,7 +46,7 @@ public class TransactionsRequestDto : BaseInput
             return;
         }
 
-        OfOrderInfos((SortField.BlockHeight, SortDirection.Desc), (SortField.TransactionId, SortDirection.Desc));
+        OfOrderInfos((SortField.BlockTime, SortDirection.Desc), (SortField.TransactionId, SortDirection.Desc));
     }
 
 
@@ -91,13 +91,58 @@ public class HomeOverviewResponseDto
     public decimal TokenPriceInUsd { get; set; }
     public decimal TokenPriceRate24h { get; set; }
     public long Transactions { get; set; }
+
+    public OverviewAccountInfo MergeAccounts { get; set; } = new();
+    public OverviewTokensInfo MergeTokens { get; set; } = new();
+    public OverviewNftsInfo MergeNfts { get; set; } = new();
+    public OverviewTransactionsInfo MergeTransactions { get; set; } = new();
+    public OverviewTpsInfo MergeTps { get; set; } = new();
+    public string MarketCap { get; set; }
     public string Tps { get; set; }
 
-    public DateTime TpsTime { get; set; }
+    public int Tokens { get; set; }
     public string Reward { get; set; }
     public long BlockHeight { get; set; }
-    public int Accounts { get; set; }
+    public long Accounts { get; set; }
     public string CitizenWelfare { get; set; }
+}
+
+public class OverviewTransactionsInfo
+{
+    public long Total { get; set; }
+
+    public long MainChain { get; set; }
+    public long SideChain { get; set; }
+}
+
+public class OverviewTpsInfo
+{
+    public string Total { get; set; }
+    public string MainChain { get; set; }
+    public string SideChain { get; set; }
+}
+
+public class OverviewTokensInfo
+{
+    public long Total { get; set; }
+
+    public long MainChain { get; set; }
+    public long SideChain { get; set; }
+}
+
+public class OverviewNftsInfo
+{
+    public long Total { get; set; }
+    public long MainChain { get; set; }
+    public long SideChain { get; set; }
+}
+
+public class OverviewAccountInfo
+{
+    public long Total { get; set; }
+
+    public long MainChain { get; set; }
+    public long SideChain { get; set; }
 }
 
 public class BlocksRequestDto : PagedResultRequestDto
@@ -117,6 +162,8 @@ public class WebSocketMergeBlockInfoDto
 {
     public TransactionsResponseDto LatestTransactions { get; set; }
     public BlocksResponseDto LatestBlocks { get; set; }
+
+    public List<TopTokenDto> TopTokens { get; set; }
 }
 
 public class TransactionsResponseDto
@@ -127,7 +174,7 @@ public class TransactionsResponseDto
 
 public class SearchRequestDto : IValidatableObject
 {
-    public string ChainId { get; set; }
+    public string ChainId { get; set; } = "";
     [Required] public string Keyword { get; set; }
     public FilterTypes FilterType { get; set; }
     public SearchTypes SearchType { get; set; }
@@ -278,10 +325,10 @@ public class SearchResponseDto
 {
     public List<SearchToken> Tokens { get; set; } = new();
     public List<SearchToken> Nfts { get; set; } = new();
-    public List<string> Accounts { get; set; } = new();
+    public List<SearchAccount> Accounts { get; set; } = new();
     public List<SearchContract> Contracts { get; set; } = new();
-    public SearchBlock Block { get; set; }
-    public SearchTransaction Transaction { get; set; }
+    public List<SearchBlock> Blocks { get; set; } = new();
+    public SearchTransaction Transaction { get; set; } = new();
 }
 
 public class SearchBlock
@@ -295,6 +342,8 @@ public class SearchTransaction
     public string TransactionId { get; set; }
     public long BlockHeight { get; set; }
     public string BlockHash { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
 }
 
 public class SearchToken
@@ -304,18 +353,28 @@ public class SearchToken
     public string Symbol { get; set; }
     public decimal Price { get; set; }
     public SymbolType Type { get; set; }
+    public List<string> ChainIds { get; set; } = new();
 }
 
 public class SearchContract
 {
     public string Name { get; set; }
     public string Address { get; set; }
+
+    public List<string> ChainIds { get; set; }
 }
 
 public class LatestBlocksRequestDto
 {
     public string ChainId { get; set; }
     public int MaxResultCount { get; set; } = 6;
+}
+
+public class SearchAccount
+{
+    public string Address { get; set; }
+
+    public List<string> ChainIds { get; set; }
 }
 
 public class LatestTransactionsResponseSto
@@ -328,6 +387,14 @@ public class BlocksResponseDto
 {
     public List<BlockResponseDto> Blocks { get; set; }
     public long Total { get; set; }
+}
+
+public class TopTokenDto
+{
+    public string Symbol { get; set; }
+    public List<string> ChainIds { get; set; }
+    public long Transfers { get; set; }
+    public long Holder { get; set; }
 }
 
 public class BlockDetailRequestDto
@@ -454,12 +521,18 @@ public class TransactionResponseDto
     public string TransactionValue { get; set; }
 
     public string TransactionFee { get; set; }
+
+    public DateTime BlockTime { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
 }
 
 public class TransactionPerMinuteResponseDto
 {
     public List<TransactionCountPerMinuteDto> All { get; set; }
     public List<TransactionCountPerMinuteDto> Owner { get; set; }
+    public List<TransactionCountPerMinuteDto> MainChain { get; set; }
+    public List<TransactionCountPerMinuteDto> SideChain { get; set; }
 }
 
 public class TransactionCountPerMinuteDto

@@ -16,7 +16,7 @@ namespace AElfScanServer.HttpApi.Provider;
 public interface IIndexerGenesisProvider
 {
     Task<IndexerContractListResultDto> GetContractListAsync(string chainId, int skipCount,
-        int maxResultCount, string orderBy, string sort, string address,long blockHeight = 0);
+        int maxResultCount, string orderBy, string sort, string address, long blockHeight = 0);
 
 
     Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId, List<string> addresslist);
@@ -51,7 +51,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                 new GraphQLRequest
                 {
                     Query =
-                        @"query($chainId:String!,$addressList:[String!],$skipCount:Int!,$maxResultCount:Int!){
+                        @"query($chainId:String,$addressList:[String!],$skipCount:Int!,$maxResultCount:Int!){
                             contractList(input: {chainId:$chainId,addressList:$addressList,skipCount:$skipCount,maxResultCount:$maxResultCount}){
                                totalCount
                                items {
@@ -80,7 +80,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                     }
                 });
 
-            return result.ContractList.Items.ToDictionary(c => c.Address, c => c);
+            return result.ContractList.Items.ToDictionary(c => c.Address + c.Metadata.ChainId, c => c);
         }
         catch (Exception e)
         {
@@ -91,7 +91,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
 
     public async Task<IndexerContractListResultDto> GetContractListAsync(string chainId,
         int skipCount,
-        int maxResultCount, string orderBy = "", string sort = "", string address = "",long blockHeight = 0)
+        int maxResultCount, string orderBy = "", string sort = "", string address = "", long blockHeight = 0)
     {
         var indexerContractListResultDto = new IndexerContractListResultDto();
         try
@@ -100,7 +100,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                 new GraphQLRequest
                 {
                     Query =
-                        @"query($chainId:String!,$orderBy:String,$sort:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,,$blockHeight:Long){
+                        @"query($chainId:String,$orderBy:String,$sort:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,,$blockHeight:Long){
                             contractList(input: {chainId:$chainId,orderBy:$orderBy,sort:$sort,skipCount:$skipCount,maxResultCount:$maxResultCount,address:$address,blockHeight:$blockHeight}){
                                totalCount
                                items {
@@ -125,7 +125,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                     Variables = new
                     {
                         chainId = chainId, orderBy = orderBy, sort = sort, skipCount = skipCount,
-                        maxResultCount = maxResultCount, address = address,blockHeight = blockHeight
+                        maxResultCount = maxResultCount, address = address, blockHeight = blockHeight
                     }
                 });
             return result;
@@ -138,7 +138,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
     }
 
 
-    public async Task<List<ContractRecordDto>> GetContractRecordAsync(string chainId, string address,int skipCount = 0,
+    public async Task<List<ContractRecordDto>> GetContractRecordAsync(string chainId, string address, int skipCount = 0,
         int maxResultCount = 10)
     {
         try

@@ -10,7 +10,7 @@ public class GetListInputInput : BaseInput
 {
     public void SetDefaultSort()
     {
-        if (!OrderBy.IsNullOrEmpty()|| !OrderInfos.IsNullOrEmpty())
+        if (!OrderBy.IsNullOrEmpty() || !OrderInfos.IsNullOrEmpty())
         {
             return;
         }
@@ -32,5 +32,7 @@ public class GetAddressInfoResultDto
     public decimal Balance { get; set; } // auto map to balance
     public long TransactionCount { get; set; }
     public decimal Percentage { get; set; }
+
+    public List<string> ChainIds { get; set; }
     public AddressType AddressType { get; set; } = AddressType.EoaAddress; //0 => Address | 1 => Contract Address
 }

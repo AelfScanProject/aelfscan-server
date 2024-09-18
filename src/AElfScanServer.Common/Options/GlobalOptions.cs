@@ -11,6 +11,8 @@ public class GlobalOptions
 
     public bool NeedInitLastHeight { get; set; }
 
+    public List<string> SpecialSymbols { get; set; } = new();
+
 
     public Dictionary<string, List<string>> FixDailyData { get; set; }
 
@@ -38,6 +40,8 @@ public class GlobalOptions
 
     public List<string> ChainIds { get; set; }
 
+    public string SideChainId { get; set; }
+
     public Dictionary<string, long> LogEventStartBlockHeightInit { get; set; } = new();
 
     public Dictionary<string, List<string>> SkipContractAddress { get; set; }
@@ -47,8 +51,8 @@ public class GlobalOptions
 
     public Dictionary<string, string> TokenImageUrls { get; set; }
     public Dictionary<string, string> ChainNodeHosts { get; set; }
-    
-    
+
+
     public Dictionary<string, string> ScanChainNodeHosts { get; set; }
 
     public long TransactionCountCacheExpiration { get; set; }

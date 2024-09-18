@@ -138,14 +138,14 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         return indexerResult != null ? indexerResult.AccountCount.Count : 0;
     }
 
-    public async Task<IndexerTokenInfoListDto> GetTokenListAsync(TokenListInput input)
+    public async Task<IndexerTokenInfoListDto>    GetTokenListAsync(TokenListInput input)
     {
         var graphQlHelper = GetGraphQlHelper();
 
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$skipCount:Int!,$maxResultCount:Int!,$search:String,
+                @"query($chainId:String,$skipCount:Int!,$maxResultCount:Int!,$search:String,
                         $types:[SymbolType!],$symbols:[String!],$collectionSymbols:[String!],
                         $sort:String,$orderBy:String,$exactSearch:String,$fuzzySearch:String,$searchAfter:[String]){
                     tokenInfo(input: {chainId:$chainId,skipCount:$skipCount,maxResultCount:$maxResultCount,search:$search,types:$types,
@@ -163,6 +163,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                         supply,
                         issued,
     					issuer,
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
                         owner,
                         isPrimaryToken
                         isBurnable,
@@ -192,7 +193,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$symbols:[String!],$skipCount:Int!,$maxResultCount:Int!){
+                @"query($chainId:String,$symbols:[String!],$skipCount:Int!,$maxResultCount:Int!){
                     tokenInfo(input: {chainId:$chainId,symbols:$symbols,skipCount:$skipCount,maxResultCount:$maxResultCount}){
                        totalCount,
                        items{
@@ -269,7 +270,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenHolderInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,
+                @"query($chainId:String,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,
                     $search:String,$types:[SymbolType!],$symbols:[String],$searchSymbols:[String],
                     $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
                     accountToken(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,skipCount:$skipCount,types:$types,
@@ -285,6 +286,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                             type,
                             decimals
                         },
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
                         amount,
                         formatAmount,
                         transferCount,

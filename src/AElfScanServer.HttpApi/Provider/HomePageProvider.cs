@@ -28,7 +28,6 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
 {
     private readonly INESTRepository<BlockExtraIndex, string> _blockExtraIndexRepository;
     private readonly INESTRepository<AddressIndex, string> _addressIndexRepository;
-    private readonly INESTRepository<TokenInfoIndex, string> _tokenInfoIndexRepository;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IElasticClient _elasticClient;
     private const string TransactionCountRedisKey = "transaction_count";
@@ -43,7 +42,6 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
         IOptions<ElasticsearchOptions> options,
         INESTRepository<BlockExtraIndex, string> blockExtraIndexRepository,
         INESTRepository<AddressIndex, string> addressIndexRepository,
-        INESTRepository<TokenInfoIndex, string> tokenInfoIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor) : base(optionsAccessor)
     {
         _logger = logger;
@@ -54,7 +52,6 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
         _elasticClient = new ElasticClient(settings);
         _blockExtraIndexRepository = blockExtraIndexRepository;
         _addressIndexRepository = addressIndexRepository;
-        _tokenInfoIndexRepository = tokenInfoIndexRepository;
     }
 
     public async Task<long> GetRewardAsync(string chainId)

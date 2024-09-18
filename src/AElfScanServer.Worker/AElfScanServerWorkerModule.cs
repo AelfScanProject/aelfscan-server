@@ -17,6 +17,7 @@ using AElfScanServer.Worker.Core;
 using AElfScanServer.Worker.Core.Options;
 using AElfScanServer.Worker.Core.Service;
 using AElfScanServer.Worker.Core.Worker;
+using AElfScanServer.Worker.Core.Worker.MergeDataWorker;
 using Elasticsearch.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -160,19 +161,6 @@ public class AElfScanServerWorkerModule : AbpModule
 
         foreach (var indexerOptionsChainId in indexerOptions.ChainIds)
         {
-            if (!elasticClient.Indices.Exists(BlockChainIndexNameHelper.GenerateTokenIndexName(indexerOptionsChainId))
-                    .Exists)
-            {
-                var indexResponse = elasticClient.Indices.Create(
-                    BlockChainIndexNameHelper.GenerateTokenIndexName(indexerOptionsChainId),
-                    c => c.Map<TokenInfoIndex>(m => m.AutoMap()));
-
-                if (!indexResponse.IsValid)
-                {
-                    throw new Exception($"Failed to index object: {indexResponse.DebugInformation}");
-                }
-            }
-
             if (!elasticClient.Indices.Exists(BlockChainIndexNameHelper.GenerateAddressIndexName(indexerOptionsChainId))
                     .Exists)
             {
@@ -220,23 +208,23 @@ public class AElfScanServerWorkerModule : AbpModule
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-        context.AddBackgroundWorkerAsync<MonthlyActiveAddressWorker>();
-        context.AddBackgroundWorkerAsync<TransactionIndexWorker>();
-        context.AddBackgroundWorkerAsync<LogEventWorker>();
-        context.AddBackgroundWorkerAsync<LogEventDelWorker>();
-        context.AddBackgroundWorkerAsync<RoundWorker>();
-        context.AddBackgroundWorkerAsync<TransactionRatePerMinuteWorker>();
-        context.AddBackgroundWorkerAsync<AddressAssetCalcWorker>();
-        context.AddBackgroundWorkerAsync<HomePageOverviewWorker>();
-        context.AddBackgroundWorkerAsync<LatestTransactionsWorker>();
-        context.AddBackgroundWorkerAsync<LatestBlocksWorker>();
-        context.AddBackgroundWorkerAsync<BnElfUsdtPriceWorker>();
-        context.AddBackgroundWorkerAsync<DailyNetworkStatisticWorker>();
-        context.AddBackgroundWorkerAsync<BlockSizeWorker>();
-        context.AddBackgroundWorkerAsync<CurrentBpProduceWorker>();
-        context.AddBackgroundWorkerAsync<FixDailyTransactionWorker>();
-        context.AddBackgroundWorkerAsync<ContractFileWorker>();
-        context.AddBackgroundWorkerAsync<TokenHolderPercentWorker>();
-
+        // context.AddBackgroundWorkerAsync<MonthlyActiveAddressWorker>();
+        // context.AddBackgroundWorkerAsync<TransactionIndexWorker>();
+        // context.AddBackgroundWorkerAsync<LogEventWorker>();
+        // context.AddBackgroundWorkerAsync<LogEventDelWorker>();
+        // context.AddBackgroundWorkerAsync<RoundWorker>();
+        // context.AddBackgroundWorkerAsync<TransactionRatePerMinuteWorker>();
+        // context.AddBackgroundWorkerAsync<AddressAssetCalcWorker>();
+        // context.AddBackgroundWorkerAsync<HomePageOverviewWorker>();
+        // context.AddBackgroundWorkerAsync<LatestTransactionsWorker>();
+        // context.AddBackgroundWorkerAsync<LatestBlocksWorker>();
+        // context.AddBackgroundWorkerAsync<BnElfUsdtPriceWorker>();
+        // context.AddBackgroundWorkerAsync<DailyNetworkStatisticWorker>();
+        // context.AddBackgroundWorkerAsync<BlockSizeWorker>();
+        // context.AddBackgroundWorkerAsync<CurrentBpProduceWorker>();
+        // context.AddBackgroundWorkerAsync<FixDailyTransactionWorker>();
+        // context.AddBackgroundWorkerAsync<ContractFileWorker>();
+        // context.AddBackgroundWorkerAsync<TokenHolderPercentWorker>();
+        context.AddBackgroundWorkerAsync<TokenInfoWorker>();
     }
 }

@@ -30,7 +30,7 @@ public interface IContractAppService
     Task<ContractFileResultDto> GetContractFileAsync(GetContractFileInput input);
     Task<GetContractHistoryResultDto> GetContractHistoryAsync(GetContractHistoryInput input);
     Task<GetContractEventResp> GetContractEventsAsync(GetContractEventReq input);
-    
+
     Task SaveContractFileAsync(string chainId);
     Task UpdateContractHeightAsync(SynchronizationDto input);
 }
@@ -49,6 +49,7 @@ public class ContractAppService : IContractAppService
     private readonly IEntityMappingRepository<LogEventIndex, string> _logEventIndexRepository;
     private readonly IDistributedCache<GetContractListResultDto> _contractListCache;
     private readonly IClusterClient _clusterClient;
+
     public ContractAppService(IObjectMapper objectMapper, ILogger<ContractAppService> logger,
         IDecompilerProvider decompilerProvider,
         IIndexerTokenProvider indexerTokenProvider, IIndexerGenesisProvider indexerGenesisProvider,
@@ -75,7 +76,8 @@ public class ContractAppService : IContractAppService
         _logger.LogInformation("GetContractListAsync");
         var result = new GetContractListResultDto { List = new List<ContractDto>() };
 
-        var key = IdGeneratorHelper.GenerateId(input.SkipCount, input.MaxResultCount, input.ChainId);
+        var key = IdGeneratorHelper.GenerateId("GetContractListAsync", input.SkipCount, input.MaxResultCount,
+            input.ChainId);
         var contractDtos =
             await _contractListCache.GetAsync(key);
         if (contractDtos != null)
@@ -104,13 +106,13 @@ public class ContractAppService : IContractAppService
 
 
         tasks.Add(_indexerTokenProvider.GetAddressTokenListAsync(input.ChainId,
-            "ELF", addressList, 0, addressList.Count).ContinueWith(task => { addressTokenList = task.Result; }));
+            "ELF", addressList, 0, addressList.Count * 2).ContinueWith(task => { addressTokenList = task.Result; }));
 
         await tasks.WhenAll();
 
-        var accountTokenDic = addressTokenList.ToDictionary(c => c.Address, c => c);
+        var accountTokenDic = addressTokenList.ToDictionary(c => c.Address + c.Metadata.ChainId, c => c);
 
-
+        var txnCountDic = addressTransactionCountList.ToDictionary(c => c.Address + c.ChainId, c => c);
         foreach (var info in getContractListResult.ContractList.Items)
         {
             var blockBlockTime = info.Metadata.Block.BlockTime;
@@ -128,23 +130,21 @@ public class ContractAppService : IContractAppService
                 ContractVersion = info.ContractVersion == "" ? info.Version.ToString() : info.ContractVersion,
                 LastUpdateTime = blockBlockTime,
                 Type = info.ContractType,
-                ContractName = GetContractName(input.ChainId, info.Address)
+                ContractName = GetContractName(info.Metadata.ChainId, info.Address)
             };
 
-
-            if (!addressTransactionCountList.IsNullOrEmpty() && addressTransactionCountList.Count > 0)
+            if (txnCountDic.TryGetValue(info.Address + info.Metadata.ChainId, out var txnCountInfo))
             {
-                var countInfo =
-                    addressTransactionCountList.Where(w => w.Address == info.Address).FirstOrDefault();
-
-                contractInfo.Txns = countInfo == null ? 0 : countInfo.Count;
+                contractInfo.Txns = txnCountInfo.Count;
             }
 
-            if (accountTokenDic.TryGetValue(info.Address, out var v))
+
+            if (accountTokenDic.TryGetValue(info.Address + info.Metadata.ChainId, out var v))
             {
                 contractInfo.Balance = addressTokenList[0].FormatAmount;
             }
 
+            contractInfo.ChainIds = new List<string>() { info.Metadata.ChainId };
 
             result.List.Add(contractInfo);
         }
@@ -176,7 +176,7 @@ public class ContractAppService : IContractAppService
             .GetGrain<IContractFileGrain>(GrainIdHelper.GenerateContractFileKey(input.ChainId, input.Address))
             .GetAsync();
         contractFileResultDto.ContractName = GetContractName(input.ChainId, input.Address);
-       return contractFileResultDto;
+        return contractFileResultDto;
     }
 
     public async Task<GetContractHistoryResultDto> GetContractHistoryAsync(
@@ -283,19 +283,23 @@ public class ContractAppService : IContractAppService
         {
             var bizId = GrainIdHelper.GenerateSynchronizationKey(chainId,
                 SynchronizationType.ContractFile.ToString());
-            var synchronizationDto =  await _clusterClient.GetGrain<ISynchronizationGrain>(bizId).GetAsync();
-            var list =  await _indexerGenesisProvider.GetContractListAsync(chainId,0,20,"BlockTime","asc","",synchronizationDto.LastBlockHeight);
+            var synchronizationDto = await _clusterClient.GetGrain<ISynchronizationGrain>(bizId).GetAsync();
+            var list = await _indexerGenesisProvider.GetContractListAsync(chainId, 0, 20, "BlockTime", "asc", "",
+                synchronizationDto.LastBlockHeight);
             if (!list.ContractList.Items.IsNullOrEmpty())
             {
                 foreach (var contractRecord in list.ContractList.Items)
                 {
                     var contractFileId = GrainIdHelper.GenerateContractFileKey(chainId, contractRecord.Address);
-                    var contractFileResultDto = await _clusterClient.GetGrain<IContractFileGrain>(contractFileId).GetAsync();
-                    if (contractFileResultDto.LastBlockHeight!=0 && synchronizationDto.LastBlockHeight == contractFileResultDto.LastBlockHeight)
+                    var contractFileResultDto =
+                        await _clusterClient.GetGrain<IContractFileGrain>(contractFileId).GetAsync();
+                    if (contractFileResultDto.LastBlockHeight != 0 &&
+                        synchronizationDto.LastBlockHeight == contractFileResultDto.LastBlockHeight)
                     {
                         flag = false;
                         continue;
                     }
+
                     flag = true;
                     var getContractRegistrationResult =
                         await _indexerGenesisProvider.GetContractRegistrationAsync(chainId,
@@ -305,17 +309,22 @@ public class ContractAppService : IContractAppService
                     {
                         continue;
                     }
+
                     var getFilesResult = await _decompilerProvider.GetFilesAsync(getContractRegistrationResult[0].Code);
-                    await _clusterClient.GetGrain<IContractFileGrain>(contractFileId).SaveAndUpdateAsync(new ContractFileResultDto
-                    {
-                        ChainId = chainId,
-                        Address = contractRecord.Address,
-                        LastBlockHeight = contractRecord.Metadata.Block.BlockHeight,
-                        ContractName = GetContractName(chainId, contractRecord.Address),
-                        ContractVersion = contractRecord.ContractVersion == "" ? contractRecord.Version.ToString() : contractRecord.ContractVersion,
-                        ContractSourceCode = getFilesResult.Data
-                    });
-                    _logger.LogInformation("SaveContractFileAsync ChainId:{ChainId}, LastBlockHeight {LastBlockHeight}",chainId,contractRecord.Metadata.Block.BlockHeight);
+                    await _clusterClient.GetGrain<IContractFileGrain>(contractFileId).SaveAndUpdateAsync(
+                        new ContractFileResultDto
+                        {
+                            ChainId = chainId,
+                            Address = contractRecord.Address,
+                            LastBlockHeight = contractRecord.Metadata.Block.BlockHeight,
+                            ContractName = GetContractName(chainId, contractRecord.Address),
+                            ContractVersion = contractRecord.ContractVersion == ""
+                                ? contractRecord.Version.ToString()
+                                : contractRecord.ContractVersion,
+                            ContractSourceCode = getFilesResult.Data
+                        });
+                    _logger.LogInformation("SaveContractFileAsync ChainId:{ChainId}, LastBlockHeight {LastBlockHeight}",
+                        chainId, contractRecord.Metadata.Block.BlockHeight);
                 }
             }
         } while (flag);

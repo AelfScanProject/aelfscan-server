@@ -117,7 +117,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     private readonly IEntityMappingRepository<DailyAvgBlockSizeIndex, string> _blockSizeRepository;
     private readonly IEntityMappingRepository<TransactionIndex, string> _transactionsRepository;
     private readonly IElasticClient _elasticClient;
-    private readonly DataStrategyContext<string, HomeOverviewResponseDto> _overviewDataStrategy;
 
     private readonly IEntityMappingRepository<DailyTransactionCountIndex, string> _transactionCountRepository;
     private readonly IEntityMappingRepository<DailyUniqueAddressCountIndex, string> _uniqueAddressRepository;
@@ -163,7 +162,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         IEntityMappingRepository<DailyTVLIndex, string> dailyTVLRepository,
         IEntityMappingRepository<MonthlyActiveAddressIndex, string> monthlyActiveAddressIndexRepository,
         IPriceServerProvider priceServerProvider,
-        OverviewDataStrategy overviewDataStrategy,
         IDailyHolderProvider dailyHolderProvider,
         IOptionsMonitor<ElasticsearchOptions> options) : base(
         optionsAccessor)
@@ -200,7 +198,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         _dailyHolderProvider = dailyHolderProvider;
         _dailyTVLRepository = dailyTVLRepository;
         _priceServerProvider = priceServerProvider;
-        _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _monthlyActiveAddressIndexRepository = monthlyActiveAddressIndexRepository;
     }
 
@@ -251,9 +248,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         //         request.SetLastRound);
         // }
 
-        var loadData = await _overviewDataStrategy.DisplayData(request.ChainId);
 
-        jonInfoResp.Overview = loadData;
         // var queryable2 = await _transactionRecordIndexRepository.GetQueryableAsync();
         // queryable2 = queryable2.Where(c => c.ChainId == request.ChainId);
         // var count = queryable2.Count();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Provider;
@@ -116,8 +117,15 @@ public class SearchService : ISearchService, ISingletonDependency
 
     private bool ValidParam(string chainId, string keyword)
     {
-        return _globalOptions.CurrentValue.ChainIds.Exists(s => s == chainId)
-               && !Regex.IsMatch(keyword, CommonConstant.SearchKeyPattern);
+        if (string.IsNullOrEmpty(chainId))
+        {
+            return !Regex.IsMatch(keyword, CommonConstant.SearchKeyPattern);
+        }
+        else
+        {
+            return (_globalOptions.CurrentValue.ChainIds.Exists(s => s == chainId)
+                    && !Regex.IsMatch(keyword, CommonConstant.SearchKeyPattern));
+        }
     }
 
 
@@ -129,29 +137,46 @@ public class SearchService : ISearchService, ISingletonDependency
         }
         catch (Exception e)
         {
-            _logger.LogWarning(e,"address is invalid,{keyword}", request.Keyword);
+            _logger.LogWarning(e, "address is invalid,{keyword}", request.Keyword);
             return;
         }
 
 
-        var contractAddress = await FindContractAddress(request.ChainId, request.Keyword);
+        var contractAddressList = await FindContractAddress(request.ChainId, request.Keyword);
 
 
-        if (!contractAddress.IsNullOrEmpty())
+        if (!contractAddressList.IsNullOrEmpty())
         {
-            searchResponseDto.Contracts.Add(new SearchContract
+            foreach (var contractInfoDto in contractAddressList)
             {
-                Address = request.Keyword,
-                Name = BlockHelper.GetContractName(_globalOptions.CurrentValue, request.ChainId, request.Keyword)
-            });
+                searchResponseDto.Contracts.Add(new SearchContract
+                {
+                    Address = request.Keyword,
+                    Name = BlockHelper.GetContractName(_globalOptions.CurrentValue, contractInfoDto.Metadata.ChainId,
+                        request.Keyword),
+                    ChainIds = new List<string>() { contractInfoDto.Metadata.ChainId }
+                });
+            }
         }
         else
         {
-            searchResponseDto.Accounts.Add(request.Keyword);
+            if (request.ChainId.IsNullOrEmpty())
+            {
+                var findEoaAddress = await FindEoaAddress(request.Keyword);
+                searchResponseDto.Accounts = findEoaAddress;
+            }
+            else
+            {
+                searchResponseDto.Accounts.Add(new SearchAccount()
+                {
+                    Address = request.Keyword,
+                    ChainIds = new List<string>() { request.ChainId }
+                });
+            }
         }
     }
 
-    public async Task<string> FindContractAddress(string chainId, string contractAddress)
+    public async Task<List<ContractInfoDto>> FindContractAddress(string chainId, string contractAddress)
     {
         var contractListAsync =
             await _indexerGenesisProvider.GetContractListAsync(chainId, 0, 1, "", "",
@@ -159,25 +184,39 @@ public class SearchService : ISearchService, ISingletonDependency
 
         if (!contractListAsync.ContractList.Items.IsNullOrEmpty())
         {
-            return contractListAsync.ContractList.Items.First().Address;
+            return contractListAsync.ContractList.Items;
         }
 
-        return "";
+        return new List<ContractInfoDto>();
     }
 
-    public async Task<string> FindEoaAddress(string chainId, string address)
+    public async Task<List<SearchAccount>> FindEoaAddress(string address)
     {
-        var holderInput = new TokenHolderInput { ChainId = chainId, Address = address };
+        var result = new List<SearchAccount>();
+        var holderInput = new TokenHolderInput { ChainId = "", Address = address };
         holderInput.SetDefaultSort();
-        var tokenHolderInfos = await _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
 
-        var list = tokenHolderInfos.Items.Select(i => i.Address).Distinct().ToList();
-        if (!list.IsNullOrEmpty())
+        var tokenHolderInfos = await _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
+        var dic = new Dictionary<string, SearchAccount>();
+
+        foreach (var indexerTokenHolderInfoDto in tokenHolderInfos.Items)
         {
-            return list.First();
+            if (dic.TryGetValue(indexerTokenHolderInfoDto.Address, out var v))
+            {
+                v.ChainIds.Add(indexerTokenHolderInfoDto.Metadata.ChainId);
+            }
+            else
+            {
+                dic.Add(indexerTokenHolderInfoDto.Address, new SearchAccount()
+                {
+                    Address = indexerTokenHolderInfoDto.Address,
+                    ChainIds = new List<string>() { indexerTokenHolderInfoDto.Metadata.ChainId }
+                });
+            }
         }
 
-        return "";
+        result.AddRange(dic.Values);
+        return result;
     }
 
 
@@ -210,6 +249,9 @@ public class SearchService : ISearchService, ISingletonDependency
             lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(request.ChainId, symbols);
         }
 
+        var searchTokensDic = new Dictionary<string, SearchToken>();
+        var searchTNftsDic = new Dictionary<string, SearchToken>();
+
         var elfOfUsdPriceTask = GetTokenOfUsdPriceAsync(priceDict, CurrencyConstant.ElfCurrency);
         foreach (var tokenInfo in indexerTokenInfoList.Items)
         {
@@ -223,36 +265,116 @@ public class SearchService : ISearchService, ISingletonDependency
             {
                 case SymbolType.Token:
                 {
-                    if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(tokenInfo.Symbol))
+                    if (searchTokensDic.TryGetValue(tokenInfo.Symbol, out var v))
                     {
-                        var price = await GetTokenOfUsdPriceAsync(priceDict, tokenInfo.Symbol);
-                        searchToken.Price = Math.Round(price, CommonConstant.UsdPriceValueDecimals);
+                        v.ChainIds.Add(tokenInfo.Metadata.ChainId);
+                    }
+                    else
+                    {
+                        if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(tokenInfo.Symbol))
+                        {
+                            var price = await GetTokenOfUsdPriceAsync(priceDict, tokenInfo.Symbol);
+                            searchToken.Price = Math.Round(price, CommonConstant.UsdPriceValueDecimals);
+                        }
+
+                        searchToken.ChainIds.Add(tokenInfo.Metadata.ChainId);
+
+                        searchTokensDic[tokenInfo.Symbol] = searchToken;
                     }
 
-                    searchResponseDto.Tokens.Add(searchToken);
                     break;
                 }
                 case SymbolType.Nft:
                 {
-                    var elfOfUsdPrice = await elfOfUsdPriceTask;
-                    var elfPrice = lastSaleInfoDict.TryGetValue(tokenInfo.Symbol, out var priceDto)
-                        ? priceDto.Price
-                        : 0;
-                    searchToken.Price = Math.Round(elfPrice * elfOfUsdPrice, CommonConstant.UsdPriceValueDecimals);
-                    searchResponseDto.Nfts.Add(searchToken);
+                    if (searchTNftsDic.TryGetValue(tokenInfo.Symbol, out var v))
+                    {
+                        v.ChainIds.Add(tokenInfo.Metadata.ChainId);
+                    }
+                    else
+                    {
+                        var elfOfUsdPrice = await elfOfUsdPriceTask;
+                        var elfPrice = lastSaleInfoDict.TryGetValue(tokenInfo.Symbol, out var priceDto)
+                            ? priceDto.Price
+                            : 0;
+                        searchToken.Price = Math.Round(elfPrice * elfOfUsdPrice, CommonConstant.UsdPriceValueDecimals);
+                        searchToken.ChainIds.Add(tokenInfo.Metadata.ChainId);
+                        searchTNftsDic[tokenInfo.Symbol] = searchToken;
+                    }
+
                     break;
                 }
                 case SymbolType.Nft_Collection:
                 {
-                    searchResponseDto.Nfts.Add(searchToken);
+                    if (searchTNftsDic.TryGetValue(tokenInfo.Symbol, out var v))
+                    {
+                        v.ChainIds.Add(tokenInfo.Metadata.ChainId);
+                    }
+                    else
+                    {
+                        searchToken.ChainIds.Add(tokenInfo.Metadata.ChainId);
+                        searchTNftsDic[tokenInfo.Symbol] = searchToken;
+                    }
+
                     break;
                 }
             }
+        }
+
+        searchResponseDto.Tokens.AddRange(searchTokensDic.Values);
+        searchResponseDto.Nfts.AddRange(searchTNftsDic.Values);
+    }
+
+    private async Task SearchMergeBlockAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
+    {
+        if (!BlockHelper.IsBlockHeight(request.Keyword))
+        {
+            return;
+        }
+
+        var mainBlockList = new List<IndexerBlockDto>();
+        var sideBlockList = new List<IndexerBlockDto>();
+        var tasks = new List<Task>();
+
+        var blockHeight = long.Parse(request.Keyword);
+
+        tasks.Add(_aelfIndexerProvider.GetLatestBlocksAsync("AELF", blockHeight, blockHeight).ContinueWith(
+            task => { mainBlockList.AddRange(task.Result); }));
+
+        tasks.Add(_aelfIndexerProvider
+            .GetLatestBlocksAsync(_globalOptions.CurrentValue.SideChainId, blockHeight, blockHeight).ContinueWith(
+                task => { sideBlockList.AddRange(task.Result); }));
+
+        await tasks.WhenAll();
+
+        if (!mainBlockList.IsNullOrEmpty())
+        {
+            var blockDto = mainBlockList[0];
+            searchResponseDto.Blocks.Add(new SearchBlock
+            {
+                BlockHash = blockDto.BlockHash,
+                BlockHeight = blockDto.BlockHeight
+            });
+        }
+
+        if (!sideBlockList.IsNullOrEmpty())
+        {
+            var blockDto = sideBlockList[0];
+            searchResponseDto.Blocks.Add(new SearchBlock
+            {
+                BlockHash = blockDto.BlockHash,
+                BlockHeight = blockDto.BlockHeight
+            });
         }
     }
 
     private async Task AssemblySearchBlockAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
     {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            await SearchMergeBlockAsync(searchResponseDto, request);
+            return;
+        }
+
         if (!BlockHelper.IsBlockHeight(request.Keyword))
         {
             return;
@@ -264,31 +386,89 @@ public class SearchService : ISearchService, ISingletonDependency
         if (!blockDtos.IsNullOrEmpty())
         {
             var blockDto = blockDtos[0];
-            searchResponseDto.Block = new SearchBlock
+            searchResponseDto.Blocks.Add(new SearchBlock
             {
                 BlockHash = blockDto.BlockHash,
                 BlockHeight = blockDto.BlockHeight
-            };
+            });
         }
     }
 
     private async Task AssemblySearchTransactionAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
+    {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            await SearchMergeTransaction(searchResponseDto, request);
+            return;
+        }
+
+        if (!BlockHelper.IsTxHash(request.Keyword))
+        {
+            return;
+        }
+
+
+        var transactionResult = await _blockchainClientFactory.GetClient(request.ChainId)
+            .GetTransactionResultAsync(request.Keyword);
+
+        if (!transactionResult.TransactionId.IsNullOrEmpty() && transactionResult.Status is "MINED" or "PENDING")
+        {
+            searchResponseDto.Transaction = new SearchTransaction
+            {
+                TransactionId = transactionResult.TransactionId,
+                BlockHash = transactionResult.BlockHash,
+                BlockHeight = transactionResult.BlockNumber,
+                ChainIds = new List<string> { request.ChainId }
+            };
+        }
+    }
+
+    private async Task SearchMergeTransaction(SearchResponseDto searchResponseDto, SearchRequestDto request)
     {
         if (!BlockHelper.IsTxHash(request.Keyword))
         {
             return;
         }
 
-        var transactionResult = await _blockchainClientFactory.GetClient(request.ChainId)
-            .GetTransactionResultAsync(request.Keyword);
+        var mainChainTxn = new TransactionResultDto();
+        var sideChainTxn = new TransactionResultDto();
 
-        if (transactionResult.Status is "MINED" or "PENDING")
+
+        var tasks = new List<Task>();
+
+        tasks.Add(_blockchainClientFactory.GetClient("AELF")
+            .GetTransactionResultAsync(request.Keyword).ContinueWith(task => { mainChainTxn = task.Result; }));
+
+        tasks.Add(_blockchainClientFactory.GetClient(_globalOptions.CurrentValue.SideChainId)
+            .GetTransactionResultAsync(request.Keyword).ContinueWith(task => { sideChainTxn = task.Result; }));
+
+        await tasks.WhenAll();
+
+        if (!mainChainTxn.TransactionId.IsNullOrEmpty() && mainChainTxn.Status is "MINED" or "PENDING")
         {
             searchResponseDto.Transaction = new SearchTransaction
             {
-                TransactionId = transactionResult.TransactionId,
-                BlockHash = transactionResult.BlockHash,
-                BlockHeight = transactionResult.BlockNumber
+                TransactionId = mainChainTxn.TransactionId,
+                BlockHash = mainChainTxn.BlockHash,
+                BlockHeight = mainChainTxn.BlockNumber,
+                ChainIds = new List<string>
+                {
+                    "AELF"
+                }
+            };
+        }
+
+        if (!sideChainTxn.TransactionId.IsNullOrEmpty() && sideChainTxn.Status is "MINED" or "PENDING")
+        {
+            searchResponseDto.Transaction = new SearchTransaction
+            {
+                TransactionId = mainChainTxn.TransactionId,
+                BlockHash = mainChainTxn.BlockHash,
+                BlockHeight = mainChainTxn.BlockNumber,
+                ChainIds = new List<string>
+                {
+                    _globalOptions.CurrentValue.SideChainId
+                }
             };
         }
     }

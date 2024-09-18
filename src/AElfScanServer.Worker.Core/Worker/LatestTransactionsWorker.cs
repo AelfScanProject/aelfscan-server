@@ -35,6 +35,7 @@ public class LatestTransactionsWorker : AsyncPeriodicBackgroundWorkerBase
 
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
     {
+        await _latestTransactionsDataStrategy.LoadData("");
         foreach (var chainId in _workerOptions.CurrentValue.ChainIds)
         {
             _logger.LogInformation("Start to load latest transaction for chain {chainId}", chainId);

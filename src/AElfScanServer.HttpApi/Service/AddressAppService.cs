@@ -95,29 +95,30 @@ public class AddressAppService : IAddressAppService
 
         await Task.WhenAll(tokenHolderInfoTask, tokenDetailTask);
 
-        var indexerTokenHolderInfo = await tokenHolderInfoTask;
+        var tokenHolderAccountlist = await tokenHolderInfoTask;
         var indexerTokenList = await tokenDetailTask;
         var tokenInfo = indexerTokenList[0];
 
         var result = new GetAddressListResultDto
         {
-            Total = indexerTokenHolderInfo.TotalCount,
-            TotalBalance = DecimalHelper.Divide(tokenInfo.Supply, tokenInfo.Decimals)
+            Total = tokenHolderAccountlist.TotalCount,
+            TotalBalance = DecimalHelper.Divide(indexerTokenList.Sum(c => c.Supply), tokenInfo.Decimals)
         };
 
 
         var contractInfosDict =
             await _indexerGenesisProvider.GetContractListAsync(input.ChainId,
-                indexerTokenHolderInfo.Items.Select(address => address.Address).ToList());
+                tokenHolderAccountlist.Items.Select(address => address.Address).ToList());
 
 
         var addressList = new List<GetAddressInfoResultDto>();
-        foreach (var info in indexerTokenHolderInfo.Items)
+        foreach (var info in tokenHolderAccountlist.Items)
         {
             var addressResult = _objectMapper.Map<IndexerTokenHolderInfoDto, GetAddressInfoResultDto>(info);
+            addressResult.ChainIds = new List<string>() { info.Metadata.ChainId };
             addressResult.Percentage = Math.Round((decimal)info.Amount / tokenInfo.Supply * 100,
                 CommonConstant.LargerPercentageValueDecimals);
-            addressResult.AddressType = contractInfosDict.TryGetValue(info.Address, out var addressInfo)
+            addressResult.AddressType = contractInfosDict.TryGetValue(info.Address + info.Metadata.ChainId, out var addressInfo)
                 ? AddressType.ContractAddress
                 : AddressType.EoaAddress;
             addressList.Add(addressResult);

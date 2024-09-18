@@ -1,3 +1,5 @@
+using Nest;
+
 namespace AElfScanServer.Common.Dtos;
 
 public class ExternalInfoDto
