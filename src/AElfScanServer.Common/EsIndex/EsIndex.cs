@@ -20,21 +20,68 @@ public class EsIndex
         esClient = client;
     }
 
-    public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(List<string> symbols,
+    // public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(List<string> symbols,
+    //     int skip, int size,
+    //     string sortOrder = "desc")
+    // {
+    //     var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
+    //         .Index("tokeninfoindex").Skip(skip)
+    //         .Size(size)
+    //         .Query(q => q
+    //             .Bool(b => b
+    //                 .Should(
+    //                     s => s.Term(t => t.Field(f => f.Type).Value(SymbolType.Token)),
+    //                     s => s.Terms(t => t.Field(f => f.Symbol).Terms(symbols))
+    //                 )
+    //                 .MinimumShouldMatch(1)
+    //             )
+    //         )
+    //         .Sort(so =>
+    //         {
+    //             if (sortOrder == "asc")
+    //             {
+    //                 return so.Ascending("holderCount");
+    //             }
+    //
+    //             return so.Descending("holderCount");
+    //         });
+    //
+    //
+    //     var searchResponse = await esClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
+    //     long totalCount = searchResponse.Total;
+    //     if (!searchResponse.IsValid)
+    //     {
+    //         throw new Exception($"Elasticsearch query failed: {searchResponse.OriginalException.Message}");
+    //     }
+    //
+    //     List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
+    //
+    //
+    //     return (tokenInfoList, totalCount);
+    // }
+
+    public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(
         int skip, int size,
-        string sortOrder = "desc")
+        string sortOrder = "desc", List<string> symbols = null, SymbolType symbolType = SymbolType.Token)
     {
         var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
             .Index("tokeninfoindex").Skip(skip)
             .Size(size)
             .Query(q => q
-                .Bool(b => b
-                    .Should(
-                        s => s.Term(t => t.Field(f => f.Type).Value(SymbolType.Token)),
-                        s => s.Terms(t => t.Field(f => f.Symbol).Terms(symbols))
-                    )
-                    .MinimumShouldMatch(1)
-                )
+                .Bool(b =>
+                {
+                    var shouldClauses = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>
+                    {
+                        s => s.Term(t => t.Field(f => f.Type).Value(symbolType))
+                    };
+
+                    if (symbols != null && symbols.Any())
+                    {
+                        shouldClauses.Add(s => s.Terms(t => t.Field(f => f.Symbol).Terms(symbols)));
+                    }
+
+                    return b.Should(shouldClauses.ToArray()).MinimumShouldMatch(1);
+                })
             )
             .Sort(so =>
             {
@@ -46,7 +93,6 @@ public class EsIndex
                 return so.Descending("holderCount");
             });
 
-
         var searchResponse = await esClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
         long totalCount = searchResponse.Total;
         if (!searchResponse.IsValid)
@@ -55,7 +101,6 @@ public class EsIndex
         }
 
         List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
-
 
         return (tokenInfoList, totalCount);
     }

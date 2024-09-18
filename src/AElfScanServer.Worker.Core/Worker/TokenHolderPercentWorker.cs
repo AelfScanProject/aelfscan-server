@@ -67,7 +67,7 @@ public class TokenHolderPercentWorker : AsyncPeriodicBackgroundWorkerBase
         }
 
         var result =
-            await EsIndex.SearchMergeTokenList(_globalOptions.CurrentValue.SpecialSymbols, 0, 10000);
+            await EsIndex.SearchMergeTokenList(0, 10000, "desc", _globalOptions.CurrentValue.SpecialSymbols);
 
 
         var dictionary = result.list.ToDictionary(token => token.Symbol, token => token.HolderCount);

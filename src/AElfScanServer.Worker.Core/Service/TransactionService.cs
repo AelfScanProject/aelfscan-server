@@ -295,7 +295,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             TokenInfoIndex lastTokenIndex = null;
             var tokenListInput = new TokenListInput()
             {
-                Types = new List<SymbolType>() { SymbolType.Token},
+                Types = new List<SymbolType>() { SymbolType.Token,SymbolType.Nft_Collection},
                 SkipCount = skip,
                 MaxResultCount = maxResultCount,
                 Sort = "Desc",

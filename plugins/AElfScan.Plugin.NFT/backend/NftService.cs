@@ -5,7 +5,9 @@ using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -87,13 +89,13 @@ public class NftService : INftService, ISingletonDependency
         }
 
         var collectionSymbols = indexerNftListDto.Items.Select(o => o.Symbol).ToList();
-      //  var groupAndSumSupply = await GetCollectionSupplyAsync(input.ChainId, collectionSymbols);
+        //  var groupAndSumSupply = await GetCollectionSupplyAsync(input.ChainId, collectionSymbols);
 
         //get collection supply
         var list = indexerNftListDto.Items.Select(item =>
         {
             var nftInfoDto = _objectMapper.Map<IndexerTokenInfoDto, NftInfoDto>(item);
-            nftInfoDto.Items =  item.ItemCount.ToString(CultureInfo.InvariantCulture);
+            nftInfoDto.Items = item.ItemCount.ToString(CultureInfo.InvariantCulture);
 
             //convert url
             nftInfoDto.NftCollection.ImageUrl = TokenInfoHelper.GetImageUrl(item.ExternalInfo,
@@ -110,6 +112,35 @@ public class NftService : INftService, ISingletonDependency
         };
     }
 
+    public async Task<ListResponseDto<NftInfoDto>> GetMergeNftCollectionListAsync(TokenListInput input)
+    {
+        var result = await EsIndex.SearchMergeTokenList(
+            (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
+            null,
+            SymbolType.Nft_Collection);
+
+
+        //get collection supply
+        var list = result.list.Select(item =>
+        {
+            var nftInfoDto = _objectMapper.Map<TokenInfoIndex, NftInfoDto>(item);
+            nftInfoDto.Items = item.ItemCount.ToString(CultureInfo.InvariantCulture);
+
+            //convert url
+            nftInfoDto.NftCollection.ImageUrl = TokenInfoHelper.GetImageUrl(item.ExternalInfo,
+                () => _tokenInfoProvider.BuildImageUrl(item.Symbol));
+            /*nftInfoDto.Items = groupAndSumSupply.TryGetValue(item.Symbol, out var sumSupply)
+                ? sumSupply
+                : "0";*/
+            return nftInfoDto;
+        }).ToList();
+        return new ListResponseDto<NftInfoDto>
+        {
+            Total = result.totalCount,
+            List = list
+        };
+    }
+
     public async Task<NftDetailDto> GetNftCollectionDetailAsync(string chainId, string collectionSymbol)
     {
         var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
@@ -120,7 +151,7 @@ public class NftService : INftService, ISingletonDependency
         };
         var nftCollectionInfoTask = _nftInfoProvider.GetNftCollectionInfoAsync(nftCollectionInfoInput);
         var collectionSymbols = new List<string> { collectionSymbol };
-       // var groupAndSumSupplyTask = GetCollectionSupplyAsync(chainId, collectionSymbols);
+        // var groupAndSumSupplyTask = GetCollectionSupplyAsync(chainId, collectionSymbols);
 
         await Task.WhenAll(getCollectionInfoTask, nftCollectionInfoTask);
 
@@ -438,7 +469,7 @@ public class NftService : INftService, ISingletonDependency
         var addressList = indexerTokenHolderInfo
             .Where(value => !string.IsNullOrEmpty(value.Address))
             .Select(value => value.Address).Distinct().ToList();
-       // var groupAndSumSupplyTask = GetCollectionSupplyAsync(chainId, collectionSymbols);
+        // var groupAndSumSupplyTask = GetCollectionSupplyAsync(chainId, collectionSymbols);
         var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
 
         var contractInfoDictTask = _genesisPluginProvider.GetContractListAsync(chainId, addressList);
