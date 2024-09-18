@@ -11,5 +11,5 @@ public class NftInfoDto
 
     public long TransferCount { get; set; }
 
-    public List<string> ChainIds { get; set; }
+    public List<string> ChainIds { get; set; } = new();
 }
