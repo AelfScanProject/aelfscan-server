@@ -4,42 +4,47 @@ on:
   push:
     branches:
       - "release/*"
-  workflow_dispatch:
-    inputs:
-      servicename:
-        description: 'Select service to build and deploy'
-        required: true
-        default: 'AElfScanServer.Worker'
-        type: choice
-        options:
-          - AElfScanServer.Worker
-          - AElfScanServer.HttpApi.Host
-          - AElfScanServer.Silo
-          - AElfScanServer.AuthServer
-          - AElfScanServer.DbMigrator
-
 env:
   DOTNET_INSTALL_DIR: "./.dotnet"
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: aelfscan-runner
+    strategy:
+      matrix:
+        servicename:
+          [
+            AElfScanServer.Worker,
+            AElfScanServer.HttpApi.Host,
+            AElfScanServer.Silo,
+            AElfScanServer.AuthServer,
+            AElfScanServer.DbMigrator
+          ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0"
-      - run: dotnet publish src/${{ github.event.inputs.servicename}}/${{ github.event.inputs.servicename }}.csproj -o out/${{ github.event.inputs.servicename }}
+      - run: dotnet publish src/${{ matrix.servicename }}/${{ matrix.servicename }}.csproj -o out/${{ matrix.servicename }}
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.servicename }}
-          path: out/${{ github.event.inputs.servicename }}
+          name: ${{ matrix.servicename }}
+          path: out/${{ matrix.servicename }}
           retention-days: 1
-
   build-and-push-image:
     needs: publish
-    runs-on: ubuntu-latest
+    runs-on: aelfscan-runner
+    strategy:
+      matrix:
+        servicename:
+          [
+            AElfScanServer.Worker,
+            AElfScanServer.HttpApi.Host,
+            AElfScanServer.Silo,
+            AElfScanServer.AuthServer,
+            AElfScanServer.DbMigrator
+          ]
     permissions:
       contents: read
     outputs:
@@ -55,13 +60,13 @@ jobs:
       - name: Download a single artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ github.event.inputs.servicename }}
-          path: out/${{ github.event.inputs.servicename }}
+          name: ${{ matrix.servicename }}
+          path: out/${{ matrix.servicename }}
       - name: Create image tag
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.REPOSITORY_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.REPOSITORY }}/${{ github.event.inputs.servicename }}
+          images: ${{ secrets.REPOSITORY_REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.REPOSITORY }}/${{ matrix.servicename }}
           tags: |
             type=sha
       - name: Set up Docker Buildx
@@ -72,43 +77,16 @@ jobs:
           context: .
           push: true
           build-args: |
-            servicename=${{ github.event.inputs.servicename }}
+            servicename=${{ matrix.servicename }}
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
   dispatch:
-    runs-on: ubuntu-latest
+    runs-on: aelfscan-runner
     needs: build-and-push-image
     steps:
-      - name: Map servicename to appName
-        id: map-appname
-        run: |
-          case "${{ github.event.inputs.servicename }}" in
-            "AElfScanServer.HttpApi.Host")
-              appName="aelf-explorer-httpapi-host"
-              ;;
-            "AElfScanServer.Worker")
-              appName="aelf-explorer-worker"
-              ;;
-            "AElfScanServer.Silo")
-              appName="aelf-explorer-silo"
-              ;;
-            "AElfScanServer.AuthServer")
-              appName="aelf-explorer-authserver"
-              ;;
-            "AElfScanServer.DbMigrator")
-              appName="aelf-explorer-dbmigrator"
-              ;;
-            *)
-              echo "Unknown service name: ${{ github.event.inputs.servicename }}"
-              exit 1
-              ;;
-          esac
-          echo "appName=$appName" >> "$GITHUB_ENV"        
-
       - name: Deploy
         uses: actions/github-script@v6
         with:
@@ -121,7 +99,7 @@ jobs:
               ref: 'main',
               inputs: {
                 env: 'testnet',
-                appName: process.env.appName,
+                appName: 'aelf-explorer-backend',
                 commit_sha: 'sha-${{ needs.build-and-push-image.outputs.short_sha }}',
               }
             })
