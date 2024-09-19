@@ -15,5 +15,11 @@ public class AelfExploreServerAutoMapperProfile : Profile
         CreateMap<IndexerTokenInfoDto, TokenInfoIndex>()
             .ForMember(dest => dest.ChainId, opt => opt.MapFrom(src => src.Metadata.ChainId))
             .ReverseMap();
+        CreateMap<IndexerTokenHolderInfoDto, AccountTokenIndex>()
+            .ForMember(dest => dest.ChainId, opt => opt.MapFrom(src => src.Metadata.ChainId))
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Address + src.Token.Symbol))
+            .ReverseMap();
+        CreateMap<IndexerTokenBaseDto, TokenBase>()
+            .ReverseMap();
     }
 }

@@ -270,11 +270,11 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenHolderInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,
+                @"query($chainId:String,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
                     $search:String,$types:[SymbolType!],$symbols:[String],$searchSymbols:[String],
                     $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
                     accountToken(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,skipCount:$skipCount,types:$types,
-                    search:$search,symbols:$symbols,searchSymbols:$searchSymbols,maxResultCount:$maxResultCount,address:$address,
+                    search:$search,symbols:$symbols,searchSymbols:$searchSymbols,maxResultCount:$maxResultCount,address:$address,addressList:$addressList,
                     fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
                     totalCount,
                     items{
@@ -298,7 +298,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Variables = new
             {
                 chainId = input.ChainId, symbol = input.Symbol, collectionSymbol = input.CollectionSymbol,
-                skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,
+                skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,addressList = input.AddressList,
                 types = input.Types, symbols = input.Symbols, searchSymbols = input.SearchSymbols,
                 search = input.Search, sort = input.Sort, orderBy = input.OrderBy, fuzzySearch = input.FuzzySearch,
                 orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
@@ -313,10 +313,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerCollectionHolderInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!,$address:String,
+                @"query($chainId:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
                    $sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
                     accountCollection(input: {chainId:$chainId,symbol:$symbol,skipCount:$skipCount,
-                   maxResultCount:$maxResultCount,address:$address,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
+                   maxResultCount:$maxResultCount,address:$address,addressList:$addressList,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
                     totalCount,
                     items{
                         id,
@@ -336,7 +336,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 chainId = input.ChainId, symbol = input.CollectionSymbol,
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,
                 sort = input.Sort, orderBy = input.OrderBy,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter,addressList = input.AddressList
             }
         });
         return indexerResult == null ? new IndexerTokenHolderInfoListDto() : indexerResult.AccountCollection;
