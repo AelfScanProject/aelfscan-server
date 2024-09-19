@@ -1,6 +1,9 @@
 name: Build and Deploy Testnet
 
 on:
+  push:
+    branches:
+      - "release/*"
   workflow_dispatch:
     inputs:
       servicename:
