@@ -35,7 +35,7 @@ jobs:
       matrix:
         servicename:
           [
-            AElfScanServer.HttpApi.Host-pre,
+            AElfScanServer.HttpApi.Host,
           ]
     permissions:
       contents: read
