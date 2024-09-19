@@ -14,7 +14,7 @@ jobs:
       matrix:
         servicename:
           [
-            AElfScanServer.HttpApi.Host-pre,
+            AElfScanServer.HttpApi.Host,
           ]
     steps:
       - uses: actions/checkout@v4
