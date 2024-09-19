@@ -308,6 +308,8 @@ public class TokenService : ITokenService, ISingletonDependency
                     CommonConstant.PercentageValueDecimals);
             }
 
+            tokenListDto.ChainIds.Add(chainId);
+
             list.Add(tokenListDto);
         }
 
