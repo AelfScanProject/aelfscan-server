@@ -9,7 +9,7 @@ public class TokenCommonDto
     public decimal TotalSupply { get; set; }
     public decimal CirculatingSupply { get; set; }
 
-    public List<string> ChainIds { get; set; }
+    public List<string> ChainIds { get; set; } = new();
 
     public SymbolType Type { get; set; }
     public long Holders { get; set; }

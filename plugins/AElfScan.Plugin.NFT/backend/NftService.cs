@@ -116,6 +116,7 @@ public class NftService : INftService, ISingletonDependency
             /*nftInfoDto.Items = groupAndSumSupply.TryGetValue(item.Symbol, out var sumSupply)
                 ? sumSupply
                 : "0";*/
+            nftInfoDto.ChainIds.Add(input.ChainId);
             return nftInfoDto;
         }).ToList();
         return new ListResponseDto<NftInfoDto>
