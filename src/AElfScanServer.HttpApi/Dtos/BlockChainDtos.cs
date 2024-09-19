@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Net.NetworkInformation;
+using AElf.EntityMapping.Entities;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Domain.Common.Entities;
 using Google.Protobuf;
 using Nest;
 using Newtonsoft.Json;
@@ -147,7 +149,7 @@ public class OverviewAccountInfo
 
 public class BlocksRequestDto : PagedResultRequestDto
 {
-    public string ChainId { get; set; }
+    public string ChainId { get; set; } = "";
 
     public bool IsLastPage { get; set; }
 }
@@ -385,7 +387,7 @@ public class LatestTransactionsResponseSto
 
 public class BlocksResponseDto
 {
-    public List<BlockResponseDto> Blocks { get; set; }
+    public List<BlockRespDto> Blocks { get; set; }
     public long Total { get; set; }
 }
 
@@ -446,18 +448,19 @@ public class RewardDto
     public string ElfReward { get; set; }
 }
 
-public class BlockResponseDto
+public class BlockRespDto
 {
     public long BlockHeight { get; set; }
     public long Timestamp { get; set; }
+    public string ChainId { get; set; }
     public int TransactionCount { get; set; }
     public string TimeSpan { get; set; }
     public string Reward { get; set; }
     public string BurntFees { get; set; }
-
     public string ProducerName { get; set; }
-
     public string ProducerAddress { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
 }
 
 public class BlockProduceInfoDto

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.MergeData;
 using Nest;
@@ -61,6 +62,29 @@ public class EsIndex
         }
 
         List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
+
+        return (tokenInfoList, totalCount);
+    }
+
+
+    public static async Task<(List<BlockIndex> list, long totalCount)> SearchMergeBlockList(
+        int skip, int size)
+    {
+        var searchResponse = esClient.Search<BlockIndex>(s => s
+            .Index("blockindex")
+            .Sort(sort => sort.Descending(p => p.Timestamp))
+            .From(skip)
+            .Size(size)
+            .TrackTotalHits(true)
+        );
+
+        long totalCount = searchResponse.Total;
+        if (!searchResponse.IsValid)
+        {
+            throw new Exception($"Elasticsearch query failed: {searchResponse.OriginalException.Message}");
+        }
+
+        List<BlockIndex> tokenInfoList = searchResponse.Documents.ToList();
 
         return (tokenInfoList, totalCount);
     }

@@ -289,13 +289,13 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
             // var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
             //     100,
             //     300);
-            result.Blocks = new List<BlockResponseDto>();
+            result.Blocks = new List<BlockRespDto>();
             result.Total = blockList.Count;
 
             for (var i = blockList.Count - 1; i > 0; i--)
             {
                 var indexerBlockDto = blockList[i];
-                var latestBlockDto = new BlockResponseDto();
+                var latestBlockDto = new BlockRespDto();
 
                 latestBlockDto.BlockHeight = indexerBlockDto.BlockHeight;
                 latestBlockDto.Timestamp = DateTimeHelper.GetTotalSeconds(indexerBlockDto.BlockTime);

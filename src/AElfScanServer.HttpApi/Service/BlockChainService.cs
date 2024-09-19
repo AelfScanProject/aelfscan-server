@@ -27,8 +27,10 @@ using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos.Indexer;
 using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Common.EsIndex;
 using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -79,7 +81,8 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     private readonly DataStrategyContext<string, HomeOverviewResponseDto> _overviewDataStrategy;
     private IDistributedCache<TransactionDetailResponseDto> _transactionDetailCache;
     private readonly ILogger<HomePageService> _logger;
-
+    private readonly IElasticClient _elasticClient;
+    private readonly IObjectMapper _objectMapper;
 
     public BlockChainService(
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
@@ -89,7 +92,8 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
         ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         OverviewDataStrategy overviewDataStrategy,
-        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider)
+        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider,
+        IOptionsMonitor<ElasticsearchOptions> options)
     {
         _logger = logger;
         _globalOptions = blockChainOptions;
@@ -103,6 +107,12 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _transactionDetailCache = transactionDetailCache;
         _tokenInfoProvider = tokenInfoProvider;
+        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
+        var connectionPool = new StaticConnectionPool(uris);
+        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
+        _elasticClient = new ElasticClient(settings);
+        EsIndex.SetElasticClient(_elasticClient);
+        _objectMapper = objectMapper;
     }
 
 
@@ -607,8 +617,22 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     }
 
 
+    public async Task<BlocksResponseDto> GetMergeBlocksAsync(BlocksRequestDto requestDto)
+    {
+        var result = new BlocksResponseDto() { };
+        var searchMergeBlockList = EsIndex.SearchMergeBlockList(requestDto.SkipCount, requestDto.MaxResultCount);
+        result.Blocks = _objectMapper.Map<List<BlockIndex>, List<BlockRespDto>>(searchMergeBlockList.Result.list);
+        result.Total = searchMergeBlockList.Result.totalCount;
+        return result;
+    }
+
     public async Task<BlocksResponseDto> GetBlocksAsync(BlocksRequestDto requestDto)
     {
+        if (requestDto.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeBlocksAsync(requestDto);
+        }
+
         var result = new BlocksResponseDto() { };
         try
         {
@@ -633,7 +657,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             List<Task> getBlockRawDataTasks = new List<Task>();
             List<IndexerBlockDto> blockList = new List<IndexerBlockDto>();
             Dictionary<long, long> blockBurntFee = new Dictionary<long, long>();
-
             Stopwatch stopwatch2 = new Stopwatch();
             stopwatch2.Start();
 
@@ -655,7 +678,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             stopwatch2.Stop();
             _logger.LogInformation($"Cost time by get block raw data :{stopwatch2.Elapsed.TotalSeconds}");
 
-            result.Blocks = new List<BlockResponseDto>();
+            result.Blocks = new List<BlockRespDto>();
             result.Total = blockHeightAsync;
 
 
@@ -666,7 +689,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             for (var i = blockList.Count - 1; i >= 0; i--)
             {
                 var indexerBlockDto = blockList[i];
-                var latestBlockDto = new BlockResponseDto();
+                var latestBlockDto = new BlockRespDto();
 
                 latestBlockDto.BlockHeight = indexerBlockDto.BlockHeight;
                 latestBlockDto.Timestamp = DateTimeHelper.GetTotalSeconds(indexerBlockDto.BlockTime);
@@ -694,6 +717,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
                 result.Blocks.Add(latestBlockDto);
                 latestBlockDto.Reward = _globalOptions.CurrentValue.BlockRewardAmountStr;
+                latestBlockDto.ChainIds.Add(requestDto.ChainId);
             }
 
 
@@ -911,7 +935,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     }
 
 
-    public async Task SetBlockBurntFee(List<BlockResponseDto> list, string chainId)
+    public async Task SetBlockBurntFee(List<BlockRespDto> list, string chainId)
     {
         try
         {
