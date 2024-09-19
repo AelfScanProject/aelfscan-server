@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -88,14 +89,13 @@ public class AddressService : IAddressService, ITransientDependency
      { 
          var key = "token_transfer_change";
          var beginTime = await GetBeginTime(key);
-         List<string> symbolList;
-         (symbolList, beginTime) = await GetChangeSymbolList(beginTime);
+         (var symbolMap, beginTime) = await GetChangeSymbolMap(beginTime);
 
-         if (beginTime != default && symbolList.IsNullOrEmpty())
+         if (beginTime != default && symbolMap.IsNullOrEmpty())
          {
              return;
          }
-         await SaveMergeTokenList(symbolList);
+         await SaveMergeTokenList(symbolMap.Keys.ToList());
          if (beginTime == default)
          {
              beginTime = DateTime.UtcNow.AddHours(-1);
@@ -108,9 +108,9 @@ public class AddressService : IAddressService, ITransientDependency
         _logger.LogInformation("PullTokenInfo end {Time}",TimeHelper.GetTimeStampFromDateTimeInSeconds(beginTime).ToString());
     }
 
-     private async Task<(List<string> symbolList, DateTime beginTime)> GetChangeSymbolList(DateTime beginTime)
+     private async Task<(Dictionary<string,List<string>> symbolList, DateTime beginTime)> GetChangeSymbolMap(DateTime beginTime)
      {
-         var symbolList = new List<string>();
+         var symbolList = new Dictionary<string,List<string>>();
          while (beginTime != default)
          {
              var tokenTransferInput = new TokenTransferInput();
@@ -131,8 +131,22 @@ public class AddressService : IAddressService, ITransientDependency
              {
                  break;
              }
-             symbolList.AddRange(tokenTransferListDto.Items.Select(o => o.Token.Symbol).Distinct());
-             symbolList = symbolList.Distinct().ToList();
+
+             foreach (var indexerTransferInfoDto in tokenTransferListDto.Items)
+             {
+               var addresList = symbolList.GetValueOrDefault(indexerTransferInfoDto.Token.Symbol,
+                   new List<string>());
+               if (addresList.Exists(o=> o == indexerTransferInfoDto.From))
+               {
+                   addresList.Add(indexerTransferInfoDto.From);
+               }
+               if (addresList.Exists(o=> o == indexerTransferInfoDto.To))
+               {
+                   addresList.Add(indexerTransferInfoDto.To);
+               }
+
+               symbolList[indexerTransferInfoDto.Token.Symbol] = addresList;
+             }
              beginTime = tokenTransferListDto.Items.Last().Metadata.Block.BlockTime;
          }
 

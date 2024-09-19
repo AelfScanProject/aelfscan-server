@@ -610,7 +610,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     public async Task<BlocksResponseDto> GetBlocksAsync(BlocksRequestDto requestDto)
     {
         var result = new BlocksResponseDto() { };
-
+        _logger.LogInformation("GetBlocksAsync {ChainId}",requestDto.ChainId);
         try
         {
             Stopwatch stopwatch1 = new Stopwatch();
