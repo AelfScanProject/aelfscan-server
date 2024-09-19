@@ -46,8 +46,7 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
         var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(chainId,
             blockHeightAsync - 10,
             blockHeightAsync);
-
-
+        
         for (var i = blockList.Count - 1; i >= 0; i--)
         {
             var indexerBlockDto = blockList[i];

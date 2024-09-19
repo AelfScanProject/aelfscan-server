@@ -23,7 +23,7 @@ public class GetAddressDetailResultDto
     public decimal TotalValueOfElf { get; set; }
     public decimal TotalValueOfUsdChangeRate { get; set; }
     public List<string> AddressTypeList { get; set; }
-    
+
     // only address type is caAddress|eocAddress
     public TransactionInfoDto FirstTransactionSend { get; set; }
     public TransactionInfoDto LastTransactionSend { get; set; }
@@ -33,6 +33,22 @@ public class GetAddressDetailResultDto
     public string Author { get; set; }
     public string CodeHash { get; set; }
     public string ContractTransactionHash { get; set; }
+
+    public Portfolio Portfolio { get; set; }
+}
+
+public class Portfolio
+{
+    public MergeTokenInfo Total { get; set; } = new();
+    public MergeTokenInfo MainChain { get; set; } = new();
+    public MergeTokenInfo SideChain { get; set; } = new();
+}
+
+public class MergeTokenInfo
+{
+    public int Count { get; set; }
+    public decimal UsdValue { get; set; }
+    public decimal UsdValuePercentage { get; set; }
 }
 
 public class TransactionInfoDto
