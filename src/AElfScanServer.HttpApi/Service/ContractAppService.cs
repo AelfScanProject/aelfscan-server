@@ -278,12 +278,15 @@ public class ContractAppService : IContractAppService
 
     public async Task SaveContractFileAsync(string chainId)
     {
+        
         bool flag = false;
         do
         {
             var bizId = GrainIdHelper.GenerateSynchronizationKey(chainId,
                 SynchronizationType.ContractFile.ToString());
             var synchronizationDto = await _clusterClient.GetGrain<ISynchronizationGrain>(bizId).GetAsync();
+            _logger.LogInformation("SaveContractFileAsync Begin ChainId:{ChainId}, LastBlockHeight {LastBlockHeight}",
+                chainId, synchronizationDto.LastBlockHeight);
             var list = await _indexerGenesisProvider.GetContractListAsync(chainId, 0, 20, "BlockTime", "asc", "",
                 synchronizationDto.LastBlockHeight);
             if (!list.ContractList.Items.IsNullOrEmpty())
