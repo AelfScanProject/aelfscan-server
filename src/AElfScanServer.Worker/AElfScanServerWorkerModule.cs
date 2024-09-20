@@ -218,13 +218,13 @@ public class AElfScanServerWorkerModule : AbpModule
         context.AddBackgroundWorkerAsync<HomePageOverviewWorker>();
         context.AddBackgroundWorkerAsync<LatestTransactionsWorker>();
         context.AddBackgroundWorkerAsync<LatestBlocksWorker>();
-        // context.AddBackgroundWorkerAsync<BnElfUsdtPriceWorker>();
-        // context.AddBackgroundWorkerAsync<DailyNetworkStatisticWorker>();
-        // context.AddBackgroundWorkerAsync<BlockSizeWorker>();
-        // context.AddBackgroundWorkerAsync<CurrentBpProduceWorker>();
-        // context.AddBackgroundWorkerAsync<FixDailyTransactionWorker>();
-        // context.AddBackgroundWorkerAsync<ContractFileWorker>();
-        // context.AddBackgroundWorkerAsync<TokenHolderPercentWorker>();
-        // context.AddBackgroundWorkerAsync<TokenInfoWorker>();
+        context.AddBackgroundWorkerAsync<BnElfUsdtPriceWorker>();
+        context.AddBackgroundWorkerAsync<DailyNetworkStatisticWorker>();
+        context.AddBackgroundWorkerAsync<BlockSizeWorker>();
+        context.AddBackgroundWorkerAsync<CurrentBpProduceWorker>();
+        context.AddBackgroundWorkerAsync<FixDailyTransactionWorker>();
+        context.AddBackgroundWorkerAsync<ContractFileWorker>();
+        context.AddBackgroundWorkerAsync<TokenHolderPercentWorker>();
+        context.AddBackgroundWorkerAsync<TokenInfoWorker>();
     }
 }
