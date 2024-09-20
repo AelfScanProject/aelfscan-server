@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using Nest;
 using Volo.Abp.Caching;
@@ -87,5 +88,52 @@ public class EsIndex
         List<BlockIndex> tokenInfoList = searchResponse.Documents.ToList();
 
         return (tokenInfoList, totalCount);
+    }
+
+
+    public static async Task<(List<AccountTokenIndex> list, long totalCount)> SearchMergeAccountList(
+        TokenHolderInput input)
+    {
+        var sortOrder = SortOrder.Descending;
+
+        if (!input.OrderInfos.IsNullOrEmpty())
+        {
+            if (input.OrderInfos.First().Sort == "Asc")
+            {
+                sortOrder = SortOrder.Ascending;
+            }
+        }
+
+        var searchRequest = new SearchRequest("accounttokenindex")
+        {
+            Size = (int)input.MaxResultCount,
+            Sort = new List<ISort>
+            {
+                new FieldSort { Field = "FormatAmount", Order = sortOrder },
+                new FieldSort { Field = "Address.keyword", Order = sortOrder }
+            },
+            // Query = new BoolQuery
+            // {
+            //     Filter = new List<QueryContainer>
+            //     {
+            //         new TermQuery { Field = "Address.keyword", Value = address }
+            //     }
+            // },
+            SearchAfter = input.SearchAfter.IsNullOrEmpty()
+                ? new List<object> { input.SearchAfter[0], input.SearchAfter[1] }
+                : null
+        };
+
+        var response = esClient.Search<AccountTokenIndex>(searchRequest);
+
+        if (!response.IsValid)
+        {
+            throw new Exception($"Error occurred: {response.OriginalException.Message}");
+        }
+
+        var results = response.Documents;
+        var total = response.Total;
+
+        return (new List<AccountTokenIndex>(results), total);
     }
 }

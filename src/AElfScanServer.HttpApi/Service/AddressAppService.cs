@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Repositories;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Address.Provider;
@@ -11,7 +12,9 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -23,6 +26,7 @@ using AElfScanServer.HttpApi.Provider;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Nito.AsyncEx;
 using Volo.Abp.ObjectMapping;
 using TokenInfoDto = AElfScanServer.Common.Dtos.TokenInfoDto;
 
@@ -53,6 +57,7 @@ public class AddressAppService : IAddressAppService
     private readonly IGenesisPluginProvider _genesisPluginProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly IAddressTypeService _addressTypeService;
+    private readonly IEntityMappingRepository<AccountTokenIndex, string> _accountTokenRepository;
 
 
     public AddressAppService(IObjectMapper objectMapper, ILogger<AddressAppService> logger,
@@ -89,6 +94,11 @@ public class AddressAppService : IAddressAppService
             OrderInfos = input.OrderInfos,
             SearchAfter = input.SearchAfter
         };
+
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeAddressListAsync(holderInput);
+        }
 
         var tokenHolderInfoTask = _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
         var tokenDetailTask = _tokenIndexerProvider.GetTokenDetailAsync(input.ChainId, CurrencyConstant.ElfCurrency);
@@ -132,6 +142,78 @@ public class AddressAppService : IAddressAppService
         result.List = addressList;
         return result;
     }
+
+    public async Task<GetAddressListResultDto> GetMergeAddressListAsync(TokenHolderInput input)
+    {
+        var tasks = new List<Task>();
+        List<AccountTokenIndex> accountList = new List<AccountTokenIndex>();
+        List<IndexerTokenInfoDto> tokenInfoList = new List<IndexerTokenInfoDto>();
+        long totalCount = 0;
+
+        tasks.Add(EsIndex.SearchMergeAccountList(input).ContinueWith(task =>
+        {
+            accountList.AddRange(task.Result.list);
+            totalCount = task.Result.totalCount;
+        }));
+
+        tasks.Add(_tokenIndexerProvider.GetTokenDetailAsync(input.ChainId, CurrencyConstant.ElfCurrency).ContinueWith(
+            task => { tokenInfoList.AddRange(task.Result); }));
+
+        await tasks.WhenAll();
+
+
+        var result = new GetAddressListResultDto
+        {
+            Total = totalCount,
+            TotalBalance = DecimalHelper.Divide(tokenInfoList.Sum(c => c.Supply), tokenInfoList[0].Decimals)
+        };
+
+
+        var contractInfosDict =
+            await _indexerGenesisProvider.GetContractListAsync("",
+                accountList.Select(address => address.Address).ToList());
+
+
+        var addressList = new List<GetAddressInfoResultDto>();
+        foreach (var info in accountList)
+        {
+            var addressResult = _objectMapper.Map<AccountTokenIndex, GetAddressInfoResultDto>(info);
+            addressResult.Balance = info.FormatAmount;
+            addressResult.TransactionCount = info.TransferCount;
+            addressResult.Percentage = Math.Round((decimal)info.Amount / tokenInfoList.First().Supply * 100,
+                CommonConstant.LargerPercentageValueDecimals);
+
+
+            var dic = new Dictionary<string, MergeAddressType>();
+
+            foreach (var c in info.ChainIds)
+            {
+                dic[c] = new MergeAddressType()
+                {
+                    ChainId = c
+                };
+
+                if (contractInfosDict.TryGetValue(info.Address + info.ChainId, out var v))
+                {
+                    dic[c].AddressType = AddressType.ContractAddress;
+                }
+            }
+
+            addressResult.AddressType =
+                contractInfosDict.TryGetValue(info.Address + info.ChainId, out var addressInfo)
+                    ? AddressType.ContractAddress
+                    : AddressType.EoaAddress;
+            addressList.Add(addressResult);
+        }
+
+        //add sort 
+        addressList = addressList.OrderByDescending(item => item.Balance)
+            .ThenByDescending(item => item.TransactionCount)
+            .ToList();
+        result.List = addressList;
+        return result;
+    }
+
 
     public async Task<GetAddressDetailResultDto> GetAddressDetailAsync(GetAddressDetailInput input)
     {

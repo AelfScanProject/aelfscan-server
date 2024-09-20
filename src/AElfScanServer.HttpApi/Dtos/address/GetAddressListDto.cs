@@ -35,4 +35,12 @@ public class GetAddressInfoResultDto
 
     public List<string> ChainIds { get; set; }
     public AddressType AddressType { get; set; } = AddressType.EoaAddress; //0 => Address | 1 => Contract Address
+
+    public List<MergeAddressType> MergeAddressType { get; set; } = new();
+}
+
+public class MergeAddressType
+{
+    public AddressType AddressType { get; set; } = AddressType.EoaAddress;
+    public string ChainId { get; set; }
 }
