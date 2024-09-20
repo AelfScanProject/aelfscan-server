@@ -397,6 +397,12 @@ public class TopTokenDto
     public List<string> ChainIds { get; set; }
     public long Transfers { get; set; }
     public long Holder { get; set; }
+
+    public SymbolType Type { get; set; }
+
+    public string TokenName { get; set; }
+
+    public string ImageUrl { get; set; }
 }
 
 public class BlockDetailRequestDto

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.DataStrategy;
@@ -38,6 +39,7 @@ public class ExploreHub : AbpHub
     private readonly DataStrategyContext<string, BlockProduceInfoDto> _bpDataStrategy;
     private readonly IChartDataService _chartDataService;
     private readonly IDistributedCache<List<TopTokenDto>> _cache;
+    private readonly ITokenIndexerProvider _tokenIndexerProvider;
 
     private static readonly ConcurrentDictionary<string, bool>
         _isPushRunning = new ConcurrentDictionary<string, bool>();
@@ -49,7 +51,7 @@ public class ExploreHub : AbpHub
         CurrentBpProduceDataStrategy bpDataStrategy,
         LatestBlocksDataStrategy latestBlocksDataStrategy, IOptionsMonitor<GlobalOptions> globalOptions,
         IChartDataService chartDataService,
-        IDistributedCache<List<TopTokenDto>> cache)
+        IDistributedCache<List<TopTokenDto>> cache, ITokenIndexerProvider tokenIndexerProvider)
     {
         _HomePageService = homePageService;
         _logger = logger;
@@ -64,6 +66,7 @@ public class ExploreHub : AbpHub
         _globalOptions = globalOptions;
         _chartDataService = chartDataService;
         _cache = cache;
+        _tokenIndexerProvider = tokenIndexerProvider;
     }
 
 
@@ -189,7 +192,11 @@ public class ExploreHub : AbpHub
                     Symbol = tokenInfoIndex.Symbol,
                     ChainIds = tokenInfoIndex.ChainIds,
                     Transfers = tokenInfoIndex.TransferCount,
-                    Holder = tokenInfoIndex.HolderCount
+                    Holder = tokenInfoIndex.HolderCount,
+                    TokenName = tokenInfoIndex.TokenName,
+                    Type = tokenInfoIndex.Type,
+                    ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(tokenInfoIndex.Symbol,
+                        tokenInfoIndex.IssueChainId, tokenInfoIndex.ExternalInfo)
                 });
             }
 
