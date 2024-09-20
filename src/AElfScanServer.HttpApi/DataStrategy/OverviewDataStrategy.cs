@@ -252,12 +252,19 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         var totalCount = 0;
         try
         {
-            var count = await _cache.GetAsync("TotalAccount");
+            var key = "TotalAccount" + chainId;
+            var count = await _cache.GetAsync(key);
+
+            var queryableAsync = await _addressRepository.GetQueryableAsync();
+            if (chainId.IsNullOrEmpty())
+            {
+                queryableAsync = queryableAsync.Where(c => c.ChainId == chainId);
+            }
 
             if (count.IsNullOrEmpty())
             {
-                totalCount = _addressRepository.GetQueryableAsync().Result.Where(c => c.ChainId == chainId).Count();
-                await _cache.SetAsync("TotalAccount", totalCount.ToString());
+                totalCount = queryableAsync.Count();
+                await _cache.SetAsync(key, totalCount.ToString());
                 return totalCount;
             }
 

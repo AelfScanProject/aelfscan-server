@@ -99,7 +99,6 @@ public class SearchService : ISearchService, ISingletonDependency
                     var nftTask = AssemblySearchTokenAsync(searchResp, request,
                         new List<SymbolType> { SymbolType.Nft, SymbolType.Nft_Collection });
                     var addressTask = AssemblySearchAddressAsync(searchResp, request);
-                    // var contractAddressTask = AssemblySearchContractAddressAsync(searchResp, request);
                     var txTask = AssemblySearchTransactionAsync(searchResp, request);
                     var blockTask = AssemblySearchBlockAsync(searchResp, request);
                     await Task.WhenAll(tokenTask, nftTask, addressTask, txTask, blockTask);
@@ -382,6 +381,17 @@ public class SearchService : ISearchService, ISingletonDependency
 
         var blockHeight = long.Parse(request.Keyword);
         var blockDtos = await _aelfIndexerProvider.GetLatestBlocksAsync(request.ChainId, blockHeight, blockHeight);
+
+        if (!blockDtos.IsNullOrEmpty())
+        {
+            var blockDto = blockDtos[0];
+            searchResponseDto.Block = new SearchBlock
+            {
+                BlockHash = blockDto.BlockHash,
+                BlockHeight = blockDto.BlockHeight
+            };
+        }
+
 
         if (!blockDtos.IsNullOrEmpty())
         {

@@ -330,6 +330,7 @@ public class SearchResponseDto
     public List<SearchAccount> Accounts { get; set; } = new();
     public List<SearchContract> Contracts { get; set; } = new();
     public List<SearchBlock> Blocks { get; set; } = new();
+    public SearchBlock Block { get; set; } = new();
     public SearchTransaction Transaction { get; set; }
 }
 
@@ -397,6 +398,12 @@ public class TopTokenDto
     public List<string> ChainIds { get; set; }
     public long Transfers { get; set; }
     public long Holder { get; set; }
+
+    public SymbolType Type { get; set; }
+
+    public string TokenName { get; set; }
+
+    public string ImageUrl { get; set; }
 }
 
 public class BlockDetailRequestDto
