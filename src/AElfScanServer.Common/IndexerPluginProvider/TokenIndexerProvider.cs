@@ -219,7 +219,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             }",
             Variables = new
             {
-                chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 1
+                chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
             }
         });
         return indexerResult.TokenInfo?.Items;
