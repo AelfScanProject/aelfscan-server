@@ -332,10 +332,22 @@ public class AddressAppService : IAddressAppService
         result.Portfolio.MainChain.Count = mainChainHolderInfos.Count;
         result.Portfolio.SideChain.Count = sideChainHolderInfos.Count;
         result.Portfolio.Total.Count = await GetMergeTokens(mainChainHolderInfos, sideChainHolderInfos);
-        
-        result.Portfolio.MainChain.UsdValue = new decimal(mainChainCurAddressAsset.GetTotalValueOfElf());
-        result.Portfolio.SideChain.UsdValue = new decimal(sideChainCurAddressAsset.GetTotalValueOfElf());
-        result.Portfolio.Total.UsdValue = result.Portfolio.MainChain.UsdValue + result.Portfolio.SideChain.UsdValue;
+
+        result.Portfolio.MainChain.UsdValue =
+            Math.Round(new decimal(mainChainCurAddressAsset.GetTotalValueOfElf()) * priceDto.Price,
+                CommonConstant.UsdValueDecimals);
+
+        result.Portfolio.SideChain.UsdValue =
+            Math.Round(new decimal(sideChainCurAddressAsset.GetTotalValueOfElf()) * priceDto.Price,
+                CommonConstant.UsdValueDecimals);
+
+        result.Portfolio.Total.UsdValue = result.Portfolio.SideChain.UsdValue + result.Portfolio.MainChain.UsdValue;
+
+        result.Portfolio.MainChain.UsdValuePercentage =
+            result.Portfolio.MainChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
+        result.Portfolio.SideChain.UsdValuePercentage =
+            result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
+
 
         return result;
     }

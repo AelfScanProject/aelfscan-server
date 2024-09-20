@@ -331,6 +331,7 @@ public class SearchResponseDto
     public List<SearchContract> Contracts { get; set; } = new();
     public List<SearchBlock> Blocks { get; set; } = new();
     public SearchBlock Block { get; set; } = new();
+
     public SearchTransaction Transaction { get; set; }
 }
 
@@ -338,6 +339,8 @@ public class SearchBlock
 {
     public long BlockHeight { get; set; }
     public string BlockHash { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
 }
 
 public class SearchTransaction
