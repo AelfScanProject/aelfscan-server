@@ -96,7 +96,7 @@ public class EsIndex
     {
         var sortOrder = SortOrder.Descending;
 
-        if (!input.OrderInfos.IsNullOrEmpty())
+        if (input.OrderInfos != null && !input.OrderInfos.IsNullOrEmpty())
         {
             if (input.OrderInfos.First().Sort == "Asc")
             {
@@ -109,17 +109,17 @@ public class EsIndex
             Size = (int)input.MaxResultCount,
             Sort = new List<ISort>
             {
-                new FieldSort { Field = "FormatAmount", Order = sortOrder },
-                new FieldSort { Field = "Address.keyword", Order = sortOrder }
+                new FieldSort { Field = "formatAmount", Order = sortOrder },
+                new FieldSort { Field = "address", Order = sortOrder }
             },
-            // Query = new BoolQuery
-            // {
-            //     Filter = new List<QueryContainer>
-            //     {
-            //         new TermQuery { Field = "Address.keyword", Value = address }
-            //     }
-            // },
-            SearchAfter = input.SearchAfter.IsNullOrEmpty()
+            Query = new BoolQuery
+            {
+                Filter = new List<QueryContainer>
+                {
+                    new TermQuery { Field = "token.symbol", Value = "ELF" }
+                }
+            },
+            SearchAfter = input.SearchAfter != null && !input.SearchAfter.IsNullOrEmpty()
                 ? new List<object> { input.SearchAfter[0], input.SearchAfter[1] }
                 : null
         };

@@ -23,8 +23,10 @@ using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.HttpApi.Dtos.address;
 using AElfScanServer.HttpApi.Dtos.Indexer;
 using AElfScanServer.HttpApi.Provider;
+using Elasticsearch.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Nest;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
 using Volo.Abp.ObjectMapping;
@@ -58,6 +60,7 @@ public class AddressAppService : IAddressAppService
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly IAddressTypeService _addressTypeService;
     private readonly IEntityMappingRepository<AccountTokenIndex, string> _accountTokenRepository;
+    private readonly IElasticClient _elasticClient;
 
 
     public AddressAppService(IObjectMapper objectMapper, ILogger<AddressAppService> logger,
@@ -67,7 +70,7 @@ public class AddressAppService : IAddressAppService
         IOptionsSnapshot<GlobalOptions> globalOptions, ITokenAssetProvider tokenAssetProvider,
         IAddressInfoProvider addressInfoProvider, IGenesisPluginProvider genesisPluginProvider,
         IBlockChainIndexerProvider blockChainIndexerProvider,
-        IAddressTypeService addressTypeService)
+        IAddressTypeService addressTypeService, IOptionsMonitor<ElasticsearchOptions> options)
     {
         _logger = logger;
         _objectMapper = objectMapper;
@@ -82,6 +85,11 @@ public class AddressAppService : IAddressAppService
         _globalOptions = globalOptions.Value;
         _blockChainIndexerProvider = blockChainIndexerProvider;
         _addressTypeService = addressTypeService;
+        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
+        var connectionPool = new StaticConnectionPool(uris);
+        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
+        _elasticClient = new ElasticClient(settings);
+        EsIndex.SetElasticClient(_elasticClient);
     }
 
     public async Task<GetAddressListResultDto> GetAddressListAsync(GetListInputInput input)
@@ -199,6 +207,7 @@ public class AddressAppService : IAddressAppService
                 }
             }
 
+            addressResult.MergeAddressType.AddRange(dic.Values.OrderByDescending(c => c.ChainId));
             addressResult.AddressType =
                 contractInfosDict.TryGetValue(info.Address + info.ChainId, out var addressInfo)
                     ? AddressType.ContractAddress
