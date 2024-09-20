@@ -351,7 +351,8 @@ public class SearchService : ISearchService, ISingletonDependency
             searchResponseDto.Blocks.Add(new SearchBlock
             {
                 BlockHash = blockDto.BlockHash,
-                BlockHeight = blockDto.BlockHeight
+                BlockHeight = blockDto.BlockHeight,
+                ChainIds = new List<string>() { blockDto.ChainId }
             });
         }
 
@@ -361,7 +362,8 @@ public class SearchService : ISearchService, ISingletonDependency
             searchResponseDto.Blocks.Add(new SearchBlock
             {
                 BlockHash = blockDto.BlockHash,
-                BlockHeight = blockDto.BlockHeight
+                BlockHeight = blockDto.BlockHeight,
+                ChainIds = new List<string>() { blockDto.ChainId }
             });
         }
     }
@@ -388,7 +390,8 @@ public class SearchService : ISearchService, ISingletonDependency
             searchResponseDto.Block = new SearchBlock
             {
                 BlockHash = blockDto.BlockHash,
-                BlockHeight = blockDto.BlockHeight
+                BlockHeight = blockDto.BlockHeight,
+                ChainIds = new List<string>() { blockDto.ChainId }
             };
         }
 
@@ -399,7 +402,8 @@ public class SearchService : ISearchService, ISingletonDependency
             searchResponseDto.Blocks.Add(new SearchBlock
             {
                 BlockHash = blockDto.BlockHash,
-                BlockHeight = blockDto.BlockHeight
+                BlockHeight = blockDto.BlockHeight,
+                ChainIds = new List<string>() { blockDto.ChainId }
             });
         }
     }
