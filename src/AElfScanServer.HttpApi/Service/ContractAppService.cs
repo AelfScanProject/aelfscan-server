@@ -300,7 +300,7 @@ public class ContractAppService : IContractAppService
                         synchronizationDto.LastBlockHeight == contractFileResultDto.LastBlockHeight)
                     {
                         flag = false;
-                        break;
+                        continue;
                     }
 
                     flag = true;
