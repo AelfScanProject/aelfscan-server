@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
+using AElf.Types;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Core;
@@ -278,8 +279,9 @@ public class ContractAppService : IContractAppService
 
     public async Task SaveContractFileAsync(string chainId)
     {
-        
-        bool flag = false;
+
+        var maxResultCount = 20;
+        var queryCount = 0;
         do
         {
             var bizId = GrainIdHelper.GenerateSynchronizationKey(chainId,
@@ -287,23 +289,24 @@ public class ContractAppService : IContractAppService
             var synchronizationDto = await _clusterClient.GetGrain<ISynchronizationGrain>(bizId).GetAsync();
             _logger.LogInformation("SaveContractFileAsync Begin ChainId:{ChainId}, LastBlockHeight {LastBlockHeight}",
                 chainId, synchronizationDto.LastBlockHeight);
-            var list = await _indexerGenesisProvider.GetContractListAsync(chainId, 0, 20, "BlockTime", "asc", "",
+            var list = await _indexerGenesisProvider.GetContractListAsync(chainId, 0, maxResultCount, "BlockTime", "asc", "",
                 synchronizationDto.LastBlockHeight);
+            _logger.LogInformation("SaveContractFileAsync Begin ChainId:{ChainId}, list {LastBlockHeight}",
+                chainId, list.ContractList.Items);
             if (!list.ContractList.Items.IsNullOrEmpty())
             {
+                queryCount = list.ContractList.Items.Count;
                 foreach (var contractRecord in list.ContractList.Items)
                 {
                     var contractFileId = GrainIdHelper.GenerateContractFileKey(chainId, contractRecord.Address);
                     var contractFileResultDto =
                         await _clusterClient.GetGrain<IContractFileGrain>(contractFileId).GetAsync();
                     if (contractFileResultDto.LastBlockHeight != 0 &&
-                        synchronizationDto.LastBlockHeight == contractFileResultDto.LastBlockHeight)
+                        synchronizationDto.LastBlockHeight >= contractFileResultDto.LastBlockHeight)
                     {
-                        flag = false;
                         continue;
                     }
 
-                    flag = true;
                     var getContractRegistrationResult =
                         await _indexerGenesisProvider.GetContractRegistrationAsync(chainId,
                             contractRecord.CodeHash);
@@ -326,11 +329,11 @@ public class ContractAppService : IContractAppService
                                 : contractRecord.ContractVersion,
                             ContractSourceCode = getFilesResult.Data
                         });
-                    _logger.LogInformation("SaveContractFileAsync ChainId:{ChainId}, LastBlockHeight {LastBlockHeight}",
-                        chainId, contractRecord.Metadata.Block.BlockHeight);
+                    _logger.LogInformation("SaveContractFileAsync ChainId:{ChainId}, LastBlockHeight {LastBlockHeight} Address {Address}" ,
+                        chainId, contractRecord.Metadata.Block.BlockHeight,contractRecord.Address);
                 }
             }
-        } while (flag);
+        } while (queryCount == maxResultCount);
     }
 
     public async Task UpdateContractHeightAsync(SynchronizationDto input)
