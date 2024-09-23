@@ -166,47 +166,56 @@ public class NftService : INftService, ISingletonDependency
 
     public async Task<NftDetailDto> GetNftCollectionDetailAsync(string chainId, string collectionSymbol)
     {
-        var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
-        var nftCollectionInfoInput = new GetNftCollectionInfoInput
+        try
         {
-            ChainId = chainId,
-            CollectionSymbolList = new List<string> { collectionSymbol }
-        };
-        var nftCollectionInfoTask = _nftInfoProvider.GetNftCollectionInfoAsync(nftCollectionInfoInput);
+            var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
+            var nftCollectionInfoInput = new GetNftCollectionInfoInput
+            {
+                ChainId = chainId,
+                CollectionSymbolList = new List<string> { collectionSymbol }
+            };
+            var nftCollectionInfoTask = _nftInfoProvider.GetNftCollectionInfoAsync(nftCollectionInfoInput);
 
 
-        await Task.WhenAll(getCollectionInfoTask, nftCollectionInfoTask);
+            await Task.WhenAll(getCollectionInfoTask, nftCollectionInfoTask);
 
-        var collectionInfoDtos = await getCollectionInfoTask;
-        AssertHelper.NotEmpty(collectionInfoDtos, "this nft not exist");
-        var collectionInfo = collectionInfoDtos[0];
-        var nftDetailDto = _objectMapper.Map<IndexerTokenInfoDto, NftDetailDto>(collectionInfo);
-        nftDetailDto.Items = collectionInfo.ItemCount.ToString(CultureInfo.InvariantCulture);
+            var collectionInfoDtos = await getCollectionInfoTask;
+            AssertHelper.NotEmpty(collectionInfoDtos, "this nft not exist");
+            var collectionInfo = collectionInfoDtos[0];
+            var nftDetailDto = _objectMapper.Map<IndexerTokenInfoDto, NftDetailDto>(collectionInfo);
+            nftDetailDto.Items = collectionInfo.ItemCount.ToString(CultureInfo.InvariantCulture);
 
-        nftDetailDto.TokenContractAddress = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
-        //collectionInfo.Symbol is xxx-0
-        nftDetailDto.NftCollection.ImageUrl = TokenInfoHelper.GetImageUrl(collectionInfo.ExternalInfo,
-            () => _tokenInfoProvider.BuildImageUrl(collectionInfo.Symbol));
-        /*nftDetailDto.Items = (await groupAndSumSupplyTask).TryGetValue(collectionInfo.Symbol, out var sumSupply)
-            ? sumSupply
-            : "0";*/
-        //of floor price
-        var nftCollectionInfo = await nftCollectionInfoTask;
-        if (nftCollectionInfo.TryGetValue(collectionSymbol, out var nftCollection))
-        {
-            var priceDto =
-                await _tokenPriceService.GetTokenPriceAsync(nftCollection.FloorPriceSymbol,
-                    CurrencyConstant.UsdCurrency);
-            nftDetailDto.FloorPrice = nftCollection.FloorPrice;
-            nftDetailDto.FloorPriceOfUsd =
-                Math.Round(nftCollection.FloorPrice * priceDto.Price, CommonConstant.UsdPriceValueDecimals);
+            nftDetailDto.TokenContractAddress = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
+            //collectionInfo.Symbol is xxx-0
+            nftDetailDto.NftCollection.ImageUrl = TokenInfoHelper.GetImageUrl(collectionInfo.ExternalInfo,
+                () => _tokenInfoProvider.BuildImageUrl(collectionInfo.Symbol));
+            /*nftDetailDto.Items = (await groupAndSumSupplyTask).TryGetValue(collectionInfo.Symbol, out var sumSupply)
+                ? sumSupply
+                : "0";*/
+            //of floor price
+            var nftCollectionInfo = await nftCollectionInfoTask;
+            if (nftCollectionInfo.TryGetValue(collectionSymbol, out var nftCollection))
+            {
+                var priceDto =
+                    await _tokenPriceService.GetTokenPriceAsync(nftCollection.FloorPriceSymbol,
+                        CurrencyConstant.UsdCurrency);
+                nftDetailDto.FloorPrice = nftCollection.FloorPrice;
+                nftDetailDto.FloorPriceOfUsd =
+                    Math.Round(nftCollection.FloorPrice * priceDto.Price, CommonConstant.UsdPriceValueDecimals);
+            }
+            else
+            {
+                nftDetailDto.FloorPrice = -1m;
+            }
+
+            return nftDetailDto;
         }
-        else
+        catch (Exception e)
         {
-            nftDetailDto.FloorPrice = -1m;
+            _logger.LogError(e, "GetNftCollectionDetailAsync error");
         }
 
-        return nftDetailDto;
+        return new NftDetailDto();
     }
 
 
