@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
 
 namespace NFT.backend;
+
 [RemoteService]
 [Area("app")]
 [ControllerName("Nft")]
@@ -27,9 +28,9 @@ public class NftController
     }
 
     [HttpGet("collection-detail")]
-    public async Task<NftDetailDto> GetNftCollectionDetailAsync(string chainId, string collectionSymbol)
+    public async Task<NftDetailDto> GetNftCollectionDetailAsync(string collectionSymbol, string chainId = "")
     {
-        return await _nftService.GetNftCollectionDetailAsync(chainId, collectionSymbol);
+        return await _nftService.GetMergeNftCollectionDetailAsync(collectionSymbol, chainId);
     }
 
     [HttpGet("transfers")]

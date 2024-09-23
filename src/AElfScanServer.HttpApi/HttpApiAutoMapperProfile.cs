@@ -29,6 +29,7 @@ public class BlockChainAutoMapperProfile : Profile
         CreateMap<AdsIndex, AdsResp>().ReverseMap();
         CreateMap<UpdateAdsReq, AdsIndex>().ReverseMap();
         CreateMap<AdsInfoDto, AdsIndex>().ReverseMap();
+        CreateMap<AccountTokenIndex, GetAddressInfoResultDto>().ReverseMap();
         CreateMap<BlockIndex, BlockRespDto>()
             .ReverseMap();
         CreateMap<DailyHolderDto, DailyHolder>()

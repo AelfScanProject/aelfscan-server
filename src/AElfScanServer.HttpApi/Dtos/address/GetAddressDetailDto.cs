@@ -34,7 +34,7 @@ public class GetAddressDetailResultDto
     public string CodeHash { get; set; }
     public string ContractTransactionHash { get; set; }
 
-    public Portfolio Portfolio { get; set; }
+    public Portfolio Portfolio { get; set; } = new();
 }
 
 public class Portfolio

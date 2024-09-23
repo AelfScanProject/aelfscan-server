@@ -32,9 +32,9 @@ public class TokenController : AbpControllerBase
     }
 
     [HttpGet("detail")]
-    public async Task<TokenDetailDto> GetTokenListAsync(string chainId, string symbol)
+    public async Task<TokenDetailDto> GetTokenListAsync(string symbol, string chainId="")
     {
-        return await _tokenService.GetTokenDetailAsync(symbol, chainId);
+        return await _tokenService.GetMergeTokenDetailAsync(symbol, chainId);
     }
 
     [HttpGet("transfers")]
