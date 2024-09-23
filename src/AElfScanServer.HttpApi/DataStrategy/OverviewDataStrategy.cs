@@ -187,7 +187,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                     .Bool(b =>
                     {
                         var mustClause = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>();
-                        if (!string.IsNullOrEmpty(chainId))
+                        if (!chainId.IsNullOrEmpty())
                         {
                             mustClause.Add(m => m.Terms(t => t.Field("chainId").Terms(chainId)));
                         }
@@ -256,7 +256,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             var count = await _cache.GetAsync(key);
 
             var queryableAsync = await _addressRepository.GetQueryableAsync();
-            if (chainId.IsNullOrEmpty())
+            if (!chainId.IsNullOrEmpty())
             {
                 queryableAsync = queryableAsync.Where(c => c.ChainId == chainId);
             }
@@ -357,9 +357,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
 
             await Task.WhenAll(tasks);
-            overviewResp.MergeTps.MainChain = mainChainTps.ToString("F2");
-            overviewResp.MergeTps.SideChain = sideChainTps.ToString("F2");
-            overviewResp.MergeTps.Total = (sideChainTps + mainChainTps).ToString("F2");
+
+            overviewResp.MergeTps.Total =
+                (decimal.Parse(overviewResp.MergeTps.MainChain) + decimal.Parse(overviewResp.MergeTps.SideChain))
+                .ToString("F2");
 
             overviewResp.MergeTransactions.Total =
                 overviewResp.MergeTransactions.MainChain + overviewResp.MergeTransactions.SideChain;
