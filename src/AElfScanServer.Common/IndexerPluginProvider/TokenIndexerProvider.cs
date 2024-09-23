@@ -138,7 +138,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         return indexerResult != null ? indexerResult.AccountCount.Count : 0;
     }
 
-    public async Task<IndexerTokenInfoListDto>    GetTokenListAsync(TokenListInput input)
+    public async Task<IndexerTokenInfoListDto> GetTokenListAsync(TokenListInput input)
     {
         var graphQlHelper = GetGraphQlHelper();
 
@@ -258,7 +258,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount,
                 collectionSymbol = input.CollectionSymbol, types = input.Types,
                 sort = input.Sort, orderBy = input.OrderBy, fuzzySearch = input.FuzzySearch,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter,beginBlockTime = input.BeginBlockTime
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter, beginBlockTime = input.BeginBlockTime
             }
         });
         return indexerResult == null ? new IndexerTokenTransferListDto() : indexerResult.TransferInfo;
@@ -298,7 +298,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Variables = new
             {
                 chainId = input.ChainId, symbol = input.Symbol, collectionSymbol = input.CollectionSymbol,
-                skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,addressList = input.AddressList,
+                skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,
+                addressList = input.AddressList,
                 types = input.Types, symbols = input.Symbols, searchSymbols = input.SearchSymbols,
                 search = input.Search, sort = input.Sort, orderBy = input.OrderBy, fuzzySearch = input.FuzzySearch,
                 orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
@@ -336,7 +337,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 chainId = input.ChainId, symbol = input.CollectionSymbol,
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,
                 sort = input.Sort, orderBy = input.OrderBy,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter,addressList = input.AddressList
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter, addressList = input.AddressList
             }
         });
         return indexerResult == null ? new IndexerTokenHolderInfoListDto() : indexerResult.AccountCollection;
@@ -488,7 +489,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
     public async Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input)
     {
-        input.SetDefaultSort();
+        input.SetBlockHeightSort();
+
         var indexerTokenTransfer = await GetTokenTransferInfoAsync(input);
         if (indexerTokenTransfer.Items.IsNullOrEmpty())
         {
@@ -496,6 +498,12 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         }
 
         var list = await ConvertIndexerTokenTransferDtoAsync(indexerTokenTransfer.Items, input.ChainId);
+        
+        list = list.OrderByDescending(item => item.DateTime)
+            .ThenByDescending(item => item.TransactionId)
+            .ToList();
+
+        
         var result = new TokenTransferInfosDto
         {
             Total = indexerTokenTransfer.TotalCount,
@@ -534,6 +542,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 await _tokenInfoProvider.ConvertTransactionFeeAsync(priceDict, indexerTransferInfoDto.ExtraProperties);
             tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From, contractInfoDict);
             tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To, contractInfoDict);
+            tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }
 
