@@ -206,7 +206,6 @@ public class NftService : INftService, ISingletonDependency
             nftDetailDto.FloorPrice = -1m;
         }
 
-        nftDetailDto.ChainIds.Add(chainId);
         return nftDetailDto;
     }
 

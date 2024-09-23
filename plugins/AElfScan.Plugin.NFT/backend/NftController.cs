@@ -28,9 +28,9 @@ public class NftController
     }
 
     [HttpGet("collection-detail")]
-    public async Task<NftDetailDto> GetNftCollectionDetailAsync(string collectionSymbol, string chainId="")
+    public async Task<NftDetailDto> GetNftCollectionDetailAsync(string collectionSymbol, string chainId = "")
     {
-        return await _nftService.GetMergeNftCollectionDetailAsync(chainId, collectionSymbol);
+        return await _nftService.GetMergeNftCollectionDetailAsync(collectionSymbol, chainId);
     }
 
     [HttpGet("transfers")]
