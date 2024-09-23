@@ -36,6 +36,8 @@ public interface INftService
     Task<ListResponseDto<NftItemActivityDto>> GetNftItemActivityAsync(NftItemActivityInput input);
     Task<ListResponseDto<NftItemHolderInfoDto>> GetNftItemHoldersAsync(NftItemHolderInfoInput input);
 
+    Task<NftDetailDto> GetMergeNftCollectionDetailAsync(string collectionSymbol, string chainId);
+
     Task<Dictionary<string, string>> GetCollectionSupplyAsync(string chainId, List<string> collectionSymbols);
 }
 
@@ -163,11 +165,6 @@ public class NftService : INftService, ISingletonDependency
 
     public async Task<NftDetailDto> GetNftCollectionDetailAsync(string chainId, string collectionSymbol)
     {
-        if (chainId.IsNullOrEmpty())
-        {
-            return await GetMergeNftCollectionDetailAsync(collectionSymbol);
-        }
-
         var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
         var nftCollectionInfoInput = new GetNftCollectionInfoInput
         {
@@ -175,8 +172,7 @@ public class NftService : INftService, ISingletonDependency
             CollectionSymbolList = new List<string> { collectionSymbol }
         };
         var nftCollectionInfoTask = _nftInfoProvider.GetNftCollectionInfoAsync(nftCollectionInfoInput);
-        var collectionSymbols = new List<string> { collectionSymbol };
-        // var groupAndSumSupplyTask = GetCollectionSupplyAsync(chainId, collectionSymbols);
+
 
         await Task.WhenAll(getCollectionInfoTask, nftCollectionInfoTask);
 
@@ -209,11 +205,12 @@ public class NftService : INftService, ISingletonDependency
             nftDetailDto.FloorPrice = -1m;
         }
 
+        nftDetailDto.ChainIds.Add(chainId);
         return nftDetailDto;
     }
 
 
-    public async Task<NftDetailDto> GetMergeNftCollectionDetailAsync(string collectionSymbol)
+    public async Task<NftDetailDto> GetMergeNftCollectionDetailAsync(string collectionSymbol, string chainId)
     {
         var tasks = new List<Task>();
 
@@ -229,7 +226,8 @@ public class NftService : INftService, ISingletonDependency
         tasks.Add(GetNftCollectionDetailAsync(_globalOptions.CurrentValue.SideChainId, collectionSymbol)
             .ContinueWith(task => { sideNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result; }));
 
-        if (mainNftDetailDto != null && mainNftDetailDto.Holders != 0)
+
+        if (chainId == "AELF" || chainId.IsNullOrEmpty())
         {
             nftDetailDto = mainNftDetailDto;
         }
@@ -257,6 +255,21 @@ public class NftService : INftService, ISingletonDependency
 
         nftDetailDto.MainChainFloorPriceOfUsd = mainNftDetailDto.FloorPriceOfUsd;
         nftDetailDto.SideChainFloorPriceOfUsd = sideNftDetailDto.FloorPriceOfUsd;
+
+
+        if (chainId.IsNullOrEmpty())
+        {
+            if (!mainNftDetailDto.Items.IsNullOrEmpty())
+            {
+                nftDetailDto.ChainIds.Add("AELF");
+            }
+
+            if (!sideNftDetailDto.Items.IsNullOrEmpty())
+            {
+                nftDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
+            }
+        }
+
 
         return nftDetailDto;
     }

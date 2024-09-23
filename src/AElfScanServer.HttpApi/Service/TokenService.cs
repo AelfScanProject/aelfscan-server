@@ -33,6 +33,7 @@ public interface ITokenService
 {
     public Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input);
     public Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId);
+    public Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol, string chainId);
     public Task<TokenTransferInfosDto> GetTokenTransferInfosAsync(TokenTransferInput input);
     public Task<ListResponseDto<TokenHolderInfoDto>> GetTokenHolderInfosAsync(TokenHolderInput input);
     Task<CommonTokenPriceDto> GetTokenPriceInfoAsync(CurrencyDto input);
@@ -162,13 +163,8 @@ public class TokenService : ITokenService, ISingletonDependency
     }
 
 
-    public async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId)
+    public async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId = "")
     {
-        if (chainId.IsNullOrEmpty())
-        {
-            return await GetMergeTokenDetailAsync(symbol);
-        }
-
         var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
 
         AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
@@ -195,12 +191,16 @@ public class TokenService : ITokenService, ISingletonDependency
             }
         }
 
+
         return tokenDetailDto;
     }
 
-    public async Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol)
+    public async Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol, string chainId)
     {
         var tasks = new List<Task>();
+
+        var tokenDetailDto = new TokenDetailDto();
+
 
         var mainTokenDetailDto = new TokenDetailDto();
         var sideTokenDetailDto = new TokenDetailDto();
@@ -210,22 +210,50 @@ public class TokenService : ITokenService, ISingletonDependency
             .ContinueWith(task => { sideTokenDetailDto = task.Result; }));
 
         await tasks.WhenAll();
-        mainTokenDetailDto.MainChainCirculatingSupply = mainTokenDetailDto.CirculatingSupply;
-        mainTokenDetailDto.SideChainCirculatingSupply = sideTokenDetailDto.CirculatingSupply;
-        mainTokenDetailDto.CirculatingSupply = mainTokenDetailDto.MainChainCirculatingSupply +
-                                               mainTokenDetailDto.SideChainCirculatingSupply;
 
 
-        mainTokenDetailDto.MainChainHolders = mainTokenDetailDto.Holders;
-        mainTokenDetailDto.SideChainHolders = sideTokenDetailDto.Holders;
-        mainTokenDetailDto.Holders = mainTokenDetailDto.MainChainHolders +
-                                     mainTokenDetailDto.SideChainHolders;
+        if (chainId == "AELF" || chainId.IsNullOrEmpty())
+        {
+            tokenDetailDto = mainTokenDetailDto;
+        }
+        else if (chainId == _globalOptions.CurrentValue.SideChainId)
+        {
+            tokenDetailDto = sideTokenDetailDto;
+        }
 
-        mainTokenDetailDto.MainChainTransferCount = mainTokenDetailDto.TransferCount;
-        mainTokenDetailDto.SideChainTransferCount = sideTokenDetailDto.SideChainTransferCount;
-        mainTokenDetailDto.TransferCount = mainTokenDetailDto.MainChainTransferCount +
-                                           mainTokenDetailDto.SideChainTransferCount;
 
+        tokenDetailDto.MainChainCirculatingSupply = mainTokenDetailDto.CirculatingSupply;
+        tokenDetailDto.SideChainCirculatingSupply = sideTokenDetailDto.CirculatingSupply;
+        tokenDetailDto.CirculatingSupply = mainTokenDetailDto.MainChainCirculatingSupply +
+                                           mainTokenDetailDto.SideChainCirculatingSupply;
+
+
+        tokenDetailDto.MainChainHolders = mainTokenDetailDto.Holders;
+        tokenDetailDto.SideChainHolders = sideTokenDetailDto.Holders;
+        tokenDetailDto.Holders = mainTokenDetailDto.MainChainHolders +
+                                 mainTokenDetailDto.SideChainHolders;
+
+        tokenDetailDto.MainChainTransferCount = mainTokenDetailDto.TransferCount;
+        tokenDetailDto.SideChainTransferCount = sideTokenDetailDto.SideChainTransferCount;
+        tokenDetailDto.TransferCount = mainTokenDetailDto.MainChainTransferCount +
+                                       mainTokenDetailDto.SideChainTransferCount;
+
+        if (chainId.IsNullOrEmpty())
+        {
+            if (mainTokenDetailDto.Holders > 0)
+            {
+                tokenDetailDto.ChainIds.Add("AELF");
+            }
+
+            if (sideTokenDetailDto.Holders > 0)
+            {
+                tokenDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
+            }
+        }
+        else
+        {
+            tokenDetailDto.ChainIds.Add(chainId);
+        }
 
         return mainTokenDetailDto;
     }
@@ -347,7 +375,6 @@ public class TokenService : ITokenService, ISingletonDependency
                     CommonConstant.PercentageValueDecimals);
             }
 
-            tokenListDto.ChainIds.Add(chainId);
 
             list.Add(tokenListDto);
         }
