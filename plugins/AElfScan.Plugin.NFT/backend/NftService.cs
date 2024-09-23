@@ -43,6 +43,8 @@ public class NftService : INftService, ISingletonDependency
 {
     private const int MaxResultCount = 1000;
     private readonly IOptionsMonitor<ChainOptions> _chainOptions;
+    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
+
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly ILogger<NftService> _logger;
     private readonly IObjectMapper _objectMapper;
@@ -64,7 +66,7 @@ public class NftService : INftService, ISingletonDependency
         IOptionsMonitor<ChainOptions> chainOptions, IOptionsMonitor<TokenInfoOptions> tokenInfoOptionsMonitor,
         ITokenInfoProvider tokenInfoProvider, IGenesisPluginProvider genesisPluginProvider,
         IDistributedCache<string> distributedCache, IMemoryCache memoryCache,
-        IOptionsMonitor<ElasticsearchOptions> options
+        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions
     )
     {
         _tokenIndexerProvider = tokenIndexerProvider;
@@ -83,6 +85,7 @@ public class NftService : INftService, ISingletonDependency
         var connectionPool = new StaticConnectionPool(uris);
         var settings = new ConnectionSettings(connectionPool);
         EsIndex.SetElasticClient(_elasticClient);
+        _globalOptions = globalOptions;
     }
 
 
@@ -160,6 +163,11 @@ public class NftService : INftService, ISingletonDependency
 
     public async Task<NftDetailDto> GetNftCollectionDetailAsync(string chainId, string collectionSymbol)
     {
+        if (chainId.IsNullOrEmpty())
+        {
+            return await GetMergeNftCollectionDetailAsync(collectionSymbol);
+        }
+
         var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
         var nftCollectionInfoInput = new GetNftCollectionInfoInput
         {
@@ -203,6 +211,56 @@ public class NftService : INftService, ISingletonDependency
 
         return nftDetailDto;
     }
+
+
+    public async Task<NftDetailDto> GetMergeNftCollectionDetailAsync(string collectionSymbol)
+    {
+        var tasks = new List<Task>();
+
+        var nftDetailDto = new NftDetailDto();
+        var mainNftDetailDto = new NftDetailDto();
+        var sideNftDetailDto = new NftDetailDto();
+
+        tasks.Add(GetNftCollectionDetailAsync("AELF", collectionSymbol).ContinueWith(task =>
+        {
+            mainNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result;
+        }));
+
+        tasks.Add(GetNftCollectionDetailAsync(_globalOptions.CurrentValue.SideChainId, collectionSymbol)
+            .ContinueWith(task => { sideNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result; }));
+
+        if (mainNftDetailDto != null && mainNftDetailDto.Holders != 0)
+        {
+            nftDetailDto = mainNftDetailDto;
+        }
+        else
+        {
+            nftDetailDto = sideNftDetailDto;
+        }
+
+        nftDetailDto.MainChainItems = mainNftDetailDto.Items;
+        nftDetailDto.SideChainItems = sideNftDetailDto.Items;
+        nftDetailDto.Items = nftDetailDto.MainChainItems + nftDetailDto.SideChainItems;
+
+
+        nftDetailDto.MainChainHolders = mainNftDetailDto.Holders;
+        nftDetailDto.SideChainHolders = sideNftDetailDto.Holders;
+        nftDetailDto.Holders = nftDetailDto.MainChainHolders + nftDetailDto.SideChainHolders;
+
+
+        nftDetailDto.MainChainTransferCount = mainNftDetailDto.TransferCount;
+        nftDetailDto.SideChainTransferCount = sideNftDetailDto.TransferCount;
+        nftDetailDto.TransferCount = nftDetailDto.MainChainTransferCount + nftDetailDto.SideChainTransferCount;
+
+        nftDetailDto.MainChainFloorPrice = mainNftDetailDto.FloorPrice;
+        nftDetailDto.SideChainFloorPrice = sideNftDetailDto.FloorPrice;
+
+        nftDetailDto.MainChainFloorPriceOfUsd = mainNftDetailDto.FloorPriceOfUsd;
+        nftDetailDto.SideChainFloorPriceOfUsd = sideNftDetailDto.FloorPriceOfUsd;
+
+        return nftDetailDto;
+    }
+
 
     public async Task<NftTransferInfosDto> GetNftCollectionTransferInfosAsync(TokenTransferInput input)
     {

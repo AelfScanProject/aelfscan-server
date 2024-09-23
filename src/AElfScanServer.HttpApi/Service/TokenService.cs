@@ -23,6 +23,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Nest;
+using Nito.AsyncEx;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
 
@@ -163,6 +164,11 @@ public class TokenService : ITokenService, ISingletonDependency
 
     public async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId)
     {
+        if (chainId.IsNullOrEmpty())
+        {
+            return await GetMergeTokenDetailAsync(symbol);
+        }
+
         var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
 
         AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
@@ -191,6 +197,39 @@ public class TokenService : ITokenService, ISingletonDependency
 
         return tokenDetailDto;
     }
+
+    public async Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol)
+    {
+        var tasks = new List<Task>();
+
+        var mainTokenDetailDto = new TokenDetailDto();
+        var sideTokenDetailDto = new TokenDetailDto();
+
+        tasks.Add(GetTokenDetailAsync(symbol, "AELF").ContinueWith(task => { mainTokenDetailDto = task.Result; }));
+        tasks.Add(GetTokenDetailAsync(symbol, _globalOptions.CurrentValue.SideChainId)
+            .ContinueWith(task => { sideTokenDetailDto = task.Result; }));
+
+        await tasks.WhenAll();
+        mainTokenDetailDto.MainChainCirculatingSupply = mainTokenDetailDto.CirculatingSupply;
+        mainTokenDetailDto.SideChainCirculatingSupply = sideTokenDetailDto.CirculatingSupply;
+        mainTokenDetailDto.CirculatingSupply = mainTokenDetailDto.MainChainCirculatingSupply +
+                                               mainTokenDetailDto.SideChainCirculatingSupply;
+
+
+        mainTokenDetailDto.MainChainHolders = mainTokenDetailDto.Holders;
+        mainTokenDetailDto.SideChainHolders = sideTokenDetailDto.Holders;
+        mainTokenDetailDto.Holders = mainTokenDetailDto.MainChainHolders +
+                                     mainTokenDetailDto.SideChainHolders;
+
+        mainTokenDetailDto.MainChainTransferCount = mainTokenDetailDto.TransferCount;
+        mainTokenDetailDto.SideChainTransferCount = sideTokenDetailDto.SideChainTransferCount;
+        mainTokenDetailDto.TransferCount = mainTokenDetailDto.MainChainTransferCount +
+                                           mainTokenDetailDto.SideChainTransferCount;
+
+
+        return mainTokenDetailDto;
+    }
+
 
     public async Task<TokenTransferInfosDto> GetTokenTransferInfosAsync(TokenTransferInput input)
     {

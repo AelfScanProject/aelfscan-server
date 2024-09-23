@@ -11,5 +11,14 @@ public class NftInfoDto
 
     public long TransferCount { get; set; }
 
+
+    public string MainChainItems { get; set; }
+    public long MainChainHolders { get; set; }
+    public long MainChainTransferCount { get; set; }
+
+    public string SideChainItems { get; set; }
+    public long SideChainHolders { get; set; }
+    public long SideChainTransferCount { get; set; }
+
     public List<string> ChainIds { get; set; } = new();
 }
