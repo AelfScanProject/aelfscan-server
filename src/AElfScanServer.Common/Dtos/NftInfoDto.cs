@@ -7,10 +7,11 @@ public class NftInfoDto
 {
     public TokenBaseInfo NftCollection { get; set; }
     public string Items { get; set; }
+    public string MergeItems { get; set; }
     public long Holders { get; set; }
-
+    public long MergeHolders { get; set; }
     public long TransferCount { get; set; }
-
+    public long MergeTransferCount { get; set; }
 
     public string MainChainItems { get; set; }
     public long MainChainHolders { get; set; }

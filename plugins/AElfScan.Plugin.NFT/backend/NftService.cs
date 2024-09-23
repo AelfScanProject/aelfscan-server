@@ -238,17 +238,17 @@ public class NftService : INftService, ISingletonDependency
 
         nftDetailDto.MainChainItems = mainNftDetailDto.Items;
         nftDetailDto.SideChainItems = sideNftDetailDto.Items;
-        nftDetailDto.Items = nftDetailDto.MainChainItems + nftDetailDto.SideChainItems;
+        nftDetailDto.MergeItems = nftDetailDto.MainChainItems + nftDetailDto.SideChainItems;
 
 
         nftDetailDto.MainChainHolders = mainNftDetailDto.Holders;
         nftDetailDto.SideChainHolders = sideNftDetailDto.Holders;
-        nftDetailDto.Holders = nftDetailDto.MainChainHolders + nftDetailDto.SideChainHolders;
+        nftDetailDto.MergeHolders = nftDetailDto.MainChainHolders + nftDetailDto.SideChainHolders;
 
 
         nftDetailDto.MainChainTransferCount = mainNftDetailDto.TransferCount;
         nftDetailDto.SideChainTransferCount = sideNftDetailDto.TransferCount;
-        nftDetailDto.TransferCount = nftDetailDto.MainChainTransferCount + nftDetailDto.SideChainTransferCount;
+        nftDetailDto.MergeTransferCount = nftDetailDto.MainChainTransferCount + nftDetailDto.SideChainTransferCount;
 
         nftDetailDto.MainChainFloorPrice = mainNftDetailDto.FloorPrice;
         nftDetailDto.SideChainFloorPrice = sideNftDetailDto.FloorPrice;
@@ -257,17 +257,14 @@ public class NftService : INftService, ISingletonDependency
         nftDetailDto.SideChainFloorPriceOfUsd = sideNftDetailDto.FloorPriceOfUsd;
 
 
-        if (chainId.IsNullOrEmpty())
+        if (!mainNftDetailDto.Items.IsNullOrEmpty())
         {
-            if (!mainNftDetailDto.Items.IsNullOrEmpty())
-            {
-                nftDetailDto.ChainIds.Add("AELF");
-            }
+            nftDetailDto.ChainIds.Add("AELF");
+        }
 
-            if (!sideNftDetailDto.Items.IsNullOrEmpty())
-            {
-                nftDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
-            }
+        if (!sideNftDetailDto.Items.IsNullOrEmpty())
+        {
+            nftDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
         }
 
 

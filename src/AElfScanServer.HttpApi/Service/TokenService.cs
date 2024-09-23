@@ -224,35 +224,29 @@ public class TokenService : ITokenService, ISingletonDependency
 
         tokenDetailDto.MainChainCirculatingSupply = mainTokenDetailDto.CirculatingSupply;
         tokenDetailDto.SideChainCirculatingSupply = sideTokenDetailDto.CirculatingSupply;
-        tokenDetailDto.CirculatingSupply = mainTokenDetailDto.MainChainCirculatingSupply +
-                                           mainTokenDetailDto.SideChainCirculatingSupply;
+        tokenDetailDto.MergeCirculatingSupply = tokenDetailDto.MainChainCirculatingSupply +
+                                                tokenDetailDto.SideChainCirculatingSupply;
 
 
         tokenDetailDto.MainChainHolders = mainTokenDetailDto.Holders;
         tokenDetailDto.SideChainHolders = sideTokenDetailDto.Holders;
-        tokenDetailDto.Holders = mainTokenDetailDto.MainChainHolders +
-                                 mainTokenDetailDto.SideChainHolders;
+        tokenDetailDto.MergeHolders = tokenDetailDto.MainChainHolders +
+                                      tokenDetailDto.SideChainHolders;
 
         tokenDetailDto.MainChainTransferCount = mainTokenDetailDto.TransferCount;
-        tokenDetailDto.SideChainTransferCount = sideTokenDetailDto.SideChainTransferCount;
-        tokenDetailDto.TransferCount = mainTokenDetailDto.MainChainTransferCount +
-                                       mainTokenDetailDto.SideChainTransferCount;
+        tokenDetailDto.SideChainTransferCount = sideTokenDetailDto.TransferCount;
+        tokenDetailDto.MergeTransferCount = tokenDetailDto.MainChainTransferCount +
+                                            tokenDetailDto.SideChainTransferCount;
 
-        if (chainId.IsNullOrEmpty())
+
+        if (mainTokenDetailDto.Holders > 0)
         {
-            if (mainTokenDetailDto.Holders > 0)
-            {
-                tokenDetailDto.ChainIds.Add("AELF");
-            }
-
-            if (sideTokenDetailDto.Holders > 0)
-            {
-                tokenDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
-            }
+            tokenDetailDto.ChainIds.Add("AELF");
         }
-        else
+
+        if (sideTokenDetailDto.Holders > 0)
         {
-            tokenDetailDto.ChainIds.Add(chainId);
+            tokenDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
         }
 
         return mainTokenDetailDto;
