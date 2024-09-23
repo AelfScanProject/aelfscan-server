@@ -19,6 +19,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nest;
+using Nito.AsyncEx;
 using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -226,6 +227,7 @@ public class NftService : INftService, ISingletonDependency
         tasks.Add(GetNftCollectionDetailAsync(_globalOptions.CurrentValue.SideChainId, collectionSymbol)
             .ContinueWith(task => { sideNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result; }));
 
+        await tasks.WhenAll();
 
         if (chainId == "AELF" || chainId.IsNullOrEmpty())
         {

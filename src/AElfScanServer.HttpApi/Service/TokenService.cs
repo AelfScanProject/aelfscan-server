@@ -249,7 +249,7 @@ public class TokenService : ITokenService, ISingletonDependency
             tokenDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
         }
 
-        return mainTokenDetailDto;
+        return tokenDetailDto;
     }
 
 
