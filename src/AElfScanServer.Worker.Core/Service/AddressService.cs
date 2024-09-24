@@ -110,7 +110,7 @@ public class AddressService : IAddressService, ISingletonDependency
             return;
         }
 
-        // await SaveMergeTokenList(symbolMap.Keys.ToList());
+         await SaveMergeTokenList(symbolMap.Keys.ToList());
         await SaveHolderList(beginTime, symbolMap);
         if (beginTime == default)
         {
@@ -423,11 +423,6 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             beginDate = DateTimeOffset.FromUnixTimeSeconds(dateLong).DateTime;
         }
-
-        else
-         {
-             beginDate = new DateTime(2024, 9, 10, 0, 0, 0);
-         }
 
          return beginDate;
      }
