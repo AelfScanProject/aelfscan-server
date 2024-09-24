@@ -454,7 +454,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             var holderInfos = indexerNftHolder.Items.Select(i => new HolderInfo
             {
                 Balance = i.FormatAmount,
-                Symbol = i.Token.Symbol
+                Symbol = i.Token.Symbol,
+                ChainId = i.Metadata.ChainId
             }).ToList();
             allHolderInfos.AddRange(holderInfos);
             if (indexerNftHolder.Items.Count < tokenHolderInput.MaxResultCount)
@@ -498,12 +499,12 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         }
 
         var list = await ConvertIndexerTokenTransferDtoAsync(indexerTokenTransfer.Items, input.ChainId);
-        
+
         list = list.OrderByDescending(item => item.DateTime)
             .ThenByDescending(item => item.TransactionId)
             .ToList();
 
-        
+
         var result = new TokenTransferInfosDto
         {
             Total = indexerTokenTransfer.TotalCount,

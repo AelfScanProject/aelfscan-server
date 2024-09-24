@@ -226,12 +226,6 @@ public class AddressAppService : IAddressAppService
 
     public async Task<GetAddressDetailResultDto> GetAddressDetailAsync(GetAddressDetailInput input)
     {
-        if (input.ChainId.IsNullOrEmpty())
-        {
-            return await GetMergeAddressDetailAsync(input);
-        }
-
-
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
         var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
@@ -248,6 +242,18 @@ public class AddressAppService : IAddressAppService
         var transferInput = new TokenTransferInput { ChainId = input.ChainId, Address = input.Address };
         transferInput.OfOrderInfos((SortField.BlockHeight, SortDirection.Desc));
         var addressTypeTask = _addressTypeService.GetAddressTypeList(input.ChainId, input.Address);
+
+        var mainChainCurAddressAssetTask = _tokenAssetProvider.GetTokenValuesAsync("AELF", input.Address);
+        var sideChainCurAddressAssetTask =
+            _tokenAssetProvider.GetTokenValuesAsync(_globalOptions.SideChainId, input.Address);
+
+        var mainChainHolderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync("AELF", input.Address,
+            new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
+
+        var sideChainHolderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync(_globalOptions.SideChainId,
+            input.Address,
+            new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
+
 
         var firstTransactionInput = new TransactionsRequestDto()
         {
@@ -273,7 +279,7 @@ public class AddressAppService : IAddressAppService
 
         await Task.WhenAll(priceDtoTask, priceHisDtoTask, holderInfoTask, curAddressAssetTask, dailyAddressAssetTask,
             holderInfosTask, contractInfoTask, firstTransactionTask,
-            lastTransactionTask);
+            lastTransactionTask, mainChainCurAddressAssetTask, sideChainCurAddressAssetTask);
 
         var holderInfo = await holderInfoTask;
         var priceDto = await priceDtoTask;
@@ -287,6 +293,11 @@ public class AddressAppService : IAddressAppService
         var lastTransaction = await lastTransactionTask;
         var contractInfo = await contractInfoTask;
         var addressTypeList = await addressTypeTask;
+
+        var mainChainHolderInfos = await mainChainHolderInfosTask;
+        var sideChainHolderInfos = await sideChainHolderInfosTask;
+        var mainChainCurAddressAsset = await mainChainCurAddressAssetTask;
+        var sideChainCurAddressAsset = await sideChainCurAddressAssetTask;
 
         _logger.LogInformation("GetAddressDetail chainId: {chainId}, dailyAddressAsset: {dailyAddressAsset}",
             input.ChainId, JsonConvert.SerializeObject(dailyAddressAsset));
@@ -331,12 +342,32 @@ public class AddressAppService : IAddressAppService
             result.FirstTransactionSend = OfTransactionInfo(firstTransaction.Items.First());
         }
 
+        result.Portfolio.MainChain.Count = mainChainHolderInfos.Count;
+        result.Portfolio.SideChain.Count = sideChainHolderInfos.Count;
+        result.Portfolio.Total.Count = await GetMergeTokens(mainChainHolderInfos, sideChainHolderInfos);
+
+        result.Portfolio.MainChain.UsdValue =
+            Math.Round(new decimal(mainChainCurAddressAsset.GetTotalValueOfElf()) * priceDto.Price,
+                CommonConstant.UsdValueDecimals);
+
+        result.Portfolio.SideChain.UsdValue =
+            Math.Round(new decimal(sideChainCurAddressAsset.GetTotalValueOfElf()) * priceDto.Price,
+                CommonConstant.UsdValueDecimals);
+
+        result.Portfolio.Total.UsdValue = result.Portfolio.SideChain.UsdValue + result.Portfolio.MainChain.UsdValue;
+
+        result.Portfolio.MainChain.UsdValuePercentage =
+            result.Portfolio.MainChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
+        result.Portfolio.SideChain.UsdValuePercentage =
+            result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
+
         return result;
     }
 
 
     public async Task<GetAddressDetailResultDto> GetMergeAddressDetailAsync(GetAddressDetailInput input)
     {
+        var hashSet = new HashSet<string>();
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
         var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
@@ -401,6 +432,15 @@ public class AddressAppService : IAddressAppService
             result.Author = contractInfo.ContractList.Items[0].Author;
             result.CodeHash = contractInfo.ContractList.Items[0].CodeHash;
             result.AddressType = AddressType.ContractAddress;
+            foreach (var contractListItem in contractInfo.ContractList.Items)
+            {
+                hashSet.Add(contractListItem.Metadata.ChainId);
+            }
+        }
+
+        foreach (var mainChainHolderInfo in mainChainHolderInfos)
+        {
+            hashSet.Add(mainChainHolderInfo.ChainId);
         }
 
 
@@ -439,6 +479,7 @@ public class AddressAppService : IAddressAppService
         result.Portfolio.SideChain.UsdValuePercentage =
             result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
 
+        result.ChainIds = hashSet.OrderByDescending(c => c).ToList();
 
         return result;
     }
