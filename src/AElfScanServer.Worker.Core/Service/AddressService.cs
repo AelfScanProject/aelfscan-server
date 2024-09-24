@@ -99,6 +99,7 @@ public class AddressService : IAddressService, ISingletonDependency
      { 
          var key = "token_transfer_change_time";
          var beginTime = await GetBeginTime(key);
+         await AddCreatedTokenList(beginTime);
          Dictionary<string,List<string>> symbolMap;
          (symbolMap, beginTime) = await GetChangeSymbolList(beginTime);
 
@@ -174,7 +175,48 @@ public class AddressService : IAddressService, ISingletonDependency
 
          symbolList[indexerTransferInfoDto.Token.Symbol] = addresList;
      }
+ private async Task AddCreatedTokenList(DateTime beginBlockTime)
+     {
+         try
+         {
+             var skip = 0;
+             var maxResultCount = 1000;
+             var tokenListInput = new TokenListInput()
+             {
+                 Types = new List<SymbolType>() { SymbolType.Token,SymbolType.Nft_Collection,SymbolType.Nft},
+                 BeginBlockTime = beginBlockTime,
+                 SkipCount = skip,
+                 MaxResultCount = maxResultCount,
+                 Sort = "Desc",
+                 OrderBy = "Symbol"
+             };
+             while (true)
+             {
+                 tokenListInput.SkipCount = skip;
+                 var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
+                 if (tokenListAsync.Items.Count == 0)
+                 {
+                     break;
+                 }
 
+                 var tokenInfoList =
+                     _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
+               
+                
+                 foreach (var tokenInfoIndex in tokenInfoList)
+                 {
+                     tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
+                 }
+                 await _tokenInfoRepository.AddOrUpdateManyAsync(tokenInfoList);
+                 _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
+                 skip += maxResultCount;
+             }
+         }
+         catch (Exception e)
+         {
+             _logger.LogError(e, "PullTokenInfo error");
+         }
+     }
      private async Task SaveMergeTokenList(List<string> symbolList)
      {
          try
@@ -371,6 +413,11 @@ public class AddressService : IAddressService, ISingletonDependency
          {
              beginDate = DateTimeOffset.FromUnixTimeSeconds(dateLong).DateTime;
          }
+         else
+         {
+             beginDate = new DateTime(2024, 9, 10, 0, 0, 0);
+         }
+
          return beginDate;
      }
 }

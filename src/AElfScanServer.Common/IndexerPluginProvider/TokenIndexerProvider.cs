@@ -146,10 +146,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         {
             Query =
                 @"query($chainId:String,$skipCount:Int!,$maxResultCount:Int!,$search:String,
-                        $types:[SymbolType!],$symbols:[String!],$collectionSymbols:[String!],
+                        $types:[SymbolType!],$symbols:[String!],$collectionSymbols:[String!],$beginBlockTime:DateTime,
                         $sort:String,$orderBy:String,$exactSearch:String,$fuzzySearch:String,$searchAfter:[String]){
                     tokenInfo(input: {chainId:$chainId,skipCount:$skipCount,maxResultCount:$maxResultCount,search:$search,types:$types,
-                        symbols:$symbols,collectionSymbols:$collectionSymbols,sort:$sort,orderBy:$orderBy,
+                        symbols:$symbols,collectionSymbols:$collectionSymbols,beginBlockTime:$beginBlockTime,sort:$sort,orderBy:$orderBy,
                         exactSearch:$exactSearch,fuzzySearch:$fuzzySearch,searchAfter:$searchAfter})
                 {
                    totalCount,
@@ -179,7 +179,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Variables = new
             {
                 chainId = input.ChainId, types = input.Types, symbols = input.Symbols, skipCount = input.SkipCount,
-                maxResultCount = input.MaxResultCount, collectionSymbols = input.CollectionSymbols,
+                maxResultCount = input.MaxResultCount, collectionSymbols = input.CollectionSymbols,beginBlockTime = input.BeginBlockTime,
                 search = input.Search, sort = input.Sort, orderBy = input.OrderBy,
                 exactSearch = input.ExactSearch, fuzzySearch = input.FuzzySearch, searchAfter = input.SearchAfter
             }
