@@ -339,6 +339,7 @@ public class TokenService : ITokenService, ISingletonDependency
         foreach (var indexerTokenHolderInfoDto in accountTokenIndices)
         {
             var tokenHolderInfoDto = new TokenHolderInfoDto();
+            tokenHolderInfoDto.Quantity = indexerTokenHolderInfoDto.FormatAmount;
             tokenHolderInfoDto.Address =
                 BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address + indexerTokenHolderInfoDto.ChainId,
                     contractInfoDict);
@@ -351,6 +352,7 @@ public class TokenService : ITokenService, ISingletonDependency
 
             tokenHolderInfoDto.Value =
                 Math.Round(indexerTokenHolderInfoDto.FormatAmount * priceDto.Price, CommonConstant.UsdValueDecimals);
+            tokenHolderInfoDto.ChainIds = indexerTokenHolderInfoDto.ChainIds;
             list.Add(tokenHolderInfoDto);
         }
 

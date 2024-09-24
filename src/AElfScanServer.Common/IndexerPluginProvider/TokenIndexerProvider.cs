@@ -490,7 +490,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
     public async Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input)
     {
-        input.SetBlockHeightSort();
+        input.SetBlockTimeSort();
 
         var indexerTokenTransfer = await GetTokenTransferInfoAsync(input);
         if (indexerTokenTransfer.Items.IsNullOrEmpty())

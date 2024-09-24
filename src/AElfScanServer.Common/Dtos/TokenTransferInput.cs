@@ -37,7 +37,7 @@ public class TokenTransferInput : BaseInput
     }
 
 
-    public void SetBlockHeightSort()
+    public void SetBlockTimeSort()
     {
         if (!OrderBy.IsNullOrEmpty() || !OrderInfos.IsNullOrEmpty())
         {
