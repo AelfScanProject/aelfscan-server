@@ -226,6 +226,7 @@ public class AddressAppService : IAddressAppService
 
     public async Task<GetAddressDetailResultDto> GetAddressDetailAsync(GetAddressDetailInput input)
     {
+        var hashSet = new HashSet<string>();
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
         var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
@@ -311,6 +312,10 @@ public class AddressAppService : IAddressAppService
             result.Author = contractInfo.ContractList.Items[0].Author;
             result.CodeHash = contractInfo.ContractList.Items[0].CodeHash;
             result.AddressType = AddressType.ContractAddress;
+            foreach (var mainChainHolderInfo in mainChainHolderInfos)
+            {
+                hashSet.Add(mainChainHolderInfo.ChainId);
+            }
         }
 
 
@@ -360,6 +365,7 @@ public class AddressAppService : IAddressAppService
             result.Portfolio.MainChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
         result.Portfolio.SideChain.UsdValuePercentage =
             result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
+        result.ChainIds = hashSet.OrderByDescending(c => c).ToList();
 
         return result;
     }
@@ -367,7 +373,6 @@ public class AddressAppService : IAddressAppService
 
     public async Task<GetAddressDetailResultDto> GetMergeAddressDetailAsync(GetAddressDetailInput input)
     {
-        var hashSet = new HashSet<string>();
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
         var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
@@ -432,15 +437,7 @@ public class AddressAppService : IAddressAppService
             result.Author = contractInfo.ContractList.Items[0].Author;
             result.CodeHash = contractInfo.ContractList.Items[0].CodeHash;
             result.AddressType = AddressType.ContractAddress;
-            foreach (var contractListItem in contractInfo.ContractList.Items)
-            {
-                hashSet.Add(contractListItem.Metadata.ChainId);
-            }
-        }
-
-        foreach (var mainChainHolderInfo in mainChainHolderInfos)
-        {
-            hashSet.Add(mainChainHolderInfo.ChainId);
+           
         }
 
 
@@ -479,7 +476,6 @@ public class AddressAppService : IAddressAppService
         result.Portfolio.SideChain.UsdValuePercentage =
             result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
 
-        result.ChainIds = hashSet.OrderByDescending(c => c).ToList();
 
         return result;
     }
