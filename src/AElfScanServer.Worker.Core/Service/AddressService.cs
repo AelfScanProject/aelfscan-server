@@ -99,8 +99,10 @@ public class AddressService : IAddressService, ISingletonDependency
 
     public async Task PullTokenInfo()
     {
-        var key = "token_transfer_change_time";
+        var key = "token_transfer_change";
         var beginTime = await GetBeginTime(key);
+        _logger.LogInformation("PullTokenInfo bengin {Time}",
+            TimeHelper.GetTimeStampFromDateTimeInSeconds(beginTime).ToString());
         await AddCreatedTokenList(beginTime);
          Dictionary<string,List<string>> symbolMap;
          (symbolMap, beginTime) = await GetChangeSymbolList(beginTime);
@@ -422,6 +424,10 @@ public class AddressService : IAddressService, ISingletonDependency
         if (datetime != null && long.TryParse(datetime, out var dateLong))
         {
             beginDate = DateTimeOffset.FromUnixTimeSeconds(dateLong).DateTime;
+        }
+        else
+        {
+            beginDate = new DateTime(2024, 9, 10, 0, 0, 0);
         }
 
          return beginDate;
