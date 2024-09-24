@@ -143,6 +143,7 @@ public class TokenService : ITokenService, ISingletonDependency
                     CommonConstant.PercentageValueDecimals);
             }
 
+            tokenInfo.ChainIds = tokenInfo.ChainIds.OrderByDescending(c => c).ToList();
             list.Add(tokenInfo);
         }
 
