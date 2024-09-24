@@ -109,7 +109,7 @@ public class AddressService : IAddressService, ISingletonDependency
             return;
         }
 
-        // await SaveMergeTokenList(symbolMap.Keys.ToList());
+        await SaveMergeTokenList(symbolMap.Keys.ToList());
         await SaveHolderList(beginTime, symbolMap);
         if (beginTime == default)
         {

@@ -116,7 +116,7 @@ public class EsIndex
             {
                 Filter = new List<QueryContainer>
                 {
-                    new TermQuery { Field = "token.symbol", Value = "ELF" }
+                    new TermQuery { Field = "token.symbol", Value = input.Symbol }
                 }
             },
             SearchAfter = input.SearchAfter != null && !input.SearchAfter.IsNullOrEmpty()

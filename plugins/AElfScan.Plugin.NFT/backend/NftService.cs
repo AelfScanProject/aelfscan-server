@@ -248,9 +248,9 @@ public class NftService : INftService, ISingletonDependency
 
         nftDetailDto.MainChainItems = mainNftDetailDto.Items;
         nftDetailDto.SideChainItems = sideNftDetailDto.Items;
-        nftDetailDto.MergeItems = nftDetailDto.MainChainItems + nftDetailDto.SideChainItems;
 
-
+        nftDetailDto.MergeItems =
+            (decimal.Parse(nftDetailDto.MainChainItems) + decimal.Parse(nftDetailDto.SideChainItems)).ToString();
         nftDetailDto.MainChainHolders = mainNftDetailDto.Holders;
         nftDetailDto.SideChainHolders = sideNftDetailDto.Holders;
         nftDetailDto.MergeHolders = nftDetailDto.MainChainHolders + nftDetailDto.SideChainHolders;
