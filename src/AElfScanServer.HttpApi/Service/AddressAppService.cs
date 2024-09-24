@@ -367,6 +367,7 @@ public class AddressAppService : IAddressAppService
             result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
         result.ChainIds = hashSet.OrderByDescending(c => c).ToList();
 
+        result.ChainIds.AddRange(hashSet.OrderByDescending(c => c).ToList());
         return result;
     }
 
@@ -437,7 +438,6 @@ public class AddressAppService : IAddressAppService
             result.Author = contractInfo.ContractList.Items[0].Author;
             result.CodeHash = contractInfo.ContractList.Items[0].CodeHash;
             result.AddressType = AddressType.ContractAddress;
-           
         }
 
 
