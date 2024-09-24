@@ -318,6 +318,15 @@ public class AddressAppService : IAddressAppService
             }
         }
 
+        foreach (var mainChainHolderInfo in mainChainHolderInfos)
+        {
+            hashSet.Add(mainChainHolderInfo.ChainId);
+        }
+
+        foreach (var sideChainHolderInfo in sideChainHolderInfos)
+        {
+            hashSet.Add(sideChainHolderInfo.ChainId);
+        }
 
         result.ElfBalance = holderInfo.Balance;
         result.ElfPriceInUsd = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
@@ -367,7 +376,6 @@ public class AddressAppService : IAddressAppService
             result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
         result.ChainIds = hashSet.OrderByDescending(c => c).ToList();
 
-        result.ChainIds.AddRange(hashSet.OrderByDescending(c => c).ToList());
         return result;
     }
 

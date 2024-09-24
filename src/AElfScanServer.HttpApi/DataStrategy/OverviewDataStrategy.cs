@@ -197,7 +197,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                             s => s.Term(t => t.Field("type").Value(symbolType))
                         };
 
-                        if (specialSymbols != null && specialSymbols.Any())
+                        if (!specialSymbols.IsNullOrEmpty())
                         {
                             shouldClause.Add(s => s.Terms(t => t.Field("symbol").Terms(specialSymbols)));
                         }
@@ -211,10 +211,9 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
             var searchResponse = await _elasticClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
 
-            // 直接获取匹配文档的总数
             var total = searchResponse.Total;
-            DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total}",
-                string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total);
+            DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total},{symbolType}",
+                string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total, symbolType);
             return total;
         }
         catch (Exception e)
@@ -254,6 +253,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         {
             var key = "TotalAccount" + chainId;
             var count = await _cache.GetAsync(key);
+            count = "";
 
             var queryableAsync = await _addressRepository.GetQueryableAsync();
             if (!chainId.IsNullOrEmpty())
@@ -265,8 +265,11 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             {
                 totalCount = queryableAsync.Count();
                 await _cache.SetAsync(key, totalCount.ToString());
+                DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
+                    chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
                 return totalCount;
             }
+
 
             return long.Parse(count);
         }
@@ -325,7 +328,6 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             {
                 overviewResp.MergeAccounts.SideChain = task.Result;
             }));
-
 
             tasks.Add(GetTokens("AELF", SymbolType.Token, _globalOptions.CurrentValue.SpecialSymbols)
                 .ContinueWith(task => { overviewResp.MergeTokens.MainChain = task.Result; }));

@@ -37,7 +37,7 @@ public class EsIndex
                         s => s.Term(t => t.Field(f => f.Type).Value(symbolType))
                     };
 
-                    if (symbols != null && symbols.Any())
+                    if (!symbols.IsNullOrEmpty())
                     {
                         shouldClauses.Add(s => s.Terms(t => t.Field(f => f.Symbol).Terms(symbols)));
                     }
