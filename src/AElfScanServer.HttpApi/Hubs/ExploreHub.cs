@@ -190,7 +190,7 @@ public class ExploreHub : AbpHub
                 topTokenDtos.Add(new TopTokenDto
                 {
                     Symbol = tokenInfoIndex.Symbol,
-                    ChainIds = tokenInfoIndex.ChainIds,
+                    ChainIds = tokenInfoIndex.ChainIds.OrderByDescending(c => c).ToList(),
                     Transfers = tokenInfoIndex.TransferCount,
                     Holder = tokenInfoIndex.HolderCount,
                     TokenName = tokenInfoIndex.TokenName,

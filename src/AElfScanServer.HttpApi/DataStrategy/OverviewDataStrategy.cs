@@ -183,11 +183,12 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         {
             var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
                 .Index("tokeninfoindex")
+                .Size(0)
                 .Query(q => q
                     .Bool(b =>
                     {
                         var mustClause = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>();
-                        if (!string.IsNullOrEmpty(chainId))
+                        if (!chainId.IsNullOrEmpty())
                         {
                             mustClause.Add(m => m.Terms(t => t.Field("chainId").Terms(chainId)));
                         }
@@ -197,7 +198,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                             s => s.Term(t => t.Field("type").Value(symbolType))
                         };
 
-                        if (specialSymbols != null && specialSymbols.Any())
+                        if (!specialSymbols.IsNullOrEmpty())
                         {
                             shouldClause.Add(s => s.Terms(t => t.Field("symbol").Terms(specialSymbols)));
                         }
@@ -211,10 +212,9 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
             var searchResponse = await _elasticClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
 
-            // 直接获取匹配文档的总数
             var total = searchResponse.Total;
-            DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total}",
-                string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total);
+            DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total},{symbolType}",
+                string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total, symbolType);
             return total;
         }
         catch (Exception e)
@@ -254,9 +254,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         {
             var key = "TotalAccount" + chainId;
             var count = await _cache.GetAsync(key);
+            count = "";
 
             var queryableAsync = await _addressRepository.GetQueryableAsync();
-            if (chainId.IsNullOrEmpty())
+            if (!chainId.IsNullOrEmpty())
             {
                 queryableAsync = queryableAsync.Where(c => c.ChainId == chainId);
             }
@@ -265,8 +266,11 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             {
                 totalCount = queryableAsync.Count();
                 await _cache.SetAsync(key, totalCount.ToString());
+                DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
+                    chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
                 return totalCount;
             }
+
 
             return long.Parse(count);
         }
@@ -326,7 +330,6 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                 overviewResp.MergeAccounts.SideChain = task.Result;
             }));
 
-
             tasks.Add(GetTokens("AELF", SymbolType.Token, _globalOptions.CurrentValue.SpecialSymbols)
                 .ContinueWith(task => { overviewResp.MergeTokens.MainChain = task.Result; }));
 
@@ -357,9 +360,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
 
             await Task.WhenAll(tasks);
-            overviewResp.MergeTps.MainChain = mainChainTps.ToString("F2");
-            overviewResp.MergeTps.SideChain = sideChainTps.ToString("F2");
-            overviewResp.MergeTps.Total = (sideChainTps + mainChainTps).ToString("F2");
+
+            overviewResp.MergeTps.Total =
+                (decimal.Parse(overviewResp.MergeTps.MainChain) + decimal.Parse(overviewResp.MergeTps.SideChain))
+                .ToString("F2");
 
             overviewResp.MergeTransactions.Total =
                 overviewResp.MergeTransactions.MainChain + overviewResp.MergeTransactions.SideChain;
