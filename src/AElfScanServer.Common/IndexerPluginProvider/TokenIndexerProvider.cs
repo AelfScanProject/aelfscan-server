@@ -329,6 +329,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                             type,
                             decimals
                         },
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
                         formatAmount,
                         transferCount
                     }
