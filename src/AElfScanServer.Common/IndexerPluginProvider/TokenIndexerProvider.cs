@@ -200,6 +200,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                         tokenName,
                         symbol,
                         collectionSymbol,
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
     					type,
                         decimals,
                         totalSupply,
