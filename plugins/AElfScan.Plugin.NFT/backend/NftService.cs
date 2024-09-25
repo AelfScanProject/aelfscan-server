@@ -227,16 +227,14 @@ public class NftService : INftService, ISingletonDependency
         var nftDetailDto = new NftDetailDto();
         var mainNftDetailDto = new NftDetailDto();
         var sideNftDetailDto = new NftDetailDto();
+        var mergeHolders = 0l;
 
         tasks.Add(GetNftCollectionDetailAsync("AELF", collectionSymbol).ContinueWith(task =>
         {
             mainNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result;
         }));
 
-        tasks.Add(EsIndex.GetTokenHolders(collectionSymbol, "").ContinueWith(task =>
-        {
-            nftDetailDto.MergeHolders = task.Result;
-        }));
+        tasks.Add(EsIndex.GetTokenHolders(collectionSymbol, "").ContinueWith(task => { mergeHolders = task.Result; }));
         tasks.Add(GetNftCollectionDetailAsync(_globalOptions.CurrentValue.SideChainId, collectionSymbol)
             .ContinueWith(task => { sideNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result; }));
 
@@ -270,7 +268,7 @@ public class NftService : INftService, ISingletonDependency
         nftDetailDto.MainChainFloorPriceOfUsd = mainNftDetailDto.FloorPriceOfUsd;
         nftDetailDto.SideChainFloorPriceOfUsd = sideNftDetailDto.FloorPriceOfUsd;
 
-
+        nftDetailDto.MergeHolders = mergeHolders;
         if (!mainNftDetailDto.Items.IsNullOrEmpty())
         {
             nftDetailDto.ChainIds.Add("AELF");
