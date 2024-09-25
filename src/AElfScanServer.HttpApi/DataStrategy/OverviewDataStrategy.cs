@@ -134,49 +134,6 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
     }
 
 
-    // public async Task<long> GetTokens(string chainId, SymbolType symbolType, List<string> specialSymbols = null)
-    // {
-    //     try
-    //     {
-    //         var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
-    //             .Index("tokeninfoindex")
-    //             .Query(q => q
-    //                 .Bool(b => b
-    //                     .Must(m =>
-    //                     {
-    //                         return !string.IsNullOrEmpty(chainId)
-    //                             ? m.Terms(t => t.Field("chainId").Terms(chainId))
-    //                             : null;
-    //                     })
-    //                     .Should(
-    //                         s => s.Term(t => t.Field("type").Value(symbolType)),
-    //                         s => s.Terms(t =>
-    //                             t.Field("symbol")
-    //                                 .Terms(specialSymbols))
-    //                     )
-    //                     .MinimumShouldMatch(1)
-    //                 )
-    //             )
-    //             .Aggregations(a => a
-    //                 .Cardinality("unique_symbol", t => t.Field("symbol"))
-    //             );
-    //
-    //         var searchResponse = await _elasticClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
-    //
-    //         var total = searchResponse.Aggregations.Cardinality("unique_symbol").Value;
-    //         DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total}",
-    //             string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total);
-    //         return (long)total;
-    //     }
-    //     catch (Exception e)
-    //     {
-    //         DataStrategyLogger.LogError(e, "get token count err");
-    //     }
-    //
-    //     return 0;
-    // }
-
-
     public async Task<long> GetTokens(string chainId, SymbolType symbolType, List<string> specialSymbols = null)
     {
         try
@@ -190,7 +147,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                         var mustClause = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>();
                         if (!chainId.IsNullOrEmpty())
                         {
-                            mustClause.Add(m => m.Terms(t => t.Field("chainId").Terms(chainId)));
+                            mustClause.Add(m => m.Terms(t => t.Field("chainIds.keyword").Terms(chainId)));
                         }
 
                         var shouldClause = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>
