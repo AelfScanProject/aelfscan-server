@@ -341,7 +341,7 @@ public class TokenService : ITokenService, ISingletonDependency
             var tokenHolderInfoDto = new TokenHolderInfoDto();
             tokenHolderInfoDto.Quantity = indexerTokenHolderInfoDto.FormatAmount;
             tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address + indexerTokenHolderInfoDto.ChainId,
+                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, indexerTokenHolderInfoDto.ChainId,
                     contractInfoDict);
             if (tokenSupply != 0)
             {

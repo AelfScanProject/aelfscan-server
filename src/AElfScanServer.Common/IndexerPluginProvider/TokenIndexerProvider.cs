@@ -541,8 +541,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
             tokenTransferDto.TransactionFeeList =
                 await _tokenInfoProvider.ConvertTransactionFeeAsync(priceDict, indexerTransferInfoDto.ExtraProperties);
-            tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From, contractInfoDict);
-            tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To, contractInfoDict);
+            tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
+            tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
             tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }

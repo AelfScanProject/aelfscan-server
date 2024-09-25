@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Enums;
@@ -13,6 +14,12 @@ public class NftTransferInfoDto
     public long BlockTime { get; set; }
     public CommonAddressDto From { get; set; }
     public CommonAddressDto To { get; set; }
+    
+    public DateTime DateTime
+    {
+        get => DateTimeOffset.FromUnixTimeSeconds(BlockTime).DateTime;
+    }
+
     public decimal Value { get; set; }
     public TokenBaseInfo Item { get; set; }
     public List<TransactionFeeDto> TransactionFeeList { get; set; }
