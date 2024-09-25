@@ -14,5 +14,5 @@ public class AccountTokenIndex : AElfIndexerEntity<string>, IEntityMappingEntity
     public long Amount { get; set; }
     public decimal FormatAmount { get; set; }
     public long TransferCount { get; set; }
-    [Keyword] public List<string> ChainIds { get; set; } = new();
+    public List<string> ChainIds { get; set; } = new();
 }
