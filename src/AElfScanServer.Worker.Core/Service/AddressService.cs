@@ -121,6 +121,7 @@ public class AddressService : IAddressService, ISingletonDependency
 
     public async Task PullTokenInfo()
     {
+        // await SaveHolderList(default, new Dictionary<string, List<string>>());
         var key = "token_transfer_change";
         var beginTime = await GetBeginTime(key);
         _logger.LogInformation("PullTokenInfo bengin {Time}",

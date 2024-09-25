@@ -202,12 +202,10 @@ public class TokenService : ITokenService, ISingletonDependency
         var tokenDetailDto = new TokenDetailDto();
         var mainTokenDetailDto = new TokenDetailDto();
         var sideTokenDetailDto = new TokenDetailDto();
+        var mergeHolders = 0l;
 
 
-        tasks.Add(EsIndex.GetTokenHolders(symbol, "").ContinueWith(task =>
-        {
-            tokenDetailDto.MergeHolders = task.Result;
-        }));
+        tasks.Add(EsIndex.GetTokenHolders(symbol, "").ContinueWith(task => { mergeHolders = task.Result; }));
 
         tasks.Add(GetTokenDetailAsync(symbol, "AELF").ContinueWith(task => { mainTokenDetailDto = task.Result; }));
         tasks.Add(GetTokenDetailAsync(symbol, _globalOptions.CurrentValue.SideChainId)
@@ -239,16 +237,20 @@ public class TokenService : ITokenService, ISingletonDependency
         tokenDetailDto.MergeTransferCount = tokenDetailDto.MainChainTransferCount +
                                             tokenDetailDto.SideChainTransferCount;
 
+        tokenDetailDto.MergeHolders = mergeHolders;
 
+        var list = new List<string>();
         if (mainTokenDetailDto.Holders > 0)
         {
-            tokenDetailDto.ChainIds.Add("AELF");
+            list.Add("AELF");
         }
 
         if (sideTokenDetailDto.Holders > 0)
         {
-            tokenDetailDto.ChainIds.Add(_globalOptions.CurrentValue.SideChainId);
+            list.Add(_globalOptions.CurrentValue.SideChainId);
         }
+
+        tokenDetailDto.ChainIds = list;
 
         return tokenDetailDto;
     }

@@ -555,6 +555,56 @@ public class AddressAppService : IAddressAppService
         };
     }
 
+    
+    public async Task<GetAddressTokenListResultDto> GetMergeAddressTokenListAsync(
+        GetAddressTokenListInput input)
+    {
+        input.SetDefaultSort();
+        Dictionary<string, IndexerTokenInfoDto> tokenDict;
+        IndexerTokenHolderInfoListDto holderInfos;
+        //search token name or symbol
+        if (!input.Search.IsNullOrWhiteSpace())
+        {
+            var tokenListInput = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
+            var tokenInfos = await _tokenIndexerProvider.GetAllTokenInfosAsync(tokenListInput);
+            if (tokenInfos.IsNullOrEmpty())
+            {
+                return new GetAddressTokenListResultDto();
+            }
+
+            tokenDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
+            holderInfos = await GetTokenHolderInfosAsync(input, searchSymbols: tokenDict.Keys.ToList());
+            if (holderInfos.Items.IsNullOrEmpty())
+            {
+                return new GetAddressTokenListResultDto();
+            }
+        }
+        else
+        {
+            holderInfos = await GetTokenHolderInfosAsync(input);
+            if (holderInfos.Items.IsNullOrEmpty())
+            {
+                return new GetAddressTokenListResultDto();
+            }
+
+            tokenDict = await _tokenIndexerProvider.GetTokenDictAsync(input.ChainId,
+                holderInfos.Items.Select(i => i.Token.Symbol).ToList());
+        }
+
+        var elfPriceDto =
+            await _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
+
+        var tokenInfoList = await GetTokenInfoListAsync(holderInfos.Items, tokenDict, elfPriceDto);
+
+        return new GetAddressTokenListResultDto
+        {
+            AssetInUsd = tokenInfoList.Sum(i => i.ValueOfUsd),
+            AssetInElf = tokenInfoList.Sum(i => i.ValueOfElf),
+            Total = holderInfos.TotalCount,
+            List = tokenInfoList
+        };
+    }
+    
     public async Task<GetAddressNftListResultDto> GetAddressNftListAsync(GetAddressTokenListInput input)
     {
         IndexerTokenHolderInfoListDto holderInfos;

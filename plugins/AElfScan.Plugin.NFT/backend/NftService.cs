@@ -391,6 +391,7 @@ public class NftService : INftService, ISingletonDependency
             tokenHolderInfoDto.Value =
                 Math.Round(indexerTokenHolderInfoDto.FormatAmount * priceDto.Price, CommonConstant.UsdValueDecimals);
             tokenHolderInfoDto.ChainIds = indexerTokenHolderInfoDto.ChainIds;
+            _logger.LogInformation("nft holder info chainIds :{chainIds}", indexerTokenHolderInfoDto.ChainIds);
             list.Add(tokenHolderInfoDto);
         }
 
