@@ -199,12 +199,15 @@ public class TokenService : ITokenService, ISingletonDependency
     public async Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol, string chainId)
     {
         var tasks = new List<Task>();
-
         var tokenDetailDto = new TokenDetailDto();
-
-
         var mainTokenDetailDto = new TokenDetailDto();
         var sideTokenDetailDto = new TokenDetailDto();
+
+
+        tasks.Add(EsIndex.GetTokenHolders(symbol, "").ContinueWith(task =>
+        {
+            tokenDetailDto.MergeHolders = task.Result;
+        }));
 
         tasks.Add(GetTokenDetailAsync(symbol, "AELF").ContinueWith(task => { mainTokenDetailDto = task.Result; }));
         tasks.Add(GetTokenDetailAsync(symbol, _globalOptions.CurrentValue.SideChainId)
@@ -228,11 +231,8 @@ public class TokenService : ITokenService, ISingletonDependency
         tokenDetailDto.MergeCirculatingSupply = tokenDetailDto.MainChainCirculatingSupply +
                                                 tokenDetailDto.SideChainCirculatingSupply;
 
-
         tokenDetailDto.MainChainHolders = mainTokenDetailDto.Holders;
         tokenDetailDto.SideChainHolders = sideTokenDetailDto.Holders;
-        tokenDetailDto.MergeHolders = tokenDetailDto.MainChainHolders +
-                                      tokenDetailDto.SideChainHolders;
 
         tokenDetailDto.MainChainTransferCount = mainTokenDetailDto.TransferCount;
         tokenDetailDto.SideChainTransferCount = sideTokenDetailDto.TransferCount;

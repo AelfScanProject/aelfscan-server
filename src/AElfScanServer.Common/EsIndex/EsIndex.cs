@@ -111,11 +111,6 @@ public class EsIndex
             filterQueries.Add(new TermQuery { Field = "token.symbol", Value = input.Symbol });
         }
 
-        if (!string.IsNullOrEmpty(input.CollectionSymbol))
-        {
-            filterQueries.Add(new TermQuery { Field = "token.collectionSymbol", Value = input.CollectionSymbol });
-        }
-
         var searchRequest = new SearchRequest("accounttokenindex")
         {
             Size = (int)input.MaxResultCount,
@@ -145,5 +140,26 @@ public class EsIndex
         var total = response.Total;
 
         return (new List<AccountTokenIndex>(results), total);
+    }
+
+
+    public static async Task<long> GetTokenHolders(
+        string symbol, string chainId)
+    {
+        var countResponse = await esClient.CountAsync<AccountTokenIndex>(c => c
+            .Index("accounttokenindex")
+            .Query(q => q
+                .Bool(b => b
+                    .Must(must => must
+                            .Term(t => t.Field(f => f.Token.Symbol).Value(symbol)),
+                        must => !string.IsNullOrEmpty(chainId)
+                            ? must.Terms(t => t.Field(f => f.ChainIds).Terms(chainId))
+                            : null
+                    )
+                )
+            )
+        );
+
+        return countResponse.Count;
     }
 }

@@ -6,7 +6,7 @@ using Nest;
 
 namespace AElfScanServer.Common.Dtos.MergeData;
 
-public class AccountTokenIndex :  AElfIndexerEntity<string>, IEntityMappingEntity
+public class AccountTokenIndex : AElfIndexerEntity<string>, IEntityMappingEntity
 {
     [Keyword] public string ChainId { get; set; }
     [Keyword] public string Address { get; set; }
@@ -14,5 +14,5 @@ public class AccountTokenIndex :  AElfIndexerEntity<string>, IEntityMappingEntit
     public long Amount { get; set; }
     public decimal FormatAmount { get; set; }
     public long TransferCount { get; set; }
-    public List<string> ChainIds { get; set; } = new();
+    [Keyword] public List<string> ChainIds { get; set; } = new();
 }

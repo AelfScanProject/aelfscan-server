@@ -233,6 +233,10 @@ public class NftService : INftService, ISingletonDependency
             mainNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result;
         }));
 
+        tasks.Add(EsIndex.GetTokenHolders(collectionSymbol, "").ContinueWith(task =>
+        {
+            nftDetailDto.MergeHolders = task.Result;
+        }));
         tasks.Add(GetNftCollectionDetailAsync(_globalOptions.CurrentValue.SideChainId, collectionSymbol)
             .ContinueWith(task => { sideNftDetailDto = task.Result == null ? new NftDetailDto() : task.Result; }));
 
@@ -254,7 +258,6 @@ public class NftService : INftService, ISingletonDependency
             (decimal.Parse(nftDetailDto.MainChainItems) + decimal.Parse(nftDetailDto.SideChainItems)).ToString();
         nftDetailDto.MainChainHolders = mainNftDetailDto.Holders;
         nftDetailDto.SideChainHolders = sideNftDetailDto.Holders;
-        nftDetailDto.MergeHolders = nftDetailDto.MainChainHolders + nftDetailDto.SideChainHolders;
 
 
         nftDetailDto.MainChainTransferCount = mainNftDetailDto.TransferCount;
@@ -330,7 +333,7 @@ public class NftService : INftService, ISingletonDependency
         var result = new ListResponseDto<TokenHolderInfoDto>();
 
         var tasks = new List<Task>();
-
+        input.Symbol = input.CollectionSymbol;
         var accountTokenIndices = new List<AccountTokenIndex>();
         var list = new List<TokenHolderInfoDto>();
         var totalCount = 0L;
