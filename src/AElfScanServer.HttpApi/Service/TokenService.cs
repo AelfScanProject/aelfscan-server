@@ -452,7 +452,7 @@ public class TokenService : ITokenService, ISingletonDependency
                     CommonConstant.PercentageValueDecimals);
             }
 
-
+            tokenListDto.ChainIds.Add(indexerTokenInfoDto.Metadata.ChainId);
             list.Add(tokenListDto);
         }
 
