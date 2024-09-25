@@ -86,7 +86,8 @@ public class NftService : INftService, ISingletonDependency
         _memoryCache = memoryCache;
         var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
         var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool);
+        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
+        _elasticClient = new ElasticClient(settings);
         EsIndex.SetElasticClient(_elasticClient);
         _globalOptions = globalOptions;
     }
@@ -326,6 +327,7 @@ public class NftService : INftService, ISingletonDependency
     {
         input.SetDefaultSort();
 
+        input.Symbol = input.CollectionSymbol;
         var result = new ListResponseDto<TokenHolderInfoDto>();
 
         var tasks = new List<Task>();
