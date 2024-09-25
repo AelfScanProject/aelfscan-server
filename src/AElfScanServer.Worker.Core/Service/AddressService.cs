@@ -33,6 +33,8 @@ public interface IAddressService
     Task PatchAddressInfoAsync(string chainId, string address, List<AddressIndex> list);
 
     public Task PullTokenInfo();
+    
+    public Task SaveCollectionHolderList();
 
     public Task DeleteMergeBlock();
 }
@@ -456,5 +458,46 @@ public class AddressService : IAddressService, ISingletonDependency
         }
 
         return beginDate;
+    }
+    
+    
+    public async Task SaveCollectionHolderList()
+    {
+            var queryCount = 0;
+            var limit = 1000;
+            var skip = 0;
+            do
+            {
+                var searchResponse = _elasticClient.Search<TokenInfoIndex>(s => s
+                    .Index("tokeninfoindex")
+                    .Query(q => q
+                        .Bool(b => b
+                            .Must(
+                                m =>
+                                {
+                                    return m.Term(t => t
+                                        .Field(f => f.Type).Value(SymbolType.Nft_Collection)
+                                    );
+                                })
+                        )
+                    )
+                    .Sort(sort => sort
+                        .Field(f => f
+                            .Field(c => c.Symbol)
+                            .Order(SortOrder.Ascending)
+                        )
+                    )
+                    .From(skip)
+                    .Size(limit)
+                );
+                var tokenList = searchResponse.Documents.ToList();
+                foreach (var item in tokenList)
+                {
+                    await SaveTokenHolderAsync(item.Symbol, new List<string>());
+                }
+
+                queryCount = tokenList.Count;
+                skip += limit;
+            } while (queryCount == limit);
     }
 }
