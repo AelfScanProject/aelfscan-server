@@ -344,7 +344,7 @@ public class NftService : INftService, ISingletonDependency
 
         var indexerTokenList = new List<IndexerTokenInfoDto>();
 
-        tasks.Add(_tokenIndexerProvider.GetTokenDetailAsync("", input.Symbol).ContinueWith(task =>
+        tasks.Add(_tokenIndexerProvider.GetTokenDetailAsync("", input.CollectionSymbol).ContinueWith(task =>
         {
             indexerTokenList = task.Result;
         }));
@@ -358,6 +358,7 @@ public class NftService : INftService, ISingletonDependency
         }
 
         var tokenSupply = indexerTokenList.Sum(c => c.ItemCount);
+        _logger.LogInformation("nft supply :{supply},{symbol}", tokenSupply, input.CollectionSymbol);
         var addressList = accountTokenIndices
             .Where(value => !string.IsNullOrEmpty(value.Address))
             .Select(value => value.Address).Distinct().ToList();
@@ -366,6 +367,7 @@ public class NftService : INftService, ISingletonDependency
         var contractInfoDictTask = _genesisPluginProvider.GetContractListAsync("", addressList);
 
         await Task.WhenAll(priceDtoTask, contractInfoDictTask);
+
 
         var priceDto = await priceDtoTask;
         var contractInfoDict = await contractInfoDictTask;
