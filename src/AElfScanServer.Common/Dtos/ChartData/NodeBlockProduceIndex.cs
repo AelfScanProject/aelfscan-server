@@ -621,7 +621,7 @@ public class BlockIndex : AElfIndexerEntity<string>, IEntityMappingEntity
     }
 
     public long BlockHeight { get; set; }
-    [Keyword] public long Timestamp { get; set; }
+    public long Timestamp { get; set; }
     [Keyword] public string ChainId { get; set; }
     public int TransactionCount { get; set; }
     [Keyword] public string TimeSpan { get; set; }

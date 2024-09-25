@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
 using AElf.Indexing.Elasticsearch;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
@@ -12,7 +13,6 @@ using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
-using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
 using Elasticsearch.Net;
 using Microsoft.Extensions.Caching.Distributed;
@@ -22,6 +22,7 @@ using Nest;
 using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
+using AddressIndex = AElfScanServer.HttpApi.Dtos.AddressIndex;
 
 namespace AElfScanServer.Worker.Core.Service;
 
@@ -32,6 +33,8 @@ public interface IAddressService
     Task PatchAddressInfoAsync(string chainId, string address, List<AddressIndex> list);
 
     public Task PullTokenInfo();
+
+    public Task DeleteMergeBlock();
 }
 
 public class AddressService : IAddressService, ISingletonDependency
@@ -64,6 +67,25 @@ public class AddressService : IAddressService, ISingletonDependency
         var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
         _elasticClient = new ElasticClient(settings);
         EsIndex.SetElasticClient(_elasticClient);
+    }
+
+    public async Task DeleteMergeBlock()
+    {
+        var twoDaysAgo = DateTimeOffset.UtcNow.AddDays(-2).ToUnixTimeSeconds();
+        var deleteResponse = _elasticClient.DeleteByQuery<BlockIndex>(del => del
+            .Index("blockindex")
+            .Query(q => q
+                .Range(r => r
+                    .Field("timestamp")
+                    .LessThanOrEquals(twoDaysAgo)
+                )
+            )
+        );
+
+        if (deleteResponse.IsValid)
+        {
+            _logger.LogInformation("DeleteMergeBlock: {Count}", deleteResponse.Total);
+        }
     }
 
     public async Task<(long, List<AddressIndex>)> GetAddressIndexAsync(string chainId, List<string> addressList)
@@ -104,15 +126,15 @@ public class AddressService : IAddressService, ISingletonDependency
         _logger.LogInformation("PullTokenInfo bengin {Time}",
             TimeHelper.GetTimeStampFromDateTimeInSeconds(beginTime).ToString());
         await AddCreatedTokenList(beginTime);
-         Dictionary<string,List<string>> symbolMap;
-         (symbolMap, beginTime) = await GetChangeSymbolList(beginTime);
+        Dictionary<string, List<string>> symbolMap;
+        (symbolMap, beginTime) = await GetChangeSymbolList(beginTime);
 
         if (beginTime != default && symbolMap.IsNullOrEmpty())
         {
             return;
         }
 
-         await SaveMergeTokenList(symbolMap.Keys.ToList());
+        await SaveMergeTokenList(symbolMap.Keys.ToList());
         await SaveHolderList(beginTime, symbolMap);
         if (beginTime == default)
         {
@@ -187,72 +209,75 @@ public class AddressService : IAddressService, ISingletonDependency
 
         symbolList[indexerTransferInfoDto.Token.Symbol] = addresList;
     }
- private async Task AddCreatedTokenList(DateTime beginBlockTime)
-     {
-         try
-         {
-             var skip = 0;
-             var maxResultCount = 1000;
-             var tokenListInput = new TokenListInput()
-             {
-                 Types = new List<SymbolType>() { SymbolType.Token,SymbolType.Nft_Collection,SymbolType.Nft},
-                 BeginBlockTime = beginBlockTime,
-                 SkipCount = skip,
-                 MaxResultCount = maxResultCount,
-                 Sort = "Desc",
-                 OrderBy = "Symbol"
-             };
-             while (true)
-             {
-                 tokenListInput.SkipCount = skip;
-                 var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
-                 if (tokenListAsync.Items.Count == 0)
-                 {
-                     break;
-                 }
 
-                 var tokenInfoList =
-                     _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
-               
-                
-                 foreach (var tokenInfoIndex in tokenInfoList)
-                 {
-                     tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
-                 }
-                 await _tokenInfoRepository.AddOrUpdateManyAsync(tokenInfoList);
-                 _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
-                 skip += maxResultCount;
-             }
-         }
-         catch (Exception e)
-         {
-             _logger.LogError(e, "PullTokenInfo error");
-         }
-     }
-     private async Task SaveMergeTokenList(List<string> symbolList)
-     {
-         try
-         {
-             var skip = 0;
-             var maxResultCount = 1000;
-             TokenInfoIndex lastTokenIndex = null;
-             var tokenListInput = new TokenListInput()
-             {
-                 Types = new List<SymbolType>() { SymbolType.Token,SymbolType.Nft_Collection,SymbolType.Nft},
-                 Symbols = symbolList,
-                 SkipCount = skip,
-                 MaxResultCount = maxResultCount,
-                 Sort = "Desc",
-                 OrderBy = "Symbol"
-             };
-             while (true)
-             {
-                 tokenListInput.SkipCount = skip;
-                 var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
-                 if (tokenListAsync.Items.Count == 0)
-                 {
-                     break;
-                 }
+    private async Task AddCreatedTokenList(DateTime beginBlockTime)
+    {
+        try
+        {
+            var skip = 0;
+            var maxResultCount = 1000;
+            var tokenListInput = new TokenListInput()
+            {
+                Types = new List<SymbolType>() { SymbolType.Token, SymbolType.Nft_Collection, SymbolType.Nft },
+                BeginBlockTime = beginBlockTime,
+                SkipCount = skip,
+                MaxResultCount = maxResultCount,
+                Sort = "Desc",
+                OrderBy = "Symbol"
+            };
+            while (true)
+            {
+                tokenListInput.SkipCount = skip;
+                var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
+                if (tokenListAsync.Items.Count == 0)
+                {
+                    break;
+                }
+
+                var tokenInfoList =
+                    _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
+
+
+                foreach (var tokenInfoIndex in tokenInfoList)
+                {
+                    tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
+                }
+
+                await _tokenInfoRepository.AddOrUpdateManyAsync(tokenInfoList);
+                _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
+                skip += maxResultCount;
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "PullTokenInfo error");
+        }
+    }
+
+    private async Task SaveMergeTokenList(List<string> symbolList)
+    {
+        try
+        {
+            var skip = 0;
+            var maxResultCount = 1000;
+            TokenInfoIndex lastTokenIndex = null;
+            var tokenListInput = new TokenListInput()
+            {
+                Types = new List<SymbolType>() { SymbolType.Token, SymbolType.Nft_Collection, SymbolType.Nft },
+                Symbols = symbolList,
+                SkipCount = skip,
+                MaxResultCount = maxResultCount,
+                Sort = "Desc",
+                OrderBy = "Symbol"
+            };
+            while (true)
+            {
+                tokenListInput.SkipCount = skip;
+                var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
+                if (tokenListAsync.Items.Count == 0)
+                {
+                    break;
+                }
 
                 var tokenInfoList =
                     _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
@@ -430,6 +455,6 @@ public class AddressService : IAddressService, ISingletonDependency
             beginDate = new DateTime(2024, 9, 10, 0, 0, 0);
         }
 
-         return beginDate;
-     }
+        return beginDate;
+    }
 }

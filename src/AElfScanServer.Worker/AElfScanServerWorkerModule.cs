@@ -226,5 +226,7 @@ public class AElfScanServerWorkerModule : AbpModule
         context.AddBackgroundWorkerAsync<ContractFileWorker>();
         context.AddBackgroundWorkerAsync<TokenHolderPercentWorker>();
         context.AddBackgroundWorkerAsync<TokenInfoWorker>();
+        context.AddBackgroundWorkerAsync<DeleteMergeBlocksWorker>();
+
     }
 }
