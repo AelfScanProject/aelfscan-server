@@ -179,7 +179,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Variables = new
             {
                 chainId = input.ChainId, types = input.Types, symbols = input.Symbols, skipCount = input.SkipCount,
-                maxResultCount = input.MaxResultCount, collectionSymbols = input.CollectionSymbols,beginBlockTime = input.BeginBlockTime,
+                maxResultCount = input.MaxResultCount, collectionSymbols = input.CollectionSymbols,
+                beginBlockTime = input.BeginBlockTime,
                 search = input.Search, sort = input.Sort, orderBy = input.OrderBy,
                 exactSearch = input.ExactSearch, fuzzySearch = input.FuzzySearch, searchAfter = input.SearchAfter
             }
@@ -486,7 +487,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             MaxResultCount = symbols.Count
         };
         var indexerTokenListDto = await GetTokenListAsync(input);
-        return indexerTokenListDto.Items.ToDictionary(token => token.Symbol, token => token);
+        return indexerTokenListDto.Items.ToDictionary(token => token.Symbol + token.Metadata.ChainId, token => token);
     }
 
     public async Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input)
@@ -532,7 +533,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         {
             var tokenTransferDto =
                 _objectMapper.Map<IndexerTransferInfoDto, TokenTransferInfoDto>(indexerTransferInfoDto);
-            if (tokenDict.TryGetValue(indexerTransferInfoDto.Token.Symbol, out var tokenInfo))
+            if (tokenDict.TryGetValue(indexerTransferInfoDto.Token.Symbol + indexerTransferInfoDto.Metadata.ChainId,
+                    out var tokenInfo))
             {
                 tokenTransferDto.Symbol = tokenInfo.Symbol;
                 tokenTransferDto.SymbolName = tokenInfo.TokenName;
