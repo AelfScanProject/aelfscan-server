@@ -203,7 +203,7 @@ public class ContractAppService : IContractAppService
             tempContractRecord.Version = t.ContractInfo.ContractVersion;
             tempContractRecord.ContractOperationType = t.OperationType;
             return tempContractRecord;
-        }).OrderByDescending(t => t.Version).ToList();
+        }).OrderByDescending(t => t.BlockHeight).ToList();
 
         return result;
     }
