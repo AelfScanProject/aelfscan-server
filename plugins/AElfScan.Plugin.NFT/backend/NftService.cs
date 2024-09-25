@@ -381,7 +381,7 @@ public class NftService : INftService, ISingletonDependency
             if (tokenSupply != 0)
             {
                 tokenHolderInfoDto.Percentage =
-                    Math.Round((decimal)indexerTokenHolderInfoDto.Amount / tokenSupply * 100,
+                    Math.Round((decimal)indexerTokenHolderInfoDto.FormatAmount / tokenSupply * 100,
                         CommonConstant.PercentageValueDecimals);
             }
 
