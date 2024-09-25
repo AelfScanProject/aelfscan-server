@@ -104,6 +104,18 @@ public class EsIndex
             }
         }
 
+        var filterQueries = new List<QueryContainer>();
+
+        if (!string.IsNullOrEmpty(input.Symbol))
+        {
+            filterQueries.Add(new TermQuery { Field = "token.symbol", Value = input.Symbol });
+        }
+
+        if (!string.IsNullOrEmpty(input.CollectionSymbol))
+        {
+            filterQueries.Add(new TermQuery { Field = "token.collectionSymbol", Value = input.CollectionSymbol });
+        }
+
         var searchRequest = new SearchRequest("accounttokenindex")
         {
             Size = (int)input.MaxResultCount,
@@ -114,14 +126,12 @@ public class EsIndex
             },
             Query = new BoolQuery
             {
-                Filter = new List<QueryContainer>
-                {
-                    new TermQuery { Field = "token.symbol", Value = "ELF" }
-                }
+                Filter = filterQueries
             },
             SearchAfter = input.SearchAfter != null && !input.SearchAfter.IsNullOrEmpty()
                 ? new List<object> { input.SearchAfter[0], input.SearchAfter[1] }
-                : null
+                : null,
+            TrackTotalHits = true
         };
 
         var response = esClient.Search<AccountTokenIndex>(searchRequest);

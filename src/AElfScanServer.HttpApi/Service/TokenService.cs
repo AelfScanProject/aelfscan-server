@@ -271,6 +271,11 @@ public class TokenService : ITokenService, ISingletonDependency
 
     public async Task<ListResponseDto<TokenHolderInfoDto>> GetTokenHolderInfosAsync(TokenHolderInput input)
     {
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeTokenHolderInfosAsync(input);
+        }
+
         input.SetDefaultSort();
 
         var indexerTokenHolderInfo = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
@@ -285,6 +290,81 @@ public class TokenService : ITokenService, ISingletonDependency
         };
     }
 
+    public async Task<ListResponseDto<TokenHolderInfoDto>> GetMergeTokenHolderInfosAsync(TokenHolderInput input)
+    {
+        input.SetDefaultSort();
+
+        var result = new ListResponseDto<TokenHolderInfoDto>();
+
+        var tasks = new List<Task>();
+
+        var accountTokenIndices = new List<AccountTokenIndex>();
+        var list = new List<TokenHolderInfoDto>();
+        var totalCount = 0L;
+
+        tasks.Add(EsIndex.SearchMergeAccountList(input).ContinueWith(task =>
+        {
+            accountTokenIndices = task.Result.list;
+            totalCount = task.Result.totalCount;
+        }));
+
+
+        var indexerTokenList = new List<IndexerTokenInfoDto>();
+
+        tasks.Add(_tokenIndexerProvider.GetTokenDetailAsync("", input.Symbol).ContinueWith(task =>
+        {
+            indexerTokenList = task.Result;
+        }));
+
+
+        await tasks.WhenAll();
+
+        if (indexerTokenList.IsNullOrEmpty())
+        {
+            return result;
+        }
+
+        var tokenSupply = indexerTokenList.Sum(c => c.Supply);
+        var addressList = accountTokenIndices
+            .Where(value => !string.IsNullOrEmpty(value.Address))
+            .Select(value => value.Address).Distinct().ToList();
+
+        var priceDtoTask = _tokenPriceService.GetTokenPriceAsync(input.Symbol, CurrencyConstant.UsdCurrency);
+        var contractInfoDictTask = _genesisPluginProvider.GetContractListAsync("", addressList);
+
+        await Task.WhenAll(priceDtoTask, contractInfoDictTask);
+
+        var priceDto = await priceDtoTask;
+        var contractInfoDict = await contractInfoDictTask;
+        foreach (var indexerTokenHolderInfoDto in accountTokenIndices)
+        {
+            var tokenHolderInfoDto = new TokenHolderInfoDto();
+            tokenHolderInfoDto.Quantity = indexerTokenHolderInfoDto.FormatAmount;
+            tokenHolderInfoDto.Address =
+                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, indexerTokenHolderInfoDto.ChainId,
+                    contractInfoDict);
+            if (tokenSupply != 0)
+            {
+                tokenHolderInfoDto.Percentage =
+                    Math.Round((decimal)indexerTokenHolderInfoDto.Amount / tokenSupply * 100,
+                        CommonConstant.PercentageValueDecimals);
+            }
+
+            tokenHolderInfoDto.Value =
+                Math.Round(indexerTokenHolderInfoDto.FormatAmount * priceDto.Price, CommonConstant.UsdValueDecimals);
+            tokenHolderInfoDto.ChainIds = indexerTokenHolderInfoDto.ChainIds;
+            list.Add(tokenHolderInfoDto);
+        }
+
+
+        return new ListResponseDto<TokenHolderInfoDto>
+        {
+            Total = totalCount,
+            List = list
+        };
+    }
+
+
     public async Task<CommonTokenPriceDto> GetTokenPriceInfoAsync(CurrencyDto input)
     {
         return await _tokenPriceService.GetTokenPriceAsync(input.BaseCurrency, input.QuoteCurrency);
@@ -298,6 +378,7 @@ public class TokenService : ITokenService, ISingletonDependency
 
         return indexerTokenList[0];
     }
+
 
     private async Task<List<TokenHolderInfoDto>> ConvertIndexerTokenHolderInfoDtoAsync(
         List<IndexerTokenHolderInfoDto> indexerTokenHolderInfo, string chainId, string symbol)
@@ -343,6 +424,7 @@ public class TokenService : ITokenService, ISingletonDependency
 
         return list;
     }
+
 
     private async Task<List<TokenCommonDto>> ConvertIndexerTokenDtoAsync(List<IndexerTokenInfoDto> indexerTokenList,
         string chainId)

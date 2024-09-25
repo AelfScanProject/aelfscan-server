@@ -183,7 +183,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         {
             var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
                 .Index("tokeninfoindex")
-                .Size(0)
+                .Size(0).TrackTotalHits()
                 .Query(q => q
                     .Bool(b =>
                     {

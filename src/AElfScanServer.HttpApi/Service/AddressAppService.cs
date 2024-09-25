@@ -177,6 +177,7 @@ public class AddressAppService : IAddressAppService
         };
 
 
+        var sum = tokenInfoList.Sum(c=>c.Supply);
         var contractInfosDict =
             await _indexerGenesisProvider.GetContractListAsync("",
                 accountList.Select(address => address.Address).ToList());
@@ -188,7 +189,7 @@ public class AddressAppService : IAddressAppService
             var addressResult = _objectMapper.Map<AccountTokenIndex, GetAddressInfoResultDto>(info);
             addressResult.Balance = info.FormatAmount;
             addressResult.TransactionCount = info.TransferCount;
-            addressResult.Percentage = Math.Round((decimal)info.Amount / tokenInfoList.First().Supply * 100,
+            addressResult.Percentage = Math.Round((decimal)info.Amount / sum * 100,
                 CommonConstant.LargerPercentageValueDecimals);
 
 
