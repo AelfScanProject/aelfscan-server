@@ -91,6 +91,52 @@ public class EsIndex
     }
 
 
+    // public static async Task<(List<AccountTokenIndex> list, long totalCount)> SearchMergeAccountList(
+    //     TokenHolderInput input)
+    // {
+    //     var sortOrder = SortOrder.Descending;
+    //
+    //     if (input.OrderInfos != null && !input.OrderInfos.IsNullOrEmpty())
+    //     {
+    //         if (input.OrderInfos.First().Sort == "Asc")
+    //         {
+    //             sortOrder = SortOrder.Ascending;
+    //         }
+    //     }
+    //
+    //     var searchRequest = new SearchRequest("accounttokenindex")
+    //     {
+    //         Size = (int)input.MaxResultCount,
+    //         Sort = new List<ISort>
+    //         {
+    //             new FieldSort { Field = "formatAmount", Order = sortOrder },
+    //             new FieldSort { Field = "address", Order = sortOrder }
+    //         },
+    //         Query = new BoolQuery
+    //         {
+    //             Filter = new List<QueryContainer>
+    //             {
+    //                 new TermQuery { Field = "token.symbol", Value = input.Symbol }
+    //             }
+    //         },
+    //         SearchAfter = input.SearchAfter != null && !input.SearchAfter.IsNullOrEmpty()
+    //             ? new List<object> { input.SearchAfter[0], input.SearchAfter[1] }
+    //             : null
+    //     };
+    //
+    //     var response = esClient.Search<AccountTokenIndex>(searchRequest);
+    //
+    //     if (!response.IsValid)
+    //     {
+    //         throw new Exception($"Error occurred: {response.OriginalException.Message}");
+    //     }
+    //
+    //     var results = response.Documents;
+    //     var total = response.Total;
+    //
+    //     return (new List<AccountTokenIndex>(results), total);
+    // }
+    
     public static async Task<(List<AccountTokenIndex> list, long totalCount)> SearchMergeAccountList(
         TokenHolderInput input)
     {
@@ -104,6 +150,18 @@ public class EsIndex
             }
         }
 
+        var filterQueries = new List<QueryContainer>();
+
+        if (!string.IsNullOrEmpty(input.Symbol))
+        {
+            filterQueries.Add(new TermQuery { Field = "token.symbol", Value = input.Symbol });
+        }
+
+        if (!string.IsNullOrEmpty(input.CollectionSymbol))
+        {
+            filterQueries.Add(new TermQuery { Field = "token.collectionSymbol", Value = input.CollectionSymbol });
+        }
+
         var searchRequest = new SearchRequest("accounttokenindex")
         {
             Size = (int)input.MaxResultCount,
@@ -114,10 +172,7 @@ public class EsIndex
             },
             Query = new BoolQuery
             {
-                Filter = new List<QueryContainer>
-                {
-                    new TermQuery { Field = "token.symbol", Value = input.Symbol }
-                }
+                Filter = filterQueries
             },
             SearchAfter = input.SearchAfter != null && !input.SearchAfter.IsNullOrEmpty()
                 ? new List<object> { input.SearchAfter[0], input.SearchAfter[1] }
@@ -136,4 +191,5 @@ public class EsIndex
 
         return (new List<AccountTokenIndex>(results), total);
     }
+
 }

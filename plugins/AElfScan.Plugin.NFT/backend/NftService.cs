@@ -327,7 +327,6 @@ public class NftService : INftService, ISingletonDependency
     {
         input.SetDefaultSort();
 
-        input.Symbol = input.CollectionSymbol;
         var result = new ListResponseDto<TokenHolderInfoDto>();
 
         var tasks = new List<Task>();
