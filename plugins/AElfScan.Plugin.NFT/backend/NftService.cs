@@ -403,6 +403,11 @@ public class NftService : INftService, ISingletonDependency
 
     public async Task<NftInventorysDto> GetNftCollectionInventoryAsync(NftInventoryInput input)
     {
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeNftCollectionInventoryAsync(input);
+        }
+
         var result = new NftInventorysDto();
         List<IndexerTokenInfoDto> indexerTokenInfoList;
         long totalCount;
@@ -442,6 +447,29 @@ public class NftService : INftService, ISingletonDependency
 
         var list = await ConvertIndexerNftInventoryDtoAsync(indexerTokenInfoList, input.ChainId);
         result.Total = totalCount;
+        result.List = list;
+        return result;
+    }
+
+
+    public async Task<NftInventorysDto> GetMergeNftCollectionInventoryAsync(NftInventoryInput input)
+    {
+        var result = new NftInventorysDto();
+
+        var tokenListInput = _objectMapper.Map<NftInventoryInput, TokenListInput>(input);
+        tokenListInput.CollectionSymbols = new List<string> { input.CollectionSymbol };
+        tokenListInput.Types = new List<SymbolType> { SymbolType.Nft };
+        tokenListInput.OfOrderInfos((SortField.BlockHeight, SortDirection.Desc));
+        tokenListInput.Search = "";
+        tokenListInput.ExactSearch = input.Search;
+
+        var tokenInfoResult = await EsIndex.SearchMergeTokenList((int)input.SkipCount, (int)input.MaxResultCount,
+            "desc", input.Search.IsNullOrEmpty() ? new List<string>() { } : new List<string>() { input.Search },
+            SymbolType.Nft, input.CollectionSymbol);
+
+
+        var list = await ConvertMergeNftInventoryDtoAsync(tokenInfoResult.list);
+        result.Total = tokenInfoResult.totalCount;
         result.List = list;
         return result;
     }
@@ -582,47 +610,122 @@ public class NftService : INftService, ISingletonDependency
             return list;
         }
 
-        var priceDict = new Dictionary<string, CommonTokenPriceDto>();
-        var symbols = tokenInfos.Select(i => i.Symbol).Distinct().ToList();
-        var itemInfosDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
-        //batch query symbol last sale info
-        var lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(chainId, symbols);
-        foreach (var tokenInfo in tokenInfos)
+        try
         {
-            var nftInventoryDto =
-                _objectMapper.Map<IndexerTokenInfoDto, NftInventoryDto>(tokenInfo);
-            var symbol = nftInventoryDto.Item.Symbol;
-            if (itemInfosDict.TryGetValue(symbol, out var itemInfo))
+            var priceDict = new Dictionary<string, CommonTokenPriceDto>();
+            var symbols = tokenInfos.Select(i => i.Symbol).Distinct().ToList();
+            var itemInfosDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
+            //batch query symbol last sale info
+            var lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(chainId, symbols);
+            foreach (var tokenInfo in tokenInfos)
             {
-                //handle image url
-                nftInventoryDto.Item.ImageUrl = TokenInfoHelper.GetImageUrl(itemInfo.ExternalInfo,
-                    () => _tokenInfoProvider.BuildImageUrl(symbol));
-            }
-
-            if (lastSaleInfoDict.TryGetValue(symbol, out var lastSaleInfo))
-            {
-                var saleAmountSymbol = BaseConverter.OfSymbol(lastSaleInfo.PriceTokenInfo);
-                nftInventoryDto.LastTransactionId = lastSaleInfo.TransactionHash;
-                nftInventoryDto.BlockHeight = lastSaleInfo.BlockHeight;
-                //single price
-                nftInventoryDto.LastSalePrice = lastSaleInfo.Price;
-                nftInventoryDto.LastSaleAmount = lastSaleInfo.Amount;
-                nftInventoryDto.LastSaleAmountSymbol = saleAmountSymbol;
-                if (!saleAmountSymbol.IsNullOrEmpty())
+                var nftInventoryDto =
+                    _objectMapper.Map<IndexerTokenInfoDto, NftInventoryDto>(tokenInfo);
+                var symbol = nftInventoryDto.Item.Symbol;
+                if (itemInfosDict.TryGetValue(symbol, out var itemInfo))
                 {
-                    if (!priceDict.TryGetValue(saleAmountSymbol, out var priceDto))
-                    {
-                        priceDto = await _tokenPriceService.GetTokenPriceAsync(saleAmountSymbol,
-                            CurrencyConstant.UsdCurrency);
-                        priceDict[saleAmountSymbol] = priceDto;
-                    }
-
-                    nftInventoryDto.LastSalePriceInUsd = Math.Round(nftInventoryDto.LastSalePrice * priceDto.Price,
-                        CommonConstant.UsdPriceValueDecimals);
+                    //handle image url
+                    nftInventoryDto.Item.ImageUrl = TokenInfoHelper.GetImageUrl(itemInfo.ExternalInfo,
+                        () => _tokenInfoProvider.BuildImageUrl(symbol));
                 }
+
+                if (lastSaleInfoDict.TryGetValue(symbol, out var lastSaleInfo))
+                {
+                    var saleAmountSymbol = BaseConverter.OfSymbol(lastSaleInfo.PriceTokenInfo);
+                    nftInventoryDto.LastTransactionId = lastSaleInfo.TransactionHash;
+                    nftInventoryDto.BlockHeight = lastSaleInfo.BlockHeight;
+                    //single price
+                    nftInventoryDto.LastSalePrice = lastSaleInfo.Price;
+                    nftInventoryDto.LastSaleAmount = lastSaleInfo.Amount;
+                    nftInventoryDto.LastSaleAmountSymbol = saleAmountSymbol;
+                    if (!saleAmountSymbol.IsNullOrEmpty())
+                    {
+                        if (!priceDict.TryGetValue(saleAmountSymbol, out var priceDto))
+                        {
+                            priceDto = await _tokenPriceService.GetTokenPriceAsync(saleAmountSymbol,
+                                CurrencyConstant.UsdCurrency);
+                            priceDict[saleAmountSymbol] = priceDto;
+                        }
+
+                        nftInventoryDto.LastSalePriceInUsd = Math.Round(nftInventoryDto.LastSalePrice * priceDto.Price,
+                            CommonConstant.UsdPriceValueDecimals);
+                    }
+                }
+
+                nftInventoryDto.ChainIds = new List<string>() { _globalOptions.CurrentValue.SideChainId };
+                list.Add(nftInventoryDto);
             }
 
-            list.Add(nftInventoryDto);
+            return list;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "ConvertIndexerNftInventoryDtoAsync error");
+        }
+
+        return list;
+    }
+
+
+    private async Task<List<NftInventoryDto>> ConvertMergeNftInventoryDtoAsync(
+        List<TokenInfoIndex> tokenInfos)
+    {
+        var list = new List<NftInventoryDto>();
+        if (tokenInfos.IsNullOrEmpty())
+        {
+            return list;
+        }
+
+        try
+        {
+            var priceDict = new Dictionary<string, CommonTokenPriceDto>();
+            var symbols = tokenInfos.Select(i => i.Symbol).Distinct().ToList();
+            var itemInfosDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
+            //batch query symbol last sale info
+            var lastSaleInfoDict =
+                await _nftInfoProvider.GetLatestPriceAsync(_globalOptions.CurrentValue.SideChainId, symbols);
+            foreach (var tokenInfo in tokenInfos)
+            {
+                var nftInventoryDto = new NftInventoryDto();
+                var symbol = tokenInfo.Symbol;
+                if (itemInfosDict.TryGetValue(symbol, out var itemInfo))
+                {
+                    nftInventoryDto.Item.ImageUrl = TokenInfoHelper.GetImageUrl(itemInfo.ExternalInfo,
+                        () => _tokenInfoProvider.BuildImageUrl(symbol));
+                }
+
+                nftInventoryDto.Item.Symbol = tokenInfo.Symbol;
+                nftInventoryDto.Item.Name = tokenInfo.TokenName;
+                if (lastSaleInfoDict.TryGetValue(symbol, out var lastSaleInfo))
+                {
+                    var saleAmountSymbol = BaseConverter.OfSymbol(lastSaleInfo.PriceTokenInfo);
+                    nftInventoryDto.LastTransactionId = lastSaleInfo.TransactionHash;
+                    nftInventoryDto.BlockHeight = lastSaleInfo.BlockHeight;
+                    //single price
+                    nftInventoryDto.LastSalePrice = lastSaleInfo.Price;
+                    nftInventoryDto.LastSaleAmount = lastSaleInfo.Amount;
+                    nftInventoryDto.LastSaleAmountSymbol = saleAmountSymbol;
+                    if (!saleAmountSymbol.IsNullOrEmpty())
+                    {
+                        if (!priceDict.TryGetValue(saleAmountSymbol, out var priceDto))
+                        {
+                            priceDto = await _tokenPriceService.GetTokenPriceAsync(saleAmountSymbol,
+                                CurrencyConstant.UsdCurrency);
+                            priceDict[saleAmountSymbol] = priceDto;
+                        }
+
+                        nftInventoryDto.LastSalePriceInUsd = Math.Round(nftInventoryDto.LastSalePrice * priceDto.Price,
+                            CommonConstant.UsdPriceValueDecimals);
+                    }
+                }
+
+                nftInventoryDto.ChainIds = new List<string>() { _globalOptions.CurrentValue.SideChainId };
+                list.Add(nftInventoryDto);
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "ConvertMergeNftInventoryDtoAsync error");
         }
 
         return list;

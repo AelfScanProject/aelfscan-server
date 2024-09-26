@@ -21,8 +21,62 @@ public class EsIndex
     {
         esClient = client;
     }
-
+    
     public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(
+        int skip, int size,
+        string sortOrder = "desc", List<string> symbols = null, SymbolType symbolType = SymbolType.Token,
+        string CollectionSymbol = "")
+    {
+        var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
+            .Index("tokeninfoindex")
+            .Skip(skip)
+            .Size(size)
+            .Query(q => q
+                .Bool(b =>
+                {
+                    var mustClauses = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>
+                    {
+                        s => s.Term(t => t.Field(f => f.Type).Value(symbolType))
+                    };
+
+                    if (!symbols.IsNullOrEmpty())
+                    {
+                        mustClauses.Add(s => s.Terms(t => t.Field(f => f.Symbol).Terms(symbols)));
+                    }
+
+                    if (!CollectionSymbol.IsNullOrEmpty())
+                    {
+                        mustClauses.Add(s => s.Terms(t => t.Field(f => f.CollectionSymbol).Terms(CollectionSymbol)));
+                    }
+
+                    return b.Must(mustClauses.ToArray());
+                })
+            )
+            .Sort(so =>
+            {
+                if (sortOrder == "asc")
+                {
+                    return so.Ascending("holderCount");
+                }
+
+                return so.Descending("holderCount");
+            });
+
+        var searchResponse = await esClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
+        long totalCount = searchResponse.Total;
+
+        if (!searchResponse.IsValid)
+        {
+            throw new Exception($"Elasticsearch query failed: {searchResponse.OriginalException.Message}");
+        }
+
+        List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
+
+        return (tokenInfoList, totalCount);
+    }
+
+
+    public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchTokenInfoList(
         int skip, int size,
         string sortOrder = "desc", List<string> symbols = null, SymbolType symbolType = SymbolType.Token)
     {
@@ -67,7 +121,6 @@ public class EsIndex
         return (tokenInfoList, totalCount);
     }
 
-
     public static async Task<(List<BlockIndex> list, long totalCount)> SearchMergeBlockList(
         int skip, int size)
     {
@@ -109,6 +162,15 @@ public class EsIndex
         if (!string.IsNullOrEmpty(input.Symbol))
         {
             filterQueries.Add(new TermQuery { Field = "token.symbol", Value = input.Symbol });
+        }
+
+        if (!input.Types.IsNullOrEmpty())
+        {
+            filterQueries.Add(new TermsQuery
+            {
+                Field = "token.type",
+                Terms = input.Types.Cast<object>()
+            });
         }
 
         var searchRequest = new SearchRequest("accounttokenindex")
