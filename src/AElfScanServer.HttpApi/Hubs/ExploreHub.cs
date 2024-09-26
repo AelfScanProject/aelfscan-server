@@ -219,8 +219,6 @@ public class ExploreHub : AbpHub
         {
             return;
         }
-
-
         try
         {
             while (true)
@@ -228,7 +226,14 @@ public class ExploreHub : AbpHub
                 await Task.Delay(2000);
                 if (chainId.IsNullOrEmpty())
                 {
-                    await RequestMergeChainInfo();
+                    var transactions = await _latestTransactionsDataStrategy.DisplayData("");
+                    var resp = new WebSocketMergeBlockInfoDto()
+                    {
+                        LatestTransactions = transactions,
+                        TopTokens = await GetTopTokens()
+                    };
+                    await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
+                        .SendAsync("ReceiveMergeBlockInfo", resp);
                 }
                 else
                 {
