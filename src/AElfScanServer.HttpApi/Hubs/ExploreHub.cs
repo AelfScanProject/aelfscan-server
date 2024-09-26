@@ -182,7 +182,7 @@ public class ExploreHub : AbpHub
             }
 
             var searchMergeTokenList =
-                await EsIndex.SearchMergeTokenList(0, 6, "desc", _globalOptions.CurrentValue.SpecialSymbols);
+                await EsIndex.SearchMergeTokenList(0, 6, "desc", null,_globalOptions.CurrentValue.SpecialSymbols);
 
             var topTokenDtos = new List<TopTokenDto>();
             foreach (var tokenInfoIndex in searchMergeTokenList.list)

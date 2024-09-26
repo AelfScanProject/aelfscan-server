@@ -122,7 +122,7 @@ public class TokenService : ITokenService, ISingletonDependency
     {
         var result = await EsIndex.SearchMergeTokenList(
             (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
-            _globalOptions.CurrentValue.SpecialSymbols);
+            null,_globalOptions.CurrentValue.SpecialSymbols);
 
         _logger.LogInformation("GetMergeTokenListAsync:{count}", result.list.Count);
         if (result.list.IsNullOrEmpty())

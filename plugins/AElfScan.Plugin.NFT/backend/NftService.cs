@@ -137,7 +137,7 @@ public class NftService : INftService, ISingletonDependency
     {
         var result = await EsIndex.SearchMergeTokenList(
             (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
-            null,
+            null, null,
             SymbolType.Nft_Collection);
 
 
@@ -464,7 +464,7 @@ public class NftService : INftService, ISingletonDependency
         tokenListInput.ExactSearch = input.Search;
 
         var tokenInfoResult = await EsIndex.SearchMergeTokenList((int)input.SkipCount, (int)input.MaxResultCount,
-            "desc", input.Search.IsNullOrEmpty() ? new List<string>() { } : new List<string>() { input.Search },
+            "desc", input.Search.IsNullOrEmpty() ? new List<string>() { } : new List<string>() { input.Search }, null,
             SymbolType.Nft, input.CollectionSymbol);
 
 
