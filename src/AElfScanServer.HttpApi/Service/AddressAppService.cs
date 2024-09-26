@@ -421,6 +421,7 @@ public class AddressAppService : IAddressAppService
         if (!input.Search.IsNullOrWhiteSpace())
         {
             var tokenListInput = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
+            tokenListInput.Types = types;
             var tokenInfos = await _tokenIndexerProvider.GetAllTokenInfosAsync(tokenListInput);
             if (tokenInfos.IsNullOrEmpty())
             {
