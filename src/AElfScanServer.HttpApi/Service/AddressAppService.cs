@@ -614,7 +614,7 @@ public class AddressAppService : IAddressAppService
         {
             var tokenHolderInfo = _objectMapper.Map<IndexerTokenHolderInfoDto, TokenInfoDto>(holderInfo);
             var symbol = holderInfo.Token.Symbol;
-
+            tokenHolderInfo.Type = holderInfo.Token.Type;
             if (tokenDict.TryGetValue(symbol + holderInfo.Metadata.ChainId, out var tokenInfo))
             {
                 // handle image url

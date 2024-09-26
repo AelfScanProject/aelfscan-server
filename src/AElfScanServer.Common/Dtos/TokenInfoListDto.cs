@@ -18,4 +18,6 @@ public class TokenInfoDto
     public decimal PriceOfElf { set; get; }
     public decimal ValueOfElf { set; get; }
     public List<string> ChainIds { set; get; }
+    
+    public SymbolType Type { get; set; }
 }
