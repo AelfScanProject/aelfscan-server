@@ -7,7 +7,7 @@ public class HubGroupHelper
         return $"{chainId}_latest_transactions";
     }
     
-    public static string GetMergeBlockInfoGroupName(string chainId)
+    public static string GetMergeBlockInfoGroupName(string chainId="")
     {
         return $"{chainId}_merge_blockInfo";
     }
@@ -19,7 +19,7 @@ public class HubGroupHelper
         return $"{chainId}_BpProduce";
     }
 
-    public static string GetTransactionCountPerMinuteGroupName(string chainId)
+    public static string GetTransactionCountPerMinuteGroupName(string chainId="")
     {
         return $"{chainId}_transactions_count_per_minute";
     }

@@ -18,6 +18,8 @@ public class TokenHolderInput : BaseInput
     public List<SymbolType> Types { get; set; } = new();
 
     public List<string> Symbols { get; set; } = new();
+    
+    public List<string> AddressList { get; set; } = new();
 
     //symbol or collection symbol
     public List<string> SearchSymbols { get; set; } = new();

@@ -7,7 +7,7 @@ namespace AElfScanServer.HttpApi.Dtos.address;
 
 public class GetContractContracts : PagedResultRequestDto
 {
-    [Required] public string ChainId { get; set; }
+    public string ChainId { get; set; } = "";
 
     public string OrderBy { get; set; } = "";
 
@@ -25,6 +25,7 @@ public class ContractDto
     public string Address { get; set; }
     public string ContractName { get; set; } = "-";
     public string Type { get; set; }
+    public List<string> ChainIds { get; set; }
     public decimal Balance { get; set; }
     public DateTime LastUpdateTime { get; set; }
     public long Txns { get; set; }

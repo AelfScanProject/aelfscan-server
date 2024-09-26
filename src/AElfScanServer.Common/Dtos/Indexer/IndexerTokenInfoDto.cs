@@ -21,6 +21,8 @@ public class IndexerTokenInfoDto : IndexerTokenBaseDto
     public long TransferCount { get; set; }
 
     public decimal ItemCount { get; set; }
+
+    public MetadataDto Metadata { get; set; }
 }
 
 public class IndexerTokenBaseDto

@@ -23,5 +23,6 @@ public class ContractInfoDto
     public string ContractVersion { get; set; }
     public int ContractCategory { get; set; }
     public string ContractType { get; set; }
+    public string ChainId { get; set; }
     public MetadataDto Metadata { get; set; } = new MetadataDto();
 }

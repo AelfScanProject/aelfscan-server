@@ -9,7 +9,6 @@ namespace AElfScanServer.HttpApi.Dtos.address;
 public class GetAddressDetailInput : GetDetailBasicDto
 {
     [Required] public string Address { get; set; }
-    [Required] public AddressType AddressType { get; set; }
 }
 
 public class GetAddressDetailResultDto
@@ -34,6 +33,24 @@ public class GetAddressDetailResultDto
     public string Author { get; set; }
     public string CodeHash { get; set; }
     public string ContractTransactionHash { get; set; }
+
+    public Portfolio Portfolio { get; set; } = new();
+
+    public List<string> ChainIds { get; set; } = new();
+}
+
+public class Portfolio
+{
+    public MergeTokenInfo Total { get; set; } = new();
+    public MergeTokenInfo MainChain { get; set; } = new();
+    public MergeTokenInfo SideChain { get; set; } = new();
+}
+
+public class MergeTokenInfo
+{
+    public int Count { get; set; }
+    public decimal UsdValue { get; set; }
+    public decimal UsdValuePercentage { get; set; }
 }
 
 public class TransactionInfoDto

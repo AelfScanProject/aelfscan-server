@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace AElfScanServer.HttpApi.Options;
+namespace AElfScanServer.Common.Options;
 
 public class ElasticsearchOptions
 {

@@ -19,6 +19,8 @@ public static class CommonConstant
     public const int KeyWordAddressMinSize = 9;
     public const int KeyWordContractNameMinSize = 2;
 
+    public const string MainChainId = "AELF";
+
 
     public static DateTime AELFOneBlockTime = new DateTime(2020, 12, 15, 21, 04, 20);
     public static DateTime TDVVOneBlockTime = new DateTime(2020, 12, 10, 15, 23, 24);

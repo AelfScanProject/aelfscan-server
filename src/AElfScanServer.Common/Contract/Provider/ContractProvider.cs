@@ -16,6 +16,7 @@ public interface IGenesisPluginProvider
 {
     Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId, List<string> addressList);
 
+
     Task<bool> IsContractAddressAsync(string chainId, string address);
 }
 
@@ -100,6 +101,11 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                         skipCount = 0, maxResultCount = addressList.Count
                     }
                 });
+            if (chainId.IsNullOrEmpty())
+            {
+                return result.Items.ToDictionary(s => s.Address + s.Metadata.ChainId, s => s);
+            }
+
             return result.Items.ToDictionary(s => s.Address, s => s);
         }
         catch (Exception e)

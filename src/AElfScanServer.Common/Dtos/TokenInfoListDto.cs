@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AElfScanServer.Common.Dtos;
 
 namespace AElfScanServer.Common.Dtos;
@@ -16,4 +17,7 @@ public class TokenInfoDto
     public double PriceOfUsdPercentChange24h { get; set; }
     public decimal PriceOfElf { set; get; }
     public decimal ValueOfElf { set; get; }
+    public List<string> ChainIds { set; get; }
+    
+    public SymbolType Type { get; set; }
 }

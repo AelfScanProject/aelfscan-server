@@ -9,6 +9,7 @@ using AElfScanServer.Common.Dtos.Ads;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Grains.State.Ads;
 using AElfScanServer.HttpApi.Dtos.AdsData;
@@ -28,6 +29,9 @@ public class BlockChainAutoMapperProfile : Profile
         CreateMap<AdsIndex, AdsResp>().ReverseMap();
         CreateMap<UpdateAdsReq, AdsIndex>().ReverseMap();
         CreateMap<AdsInfoDto, AdsIndex>().ReverseMap();
+        CreateMap<AccountTokenIndex, GetAddressInfoResultDto>().ReverseMap();
+        CreateMap<BlockIndex, BlockRespDto>()
+            .ReverseMap();
         CreateMap<DailyHolderDto, DailyHolder>()
             .ReverseMap();
 
@@ -109,12 +113,6 @@ public class BlockChainAutoMapperProfile : Profile
             .ReverseMap();
 
         CreateMap<TransactionIndex, TransactionDetailDto>();
-        CreateMap<TokenCreated, TokenInfoIndex>()
-            .ForMember(d => d.ExternalInfo,
-                opt => opt.MapFrom(s => s.ExternalInfo.Value.ToDictionary(o => o.Key, o => o.Value)))
-            .ForMember(d => d.IssueChainId,
-                opt => opt.MapFrom(s =>
-                    s.IssueChainId == 0 ? null : ChainHelper.ConvertChainIdToBase58(s.IssueChainId)));
         ;
 
         CreateMap<GetAddressTokenListInput, GetTokenListInput>();
@@ -168,12 +166,28 @@ public class BlockChainAutoMapperProfile : Profile
             .ForPath(t => t.Holders, m => m.MapFrom(u => u.HolderCount))
             .ReverseMap()
             ;
+
+
+        CreateMap<TokenInfoIndex, TokenCommonDto>()
+            .ForPath(t => t.Token.Name, m => m.MapFrom(u => u.TokenName))
+            .ForPath(t => t.Token.Symbol, m => m.MapFrom(u => u.Symbol))
+            .ForPath(t => t.Token.Decimals, m => m.MapFrom(u => u.Decimals))
+            .ForMember(t => t.CirculatingSupply, m => m.MapFrom(u => u.Supply))
+            .ForPath(t => t.Holders, m => m.MapFrom(u => u.HolderCount))
+            .ReverseMap()
+            ;
         CreateMap<IndexerTokenHolderInfoDto, TokenHolderInfoDto>()
             .ForPath(t => t.Quantity, m => m.MapFrom(u => u.FormatAmount))
             .ForMember(t => t.Address, m => m.Ignore())
             .ForPath(t => t.Address.Address, m => m.MapFrom(u => u.Address))
             ;
         CreateMap<IndexerTokenInfoDto, NftInfoDto>()
+            .ForPath(t => t.NftCollection.Name, m => m.MapFrom(u => u.TokenName))
+            .ForPath(t => t.NftCollection.Symbol, m => m.MapFrom(u => u.Symbol))
+            .ForMember(t => t.Holders, m => m.MapFrom(u => u.HolderCount))
+            .ReverseMap()
+            ;
+        CreateMap<TokenInfoIndex, NftInfoDto>()
             .ForPath(t => t.NftCollection.Name, m => m.MapFrom(u => u.TokenName))
             .ForPath(t => t.NftCollection.Symbol, m => m.MapFrom(u => u.Symbol))
             .ForMember(t => t.Holders, m => m.MapFrom(u => u.HolderCount))

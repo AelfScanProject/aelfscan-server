@@ -34,13 +34,12 @@ public interface IHomePageService
     public Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto);
 
 
-    public Task<SearchResponseDto> SearchAsync(SearchRequestDto requestDto);
-
-
     public Task<HomeOverviewResponseDto> GetBlockchainOverviewAsync(BlockchainOverviewRequestDto req);
 
     public Task<TransactionPerMinuteResponseDto> GetTransactionPerMinuteAsync(
         string chainId);
+
+    public Task<TransactionPerMinuteResponseDto> GetAllTransactionPerMinuteAsync();
 
     public Task<FilterTypeResponseDto> GetFilterType();
 }
@@ -49,7 +48,6 @@ public interface IHomePageService
 public class HomePageService : AbpRedisCache, IHomePageService, ITransientDependency
 {
     private readonly INESTRepository<AddressIndex, string> _addressIndexRepository;
-    private readonly INESTRepository<TokenInfoIndex, string> _tokenInfoIndexRepository;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly AELFIndexerProvider _aelfIndexerProvider;
     private readonly HomePageProvider _homePageProvider;
@@ -65,7 +63,6 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> globalOptions,
         AELFIndexerProvider aelfIndexerProvider,
         INESTRepository<AddressIndex, string> addressIndexRepository,
-        INESTRepository<TokenInfoIndex, string> tokenInfoIndexRepository,
         HomePageProvider homePageProvider, ITokenIndexerProvider tokenIndexerProvider,
         BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider
     ) : base(optionsAccessor)
@@ -74,7 +71,6 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         _globalOptions = globalOptions;
         _aelfIndexerProvider = aelfIndexerProvider;
         _addressIndexRepository = addressIndexRepository;
-        _tokenInfoIndexRepository = tokenInfoIndexRepository;
         _homePageProvider = homePageProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
         _blockChainProvider = blockChainProvider;
@@ -94,6 +90,21 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
             JsonConvert.DeserializeObject<List<TransactionCountPerMinuteDto>>(dataValue);
 
         transactionPerMinuteResp.Owner = data;
+
+        var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionChartData("merge"));
+        var mergeData =
+            JsonConvert.DeserializeObject<List<TransactionCountPerMinuteDto>>(redisValue);
+
+        transactionPerMinuteResp.All = mergeData;
+
+
+        return transactionPerMinuteResp;
+    }
+
+    public async Task<TransactionPerMinuteResponseDto> GetAllTransactionPerMinuteAsync()
+    {
+        var transactionPerMinuteResp = new TransactionPerMinuteResponseDto();
+        await ConnectAsync();
 
         var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionChartData("merge"));
         var mergeData =
@@ -157,136 +168,12 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     }
 
 
-    public async Task<SearchResponseDto> SearchAsync(SearchRequestDto requestDto)
-    {
-        var searchResp = new SearchResponseDto();
-        requestDto.Keyword = requestDto.Keyword.ToLower();
-        try
-        {
-            if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == requestDto.ChainId))
-            {
-                return null;
-            }
-
-
-            if (requestDto.Keyword.IsNullOrEmpty() || !Regex.IsMatch(requestDto.Keyword, SearchKeyPattern))
-            {
-                return searchResp;
-            }
-
-            if (requestDto.SearchType == SearchTypes.ExactSearch)
-            {
-                switch (requestDto.FilterType)
-                {
-                    case FilterTypes.Accounts:
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.ExactSearch, AddressType.EoaAddress);
-                        break;
-                    case FilterTypes.Contracts:
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.ExactSearch, AddressType.ContractAddress);
-                        break;
-                    case FilterTypes.Tokens:
-                        SetSearchToken(searchResp, requestDto, SearchTypes.ExactSearch, SymbolType.Token);
-                        break;
-                    case FilterTypes.Nfts:
-                        SetSearchToken(searchResp, requestDto, SearchTypes.ExactSearch, SymbolType.Nft);
-                        break;
-                    case FilterTypes.AllFilter:
-                        SetSearchToken(searchResp, requestDto, SearchTypes.ExactSearch, SymbolType.Nft);
-                        SetSearchToken(searchResp, requestDto, SearchTypes.ExactSearch, SymbolType.Token);
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.ExactSearch, AddressType.EoaAddress);
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.ExactSearch, AddressType.ContractAddress);
-                        break;
-                }
-            }
-            else
-            {
-                switch (requestDto.FilterType)
-                {
-                    case FilterTypes.Accounts:
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.FuzzySearch, AddressType.EoaAddress);
-                        break;
-                    case FilterTypes.Contracts:
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.FuzzySearch, AddressType.ContractAddress);
-                        break;
-                    case FilterTypes.Tokens:
-                        SetSearchToken(searchResp, requestDto, SearchTypes.FuzzySearch, SymbolType.Token);
-                        break;
-                    case FilterTypes.Nfts:
-                        SetSearchToken(searchResp, requestDto, SearchTypes.FuzzySearch, SymbolType.Nft);
-                        break;
-                    case FilterTypes.AllFilter:
-                        SetSearchToken(searchResp, requestDto, SearchTypes.FuzzySearch, SymbolType.Nft);
-                        SetSearchToken(searchResp, requestDto, SearchTypes.FuzzySearch, SymbolType.Token);
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.FuzzySearch, AddressType.EoaAddress);
-                        SetSearchAddress(searchResp, requestDto, SearchTypes.FuzzySearch, AddressType.ContractAddress);
-                        break;
-                }
-            }
-
-
-            return searchResp;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "search err");
-            return searchResp;
-        }
-    }
-
-    public void SetExSearchAddress(SearchResponseDto searchResponseDto, SearchRequestDto requestDto)
-    {
-        var accounts = new List<string>();
-        var contracts = new List<SearchContract>();
-        searchResponseDto.Accounts = accounts;
-        searchResponseDto.Contracts = contracts;
-        try
-        {
-            if (requestDto.Keyword.Length <= 2 || requestDto.Keyword.Length > 50)
-            {
-                return;
-            }
-
-            var mustQuery = new List<Func<QueryContainerDescriptor<AddressIndex>, QueryContainer>>();
-
-            mustQuery.Add(q => q.Bool(b =>
-                b.Should(
-                    sh => sh.Term(
-                        w => w.Field(f => f.LowerAddress)
-                            .Value(requestDto.Keyword.Length > 9 ? $"*{requestDto.Keyword}*" : "*")),
-                    sh => sh.Term(w => w.Field(f => f.LowerName).Value($"*{requestDto.Keyword}*"))
-                )));
-
-            QueryContainer Filter(QueryContainerDescriptor<AddressIndex> f) => f.Bool(b => b.Must(mustQuery));
-            var result = _addressIndexRepository.GetListAsync(Filter, skip: 0, limit: 1000,
-                index: BlockChainIndexNameHelper.GenerateAddressIndexName(requestDto.ChainId)).Result;
-            result.Item2.ForEach(addressIndex =>
-            {
-                if (addressIndex.AddressType == AddressType.EoaAddress)
-                {
-                    accounts.Add(addressIndex.Address);
-                }
-                else
-                {
-                    var searchContract = new SearchContract();
-                    searchContract.Address = addressIndex.Address;
-                    //todo
-                    searchContract.Name = "";
-                    contracts.Add(searchContract);
-                }
-            });
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "set search address err");
-        }
-    }
-
     public void SetSearchAddress(SearchResponseDto searchResponseDto, SearchRequestDto requestDto,
         SearchTypes searchType, AddressType addressType)
     {
         var accounts = new List<string>();
         var contracts = new List<SearchContract>();
-        searchResponseDto.Accounts = accounts;
+        searchResponseDto.Accounts = new List<SearchAccount>();
         searchResponseDto.Contracts = contracts;
         try
         {
@@ -358,85 +245,6 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     }
 
 
-    public void SetSearchToken(SearchResponseDto searchResponseDto, SearchRequestDto requestDto, SearchTypes searchType,
-        SymbolType symbolType)
-    {
-        var tokens = new List<SearchToken>();
-        try
-        {
-            var mustQuery = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>();
-            mustQuery.Add(mu => mu.Term(t => t.Field(t => t.SymbolType).Value(symbolType)));
-            if (searchType == SearchTypes.FuzzySearch)
-            {
-                mustQuery.Add(q => q.Bool(b =>
-                    b.Should(
-                        sh => sh.Wildcard(w => w.Field(f => f.LowerSymbol).Value($"*{requestDto.Keyword}*")),
-                        sh => sh.Wildcard(w => w.Field(f => f.LowerTokenName).Value($"*{requestDto.Keyword}*"))
-                    )));
-            }
-            else
-            {
-                mustQuery.Add(q => q.Bool(b =>
-                    b.Should(sh => sh.Term(t => t.Field(f => f.LowerSymbol).Value(requestDto.Keyword)),
-                        sh => sh.Term(t => t.Field(f => f.LowerTokenName).Value(requestDto.Keyword))
-                    )));
-            }
-
-            QueryContainer Filter(QueryContainerDescriptor<TokenInfoIndex> f) => f.Bool(b => b.Must(mustQuery));
-            var result = _tokenInfoIndexRepository.GetListAsync(Filter, skip: 0, limit: 20,
-                index: BlockChainIndexNameHelper.GenerateTokenIndexName(requestDto.ChainId)).Result;
-            result.Item2.ForEach(tokenInfoIndex =>
-            {
-                var searchToken = new SearchToken();
-                searchToken.Symbol = tokenInfoIndex.Symbol;
-                searchToken.Name = tokenInfoIndex.TokenName;
-
-                //todo 
-                searchToken.Price = 0;
-
-                if (symbolType == SymbolType.Token)
-                {
-                    searchToken.Image = _globalOptions.CurrentValue.TokenImageUrls.ContainsKey(tokenInfoIndex.Symbol)
-                        ? _globalOptions.CurrentValue.TokenImageUrls[tokenInfoIndex.Symbol]
-                        : "";
-                }
-                else
-                {
-                    if (!tokenInfoIndex.ExternalInfo.IsNullOrEmpty())
-                    {
-                        if (tokenInfoIndex.ExternalInfo.TryGetValue(CommomHelper.GetNftImageKey(), out var image))
-                        {
-                            searchToken.Image = image;
-                        }
-                        else
-                        {
-                            if (tokenInfoIndex.ExternalInfo.TryGetValue(CommomHelper.GetInscriptionImageKey(),
-                                    out var inscriptionImage))
-                            {
-                                searchToken.Image = inscriptionImage;
-                            }
-                        }
-                    }
-                }
-
-                tokens.Add(searchToken);
-            });
-
-            if (symbolType == SymbolType.Token)
-            {
-                searchResponseDto.Tokens = tokens;
-            }
-            else
-            {
-                searchResponseDto.Nfts = tokens;
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "set search token err");
-        }
-    }
-
     public async Task<FilterTypeResponseDto> GetFilterType()
     {
         var filterTypeResp = new FilterTypeResponseDto();
@@ -481,13 +289,13 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
             // var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
             //     100,
             //     300);
-            result.Blocks = new List<BlockResponseDto>();
+            result.Blocks = new List<BlockRespDto>();
             result.Total = blockList.Count;
 
             for (var i = blockList.Count - 1; i > 0; i--)
             {
                 var indexerBlockDto = blockList[i];
-                var latestBlockDto = new BlockResponseDto();
+                var latestBlockDto = new BlockRespDto();
 
                 latestBlockDto.BlockHeight = indexerBlockDto.BlockHeight;
                 latestBlockDto.Timestamp = DateTimeHelper.GetTotalSeconds(indexerBlockDto.BlockTime);

@@ -17,6 +17,8 @@ public class TokenListInput : BaseInput
     public string ExactSearch { get; set; } = "";
 
     public string FuzzySearch { get; set; } = "";
+    
+    public DateTime? BeginBlockTime { get; set; }
 
     public void SetDefaultSort()
     {

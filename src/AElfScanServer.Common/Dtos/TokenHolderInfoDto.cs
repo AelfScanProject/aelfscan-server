@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AElfScanServer.Common.Dtos;
 
 namespace AElfScanServer.Common.Dtos;
@@ -8,6 +9,7 @@ public class TokenHolderInfoDto
     public decimal Quantity { get; set; }
     public decimal Percentage { get; set; }
     public decimal Value { get; set; }
+    public List<string> ChainIds { get; set; }
 }
 
 public class AccountCountInput

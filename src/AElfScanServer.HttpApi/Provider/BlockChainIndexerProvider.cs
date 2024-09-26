@@ -48,7 +48,7 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
         var indexerResult = await graphQlHelper.QueryAsync<IndexerAddressTransactionCountResultDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$addressList:[String!]){
+                @"query($chainId:String,$addressList:[String!]){
                     addressTransactionCount(input: {chainId:$chainId,addressList:$addressList})
                 {
          
@@ -75,7 +75,7 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTransactionResultDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$skipCount:Int!,$maxResultCount:Int!,$startTime:Long!,$endTime:Long!,$address:String!,$searchAfter:[String],$orderInfos:[OrderInfo]){
+                @"query($chainId:String,$skipCount:Int!,$maxResultCount:Int!,$startTime:Long!,$endTime:Long!,$address:String!,$searchAfter:[String],$orderInfos:[OrderInfo]){
                     transactionInfos(input: {chainId:$chainId,skipCount:$skipCount,maxResultCount:$maxResultCount,startTime:$startTime,endTime:$endTime,address:$address,searchAfter:$searchAfter,orderInfos:$orderInfos})
                 {
                   totalCount
@@ -162,7 +162,7 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
             var indexerResult = await graphQlHelper.QueryAsync<IndexerTransactionCountResultDto>(new GraphQLRequest
             {
                 Query =
-                    @"query($chainId:String!){
+                    @"query($chainId:String){
                     transactionCount(input: {chainId:$chainId})
                 {
                    count

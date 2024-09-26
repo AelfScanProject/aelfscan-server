@@ -612,6 +612,27 @@ public class DailySupplyGrowthIndex : AElfIndexerEntity<string>, IEntityMappingE
     [Keyword] public string ChainId { get; set; }
 }
 
+public class BlockIndex : AElfIndexerEntity<string>, IEntityMappingEntity
+{
+    [Keyword]
+    public override string Id
+    {
+        get { return BlockHeight + "_" + ChainId; }
+    }
+
+    public long BlockHeight { get; set; }
+    public long Timestamp { get; set; }
+    [Keyword] public string ChainId { get; set; }
+    public int TransactionCount { get; set; }
+    [Keyword] public string TimeSpan { get; set; }
+    [Keyword] public string Reward { get; set; }
+    [Keyword] public string BurntFees { get; set; }
+    [Keyword] public string ProducerName { get; set; }
+    [Keyword] public string ProducerAddress { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
+}
+
 public class DailyStakedIndex : AElfIndexerEntity<string>, IEntityMappingEntity
 {
     [Keyword]

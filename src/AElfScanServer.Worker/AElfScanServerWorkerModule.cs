@@ -17,6 +17,7 @@ using AElfScanServer.Worker.Core;
 using AElfScanServer.Worker.Core.Options;
 using AElfScanServer.Worker.Core.Service;
 using AElfScanServer.Worker.Core.Worker;
+using AElfScanServer.Worker.Core.Worker.MergeDataWorker;
 using Elasticsearch.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -160,19 +161,6 @@ public class AElfScanServerWorkerModule : AbpModule
 
         foreach (var indexerOptionsChainId in indexerOptions.ChainIds)
         {
-            if (!elasticClient.Indices.Exists(BlockChainIndexNameHelper.GenerateTokenIndexName(indexerOptionsChainId))
-                    .Exists)
-            {
-                var indexResponse = elasticClient.Indices.Create(
-                    BlockChainIndexNameHelper.GenerateTokenIndexName(indexerOptionsChainId),
-                    c => c.Map<TokenInfoIndex>(m => m.AutoMap()));
-
-                if (!indexResponse.IsValid)
-                {
-                    throw new Exception($"Failed to index object: {indexResponse.DebugInformation}");
-                }
-            }
-
             if (!elasticClient.Indices.Exists(BlockChainIndexNameHelper.GenerateAddressIndexName(indexerOptionsChainId))
                     .Exists)
             {
@@ -237,6 +225,8 @@ public class AElfScanServerWorkerModule : AbpModule
         context.AddBackgroundWorkerAsync<FixDailyTransactionWorker>();
         context.AddBackgroundWorkerAsync<ContractFileWorker>();
         context.AddBackgroundWorkerAsync<TokenHolderPercentWorker>();
+        context.AddBackgroundWorkerAsync<TokenInfoWorker>();
+        context.AddBackgroundWorkerAsync<DeleteMergeBlocksWorker>();
 
     }
 }

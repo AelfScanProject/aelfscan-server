@@ -11,7 +11,7 @@ namespace AElfScanServer.Common.Token;
 public interface ITokenPriceService
 {
     Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin);
-    
+
     Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, long timestamp);
 }
 
@@ -36,16 +36,21 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
             {
                 return new CommonTokenPriceDto { Price = 1.00m };
             }
-            var exchange = await _tokenExchangeProvider.GetAsync(baseCoin, quoteCoin);
-            AssertHelper.NotEmpty(exchange, $"Exchange data {baseCoin}/{quoteCoin} not found.", baseCoin, quoteCoin);
-            var avgExchange = exchange.Values
-                .Where(ex => ex.Exchange > 0)
-                .Average(ex => ex.Exchange);
-            AssertHelper.IsTrue(avgExchange > 0, "Exchange amount error {avgExchange}", avgExchange);
-            return new CommonTokenPriceDto
+
+            var result = new CommonTokenPriceDto
             {
-                Price = avgExchange
             };
+            var exchange = await _tokenExchangeProvider.GetAsync(baseCoin, quoteCoin);
+            if (exchange != null)
+            {
+                var avgExchange = exchange.Values
+                    .Where(ex => ex.Exchange > 0)
+                    .Average(ex => ex.Exchange);
+                AssertHelper.IsTrue(avgExchange > 0, "Exchange amount error {avgExchange}", avgExchange);
+                result.Price = avgExchange;
+            }
+
+            return result;
         }
         catch (Exception e)
         {
@@ -64,8 +69,10 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
             {
                 return new CommonTokenPriceDto { Price = 1.00m };
             }
+
             var exchange = await _tokenExchangeProvider.GetHistoryAsync(baseCoin, quoteCoin, timestamp);
-            AssertHelper.NotEmpty(exchange, $"History Exchange data {baseCoin}/{quoteCoin} timestamp {timestamp} not found.", 
+            AssertHelper.NotEmpty(exchange,
+                $"History Exchange data {baseCoin}/{quoteCoin} timestamp {timestamp} not found.",
                 baseCoin, quoteCoin, timestamp);
             var avgExchange = exchange.Values
                 .Where(ex => ex.Exchange > 0)

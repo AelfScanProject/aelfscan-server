@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Enums;
 
@@ -17,4 +18,6 @@ public class NftItemActivityDto
     public decimal Quantity { get; set; }
     public CommonAddressDto From { get; set; }
     public CommonAddressDto To { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
 }

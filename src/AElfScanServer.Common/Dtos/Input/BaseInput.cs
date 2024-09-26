@@ -6,7 +6,7 @@ namespace AElfScanServer.Common.Dtos.Input;
 
 public class BaseInput : OrderInfo
 {
-    public required string ChainId { get; set; }
+    public string ChainId { get; set; } = "";
     public long SkipCount { get; set; }
     public long MaxResultCount { get; set; } = 10;
     public List<OrderInfo> OrderInfos { get; set; }

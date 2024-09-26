@@ -27,30 +27,7 @@ public class AddressIndex : AElfIndexerEntity<string>, IEntityMappingEntity
     [Keyword] public string ChainId { get; set; }
 }
 
-public class TokenInfoIndex : AElfIndexerEntity<string>, IEntityMappingEntity
-{
-    [Keyword] public string TokenName { get; set; }
-    [Keyword] public string LowerTokenName { get; set; }
-    public long TotalSupply { get; set; }
-    public long Supply { get; set; }
-    public long Issued { get; set; }
-    [Keyword] public string Issuer { get; set; }
-    [Keyword] public string Owner { get; set; }
-    public bool IsPrimaryToken { get; set; }
-    public bool IsBurnable { get; set; }
 
-    [Keyword] public string Symbol { get; set; }
-    [Keyword] public string LowerSymbol { get; set; }
-
-    [Keyword] public string CollectionSymbol { get; set; }
-    [Keyword] public SymbolType SymbolType { get; set; }
-    [Keyword] public string IssueChainId { get; set; }
-
-    public long BlockHeight { get; set; }
-
-    [Keyword] public string TransactionId { get; set; }
-    public Dictionary<string, string> ExternalInfo { get; set; } = new();
-}
 
 public class BlockExtraIndex : AElfIndexerEntity<string>, IEntityMappingEntity
 {

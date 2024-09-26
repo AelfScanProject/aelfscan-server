@@ -26,7 +26,8 @@ public class LatestTransactionDataStrategy : DataStrategyBase<string, Transactio
     public LatestTransactionDataStrategy(IOptions<RedisCacheOptions> optionsAccessor,
         ILogger<DataStrategyBase<string, TransactionsResponseDto>> logger,
         IOptionsMonitor<GlobalOptions> globalOptions,
-        IBlockChainIndexerProvider blockChainIndexerProvider,IDistributedCache<string> cache) : base(optionsAccessor, logger,cache)
+        IBlockChainIndexerProvider blockChainIndexerProvider, IDistributedCache<string> cache) : base(optionsAccessor,
+        logger, cache)
     {
         _globalOptions = globalOptions;
         _blockChainIndexerProvider = blockChainIndexerProvider;
@@ -60,7 +61,8 @@ public class LatestTransactionDataStrategy : DataStrategyBase<string, Transactio
                     Status = transactionIndex.Status,
                     TransactionFee = transactionIndex.Fee.ToString(),
                     From = new CommonAddressDto() { Address = transactionIndex.From },
-                    To = new CommonAddressDto() { Address = transactionIndex.To }
+                    To = new CommonAddressDto() { Address = transactionIndex.To },
+                    ChainIds = new List<string>() { transactionIndex.Metadata.ChainId }
                 };
 
 

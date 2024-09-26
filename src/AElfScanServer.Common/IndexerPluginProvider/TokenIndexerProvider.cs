@@ -48,6 +48,7 @@ public interface ITokenIndexerProvider
 
 
     Task<IndexerTokenHolderInfoListDto> GetCollectionHolderInfoAsync(TokenHolderInput input);
+    Task<Dictionary<string, IndexerTokenInfoDto>> GetNftDictAsync(string chainId, List<string> symbols);
 }
 
 public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
@@ -145,11 +146,11 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$skipCount:Int!,$maxResultCount:Int!,$search:String,
-                        $types:[SymbolType!],$symbols:[String!],$collectionSymbols:[String!],
+                @"query($chainId:String,$skipCount:Int!,$maxResultCount:Int!,$search:String,
+                        $types:[SymbolType!],$symbols:[String!],$collectionSymbols:[String!],$beginBlockTime:DateTime,
                         $sort:String,$orderBy:String,$exactSearch:String,$fuzzySearch:String,$searchAfter:[String]){
                     tokenInfo(input: {chainId:$chainId,skipCount:$skipCount,maxResultCount:$maxResultCount,search:$search,types:$types,
-                        symbols:$symbols,collectionSymbols:$collectionSymbols,sort:$sort,orderBy:$orderBy,
+                        symbols:$symbols,collectionSymbols:$collectionSymbols,beginBlockTime:$beginBlockTime,sort:$sort,orderBy:$orderBy,
                         exactSearch:$exactSearch,fuzzySearch:$fuzzySearch,searchAfter:$searchAfter})
                 {
                    totalCount,
@@ -163,6 +164,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                         supply,
                         issued,
     					issuer,
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
                         owner,
                         isPrimaryToken
                         isBurnable,
@@ -179,6 +181,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             {
                 chainId = input.ChainId, types = input.Types, symbols = input.Symbols, skipCount = input.SkipCount,
                 maxResultCount = input.MaxResultCount, collectionSymbols = input.CollectionSymbols,
+                beginBlockTime = input.BeginBlockTime,
                 search = input.Search, sort = input.Sort, orderBy = input.OrderBy,
                 exactSearch = input.ExactSearch, fuzzySearch = input.FuzzySearch, searchAfter = input.SearchAfter
             }
@@ -192,13 +195,14 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$symbols:[String!],$skipCount:Int!,$maxResultCount:Int!){
+                @"query($chainId:String,$symbols:[String!],$skipCount:Int!,$maxResultCount:Int!){
                     tokenInfo(input: {chainId:$chainId,symbols:$symbols,skipCount:$skipCount,maxResultCount:$maxResultCount}){
                        totalCount,
                        items{
                         tokenName,
                         symbol,
                         collectionSymbol,
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
     					type,
                         decimals,
                         totalSupply,
@@ -218,7 +222,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             }",
             Variables = new
             {
-                chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 1
+                chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
             }
         });
         return indexerResult.TokenInfo?.Items;
@@ -231,9 +235,9 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         {
             Query =
                 @"query($chainId:String!,$symbol:String!,$address:String,$collectionSymbol:String,
-                    $search:String,$skipCount:Int!,$maxResultCount:Int!,$types:[SymbolType!],
+                    $search:String,$skipCount:Int!,$maxResultCount:Int!,$types:[SymbolType!],$beginBlockTime:DateTime,
                     $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
-                    transferInfo(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,address:$address,types:$types,search:$search,
+                    transferInfo(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,address:$address,types:$types,beginBlockTime:$beginBlockTime,search:$search,
                     skipCount:$skipCount,maxResultCount:$maxResultCount,fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){     
                     totalCount,
                     items{
@@ -257,7 +261,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount,
                 collectionSymbol = input.CollectionSymbol, types = input.Types,
                 sort = input.Sort, orderBy = input.OrderBy, fuzzySearch = input.FuzzySearch,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter, beginBlockTime = input.BeginBlockTime
             }
         });
         return indexerResult == null ? new IndexerTokenTransferListDto() : indexerResult.TransferInfo;
@@ -269,11 +273,11 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenHolderInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,
+                @"query($chainId:String,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
                     $search:String,$types:[SymbolType!],$symbols:[String],$searchSymbols:[String],
                     $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
                     accountToken(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,skipCount:$skipCount,types:$types,
-                    search:$search,symbols:$symbols,searchSymbols:$searchSymbols,maxResultCount:$maxResultCount,address:$address,
+                    search:$search,symbols:$symbols,searchSymbols:$searchSymbols,maxResultCount:$maxResultCount,address:$address,addressList:$addressList,
                     fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
                     totalCount,
                     items{
@@ -285,6 +289,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                             type,
                             decimals
                         },
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
                         amount,
                         formatAmount,
                         transferCount,
@@ -297,6 +302,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             {
                 chainId = input.ChainId, symbol = input.Symbol, collectionSymbol = input.CollectionSymbol,
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,
+                addressList = input.AddressList,
                 types = input.Types, symbols = input.Symbols, searchSymbols = input.SearchSymbols,
                 search = input.Search, sort = input.Sort, orderBy = input.OrderBy, fuzzySearch = input.FuzzySearch,
                 orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
@@ -311,10 +317,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         var indexerResult = await graphQlHelper.QueryAsync<IndexerCollectionHolderInfosDto>(new GraphQLRequest
         {
             Query =
-                @"query($chainId:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!,$address:String,
+                @"query($chainId:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
                    $sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
                     accountCollection(input: {chainId:$chainId,symbol:$symbol,skipCount:$skipCount,
-                   maxResultCount:$maxResultCount,address:$address,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
+                   maxResultCount:$maxResultCount,address:$address,addressList:$addressList,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
                     totalCount,
                     items{
                         id,
@@ -324,6 +330,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                             type,
                             decimals
                         },
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
                         formatAmount,
                         transferCount
                     }
@@ -334,7 +341,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 chainId = input.ChainId, symbol = input.CollectionSymbol,
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,
                 sort = input.Sort, orderBy = input.OrderBy,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter, addressList = input.AddressList
             }
         });
         return indexerResult == null ? new IndexerTokenHolderInfoListDto() : indexerResult.AccountCollection;
@@ -416,12 +423,16 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Symbol = symbol
         };
         var indexerNftHolder = await GetTokenHolderInfoAsync(tokenHolderInput);
-        var list = indexerNftHolder.Items.Select(i => new HolderInfo
+
+        var holderInfo = new HolderInfo();
+        foreach (var indexerTokenHolderInfoDto in indexerNftHolder.Items)
         {
-            Balance = i.FormatAmount,
-            Symbol = i.Token.Symbol
-        }).ToList();
-        return list.IsNullOrEmpty() ? new HolderInfo() : list[0];
+            holderInfo.Balance += indexerTokenHolderInfoDto.FormatAmount;
+            holderInfo.Symbol = indexerTokenHolderInfoDto.Token.Symbol;
+        }
+
+
+        return holderInfo;
     }
 
     private async Task<List<HolderInfo>> GetHolderInfosAsync(string chainId, string address, List<SymbolType> types)
@@ -447,7 +458,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             var holderInfos = indexerNftHolder.Items.Select(i => new HolderInfo
             {
                 Balance = i.FormatAmount,
-                Symbol = i.Token.Symbol
+                Symbol = i.Token.Symbol,
+                ChainId = i.Metadata.ChainId
             }).ToList();
             allHolderInfos.AddRange(holderInfos);
             if (indexerNftHolder.Items.Count < tokenHolderInput.MaxResultCount)
@@ -458,10 +470,30 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             skipCount += tokenHolderInput.MaxResultCount;
         }
 
+        if (chainId.IsNullOrEmpty())
+        {
+            allHolderInfos = allHolderInfos.DistinctBy(c => c.Symbol).ToList();
+        }
+
+
         return allHolderInfos;
     }
 
     public async Task<Dictionary<string, IndexerTokenInfoDto>> GetTokenDictAsync(string chainId, List<string> symbols)
+    {
+        var input = new TokenListInput
+        {
+            ChainId = chainId,
+            Symbols = symbols,
+            Types = EnumConverter.GetEnumValuesList<SymbolType>(),
+            MaxResultCount = symbols.Count*2
+        };
+        var indexerTokenListDto = await GetTokenListAsync(input);
+        return indexerTokenListDto.Items.ToDictionary(token => token.Symbol + token.Metadata.ChainId, token => token);
+    }
+
+
+    public async Task<Dictionary<string, IndexerTokenInfoDto>> GetNftDictAsync(string chainId, List<string> symbols)
     {
         var input = new TokenListInput
         {
@@ -474,9 +506,11 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         return indexerTokenListDto.Items.ToDictionary(token => token.Symbol, token => token);
     }
 
+
     public async Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input)
     {
-        input.SetDefaultSort();
+        input.SetBlockTimeSort();
+
         var indexerTokenTransfer = await GetTokenTransferInfoAsync(input);
         if (indexerTokenTransfer.Items.IsNullOrEmpty())
         {
@@ -484,6 +518,12 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         }
 
         var list = await ConvertIndexerTokenTransferDtoAsync(indexerTokenTransfer.Items, input.ChainId);
+
+        list = list.OrderByDescending(item => item.DateTime)
+            .ThenByDescending(item => item.TransactionId)
+            .ToList();
+
+
         var result = new TokenTransferInfosDto
         {
             Total = indexerTokenTransfer.TotalCount,
@@ -510,7 +550,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         {
             var tokenTransferDto =
                 _objectMapper.Map<IndexerTransferInfoDto, TokenTransferInfoDto>(indexerTransferInfoDto);
-            if (tokenDict.TryGetValue(indexerTransferInfoDto.Token.Symbol, out var tokenInfo))
+            if (tokenDict.TryGetValue(indexerTransferInfoDto.Token.Symbol + indexerTransferInfoDto.Metadata.ChainId,
+                    out var tokenInfo))
             {
                 tokenTransferDto.Symbol = tokenInfo.Symbol;
                 tokenTransferDto.SymbolName = tokenInfo.TokenName;
@@ -520,8 +561,11 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
             tokenTransferDto.TransactionFeeList =
                 await _tokenInfoProvider.ConvertTransactionFeeAsync(priceDict, indexerTransferInfoDto.ExtraProperties);
-            tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From, contractInfoDict);
-            tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To, contractInfoDict);
+            tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
+            tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
+            tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }
 
