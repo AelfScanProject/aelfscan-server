@@ -225,13 +225,13 @@ public class ExploreHub : AbpHub
         {
             while (true)
             {
+                await Task.Delay(2000);
                 if (chainId.IsNullOrEmpty())
                 {
                     await RequestMergeChainInfo();
                 }
                 else
                 {
-                    await Task.Delay(2000);
                     var startNew = Stopwatch.StartNew();
                     var transactions = await _latestTransactionsDataStrategy.DisplayData(chainId);
                     var blocks = await _latestBlocksDataStrategy.DisplayData(chainId);
