@@ -302,15 +302,18 @@ public class AddressService : IAddressService, ISingletonDependency
                 {
                     if (dic.TryGetValue(tokenInfoIndex.Symbol, out var value))
                     {
-                        value.ChainIds.Add(tokenInfoIndex.ChainId);
-                        value.HolderCount += tokenInfoIndex.HolderCount;
-                        value.TransferCount += tokenInfoIndex.TransferCount;
-                        value.ItemCount += tokenInfoIndex.ItemCount;
-                        value.Supply += tokenInfoIndex.Supply;
+                        var flag = value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
+                        if (flag)
+                        {
+                            value.HolderCount += tokenInfoIndex.HolderCount;
+                            value.TransferCount += tokenInfoIndex.TransferCount;
+                            value.ItemCount += tokenInfoIndex.ItemCount;
+                            value.Supply += tokenInfoIndex.Supply;
+                        }
                     }
                     else
                     {
-                        tokenInfoIndex.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
+                        tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
                         dic.Add(tokenInfoIndex.Symbol, tokenInfoIndex);
                     }
                 }
@@ -423,10 +426,13 @@ public class AddressService : IAddressService, ISingletonDependency
                 {
                     if (dic.TryGetValue(tokenInfoIndex.Address, out var value))
                     {
-                        value.ChainIds.Add(tokenInfoIndex.ChainId);
-                        value.TransferCount += tokenInfoIndex.TransferCount;
-                        value.Amount += tokenInfoIndex.Amount;
-                        value.FormatAmount += tokenInfoIndex.FormatAmount;
+                        var flag= value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
+                        if (flag)
+                        {
+                            value.TransferCount += tokenInfoIndex.TransferCount;
+                            value.Amount += tokenInfoIndex.Amount;
+                            value.FormatAmount += tokenInfoIndex.FormatAmount;
+                        }
                     }
                     else
                     {
