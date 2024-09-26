@@ -437,7 +437,7 @@ public class AddressAppService : IAddressAppService
         }
         else
         {
-            holderInfos = await GetTokenHolderInfosAsync(input);
+            holderInfos = await GetTokenHolderInfosAsync(input, types);
             if (holderInfos.Items.IsNullOrEmpty())
             {
                 return new GetAddressTokenListResultDto();
@@ -615,7 +615,7 @@ public class AddressAppService : IAddressAppService
             var tokenHolderInfo = _objectMapper.Map<IndexerTokenHolderInfoDto, TokenInfoDto>(holderInfo);
             var symbol = holderInfo.Token.Symbol;
 
-            if (tokenDict.TryGetValue(symbol+holderInfo.Metadata.ChainId, out var tokenInfo))
+            if (tokenDict.TryGetValue(symbol + holderInfo.Metadata.ChainId, out var tokenInfo))
             {
                 // handle image url
                 tokenHolderInfo.Token.Name = tokenInfo.TokenName;
@@ -668,13 +668,13 @@ public class AddressAppService : IAddressAppService
             // {
             //     tokenHolderInfo.Token = _tokenInfoProvider.OfTokenBaseInfo(tokenInfo);
             // }
-            
-            if (tokenDict.TryGetValue(symbol+holderInfo.Metadata.ChainId, out var tokenInfo))
+
+            if (tokenDict.TryGetValue(symbol + holderInfo.Metadata.ChainId, out var tokenInfo))
             {
                 tokenHolderInfo.Token = _tokenInfoProvider.OfTokenBaseInfo(tokenInfo);
             }
 
-            if (tokenDict.TryGetValue(collectionSymbol+holderInfo.Metadata.ChainId, out var collectionInfo))
+            if (tokenDict.TryGetValue(collectionSymbol + holderInfo.Metadata.ChainId, out var collectionInfo))
             {
                 tokenHolderInfo.NftCollection = _tokenInfoProvider.OfTokenBaseInfo(collectionInfo);
             }
