@@ -413,6 +413,7 @@ public class AddressAppService : IAddressAppService
     public async Task<GetAddressTokenListResultDto> GetAddressTokenListAsync(
         GetAddressTokenListInput input)
     {
+        var types = new List<SymbolType> { SymbolType.Token };
         input.SetDefaultSort();
         Dictionary<string, IndexerTokenInfoDto> tokenDict;
         IndexerTokenHolderInfoListDto holderInfos;
@@ -420,6 +421,7 @@ public class AddressAppService : IAddressAppService
         if (!input.Search.IsNullOrWhiteSpace())
         {
             var tokenListInput = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
+            tokenListInput.Types = types;
             var tokenInfos = await _tokenIndexerProvider.GetAllTokenInfosAsync(tokenListInput);
             if (tokenInfos.IsNullOrEmpty())
             {
