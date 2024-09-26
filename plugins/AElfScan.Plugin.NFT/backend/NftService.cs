@@ -13,6 +13,7 @@ using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
+using AElfScanServer.Domain.Shared.Common;
 using Elasticsearch.Net;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
@@ -659,10 +660,10 @@ public class NftService : INftService, ISingletonDependency
                 Quantity = tokenInfo.FormatAmount
             };
 
-            foreach (var c in tokenInfo.ChainId)
+            foreach (var chainId in tokenInfo.ChainIds)
             {
                 nftItemHolderInfoDto.Address =
-                    BaseConverter.OfCommonAddress(tokenInfo.Address + c, contractInfoDict);
+                    BaseConverter.OfCommonAddress(tokenInfo.Address, chainId, contractInfoDict);
             }
 
             if (supply > 0)
