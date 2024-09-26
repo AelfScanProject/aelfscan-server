@@ -124,6 +124,7 @@ public class TokenService : ITokenService, ISingletonDependency
             (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
             _globalOptions.CurrentValue.SpecialSymbols);
 
+        _logger.LogInformation("GetMergeTokenListAsync:{count}", result.list.Count);
         if (result.list.IsNullOrEmpty())
         {
             return new ListResponseDto<TokenCommonDto>();
@@ -132,7 +133,7 @@ public class TokenService : ITokenService, ISingletonDependency
         var tokenHolderCountDic =
             await _tokenHolderPercentProvider.GetTokenHolderCount("", DateTime.Now.ToString("yyyyMMdd"));
 
-
+        _logger.LogInformation("GetMergeTokenListAsync GetTokenHolderCount:{count}", tokenHolderCountDic.Count);
         var list = new List<TokenCommonDto>();
         foreach (var tokenIndex in result.list)
         {
