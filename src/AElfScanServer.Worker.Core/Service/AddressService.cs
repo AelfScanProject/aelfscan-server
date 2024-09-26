@@ -123,7 +123,6 @@ public class AddressService : IAddressService, ISingletonDependency
 
     public async Task PullTokenInfo()
     {
-        // await SaveHolderList(default, new Dictionary<string, List<string>>());
         var key = "token_transfer_change";
         var beginTime = await GetBeginTime(key);
         _logger.LogInformation("PullTokenInfo bengin {Time}",
@@ -453,11 +452,6 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             beginDate = DateTimeOffset.FromUnixTimeSeconds(dateLong).DateTime;
         }
-        else
-        {
-            beginDate = new DateTime(2024, 9, 10, 0, 0, 0);
-        }
-
         return beginDate;
     }
     
