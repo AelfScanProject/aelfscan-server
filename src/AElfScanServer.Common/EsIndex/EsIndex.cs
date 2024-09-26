@@ -21,7 +21,7 @@ public class EsIndex
     {
         esClient = client;
     }
-    
+
     public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(
         int skip, int size,
         string sortOrder = "desc", List<string> symbols = null, SymbolType symbolType = SymbolType.Token,
@@ -73,6 +73,38 @@ public class EsIndex
         List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
 
         return (tokenInfoList, totalCount);
+    }
+
+
+    public static async Task<TokenInfoIndex> SearchTokenDetail(string symbol)
+    {
+        var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
+            .Index("tokeninfoindex")
+            .Skip(0)
+            .Size(1)
+            .Query(q => q
+                .Bool(b =>
+                {
+                    var mustClauses = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>
+                    {
+                        s => s.Term(t => t.Field(f => f.Symbol).Value(symbol))
+                    };
+
+                    return b.Must(mustClauses.ToArray());
+                })
+            );
+
+        var searchResponse = await esClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
+        long totalCount = searchResponse.Total;
+
+        if (!searchResponse.IsValid)
+        {
+            throw new Exception($"Elasticsearch query failed: {searchResponse.OriginalException.Message}");
+        }
+
+        List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
+
+        return tokenInfoList.First();
     }
 
 

@@ -570,6 +570,11 @@ public class NftService : INftService, ISingletonDependency
 
     public async Task<ListResponseDto<NftItemHolderInfoDto>> GetNftItemHoldersAsync(NftItemHolderInfoInput input)
     {
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeNftItemHoldersAsync(input);
+        }
+
         var tokenHolderInput = _objectMapper.Map<NftItemHolderInfoInput, TokenHolderInput>(input);
         tokenHolderInput.SetDefaultSort();
         var tokenHolderInfoTask = _tokenIndexerProvider.GetTokenHolderInfoAsync(tokenHolderInput);
@@ -601,12 +606,74 @@ public class NftService : INftService, ISingletonDependency
                         CommonConstant.PercentageValueDecimals);
             }
 
+            nftItemHolderInfoDto.ChainIds = new List<string>() { input.ChainId };
             list.Add(nftItemHolderInfoDto);
         }
 
         return new ListResponseDto<NftItemHolderInfoDto>()
         {
             Total = nftItemHolderInfos.TotalCount,
+            List = list
+        };
+    }
+
+    public async Task<ListResponseDto<NftItemHolderInfoDto>> GetMergeNftItemHoldersAsync(NftItemHolderInfoInput input)
+    {
+        var tokenHolderInput = _objectMapper.Map<NftItemHolderInfoInput, TokenHolderInput>(input);
+        tokenHolderInput.SetDefaultSort();
+
+        List<AccountTokenIndex> accountTokenIndexList = new();
+        var total = 0l;
+        TokenInfoIndex tokenInfoIndex = new();
+        var tasks = new List<Task>();
+
+        tasks.Add(EsIndex.SearchMergeAccountList(tokenHolderInput).ContinueWith(task =>
+        {
+            accountTokenIndexList = task.Result.list;
+            total = task.Result.totalCount;
+        }));
+
+
+        tasks.Add(EsIndex.SearchTokenDetail(input.Symbol).ContinueWith(task => { tokenInfoIndex = task.Result; }));
+
+        await tasks.WhenAll();
+
+
+        var supply = tokenInfoIndex.Supply;
+
+        var addressList = accountTokenIndexList
+            .Where(value => !string.IsNullOrEmpty(value.Address))
+            .Select(value => value.Address).Distinct().ToList();
+        var contractInfoDict = await _genesisPluginProvider.GetContractListAsync("", addressList);
+
+        var list = new List<NftItemHolderInfoDto>();
+        foreach (var tokenInfo in accountTokenIndexList)
+        {
+            var nftItemHolderInfoDto = new NftItemHolderInfoDto()
+            {
+                Quantity = tokenInfo.FormatAmount
+            };
+
+            foreach (var c in tokenInfo.ChainId)
+            {
+                nftItemHolderInfoDto.Address =
+                    BaseConverter.OfCommonAddress(tokenInfo.Address + c, contractInfoDict);
+            }
+
+            if (supply > 0)
+            {
+                nftItemHolderInfoDto.Percentage =
+                    Math.Round((decimal)tokenInfo.Amount / supply * 100,
+                        CommonConstant.PercentageValueDecimals);
+            }
+
+            nftItemHolderInfoDto.ChainIds = tokenInfo.ChainIds;
+            list.Add(nftItemHolderInfoDto);
+        }
+
+        return new ListResponseDto<NftItemHolderInfoDto>()
+        {
+            Total = total,
             List = list
         };
     }
