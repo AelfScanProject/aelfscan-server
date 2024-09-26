@@ -48,6 +48,7 @@ public interface ITokenIndexerProvider
 
 
     Task<IndexerTokenHolderInfoListDto> GetCollectionHolderInfoAsync(TokenHolderInput input);
+    Task<Dictionary<string, IndexerTokenInfoDto>> GetNftDictAsync(string chainId, List<string> symbols);
 }
 
 public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
@@ -485,11 +486,26 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             ChainId = chainId,
             Symbols = symbols,
             Types = EnumConverter.GetEnumValuesList<SymbolType>(),
-            MaxResultCount = symbols.Count
+            MaxResultCount = symbols.Count*2
         };
         var indexerTokenListDto = await GetTokenListAsync(input);
         return indexerTokenListDto.Items.ToDictionary(token => token.Symbol + token.Metadata.ChainId, token => token);
     }
+
+
+    public async Task<Dictionary<string, IndexerTokenInfoDto>> GetNftDictAsync(string chainId, List<string> symbols)
+    {
+        var input = new TokenListInput
+        {
+            ChainId = chainId,
+            Symbols = symbols,
+            Types = EnumConverter.GetEnumValuesList<SymbolType>(),
+            MaxResultCount = symbols.Count
+        };
+        var indexerTokenListDto = await GetTokenListAsync(input);
+        return indexerTokenListDto.Items.ToDictionary(token => token.Symbol, token => token);
+    }
+
 
     public async Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input)
     {

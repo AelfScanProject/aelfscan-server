@@ -30,6 +30,7 @@ using Nest;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
 using Volo.Abp.ObjectMapping;
+using MetadataDto = AElfScanServer.Common.Dtos.MetadataDto;
 using TokenInfoDto = AElfScanServer.Common.Dtos.TokenInfoDto;
 
 namespace AElfScanServer.HttpApi.Service;
@@ -661,16 +662,22 @@ public class AddressAppService : IAddressAppService
             var symbol = holderInfo.Token.Symbol;
             var collectionSymbol = holderInfo.Token.CollectionSymbol;
 
-            if (tokenDict.TryGetValue(symbol, out var tokenInfo))
+            // if (tokenDict.TryGetValue(symbol+"AELF", out var tokenInfo))
+            // {
+            //     tokenHolderInfo.Token = _tokenInfoProvider.OfTokenBaseInfo(tokenInfo);
+            // }
+            
+            if (tokenDict.TryGetValue(symbol+holderInfo.Metadata.ChainId, out var tokenInfo))
             {
                 tokenHolderInfo.Token = _tokenInfoProvider.OfTokenBaseInfo(tokenInfo);
             }
 
-            if (tokenDict.TryGetValue(collectionSymbol, out var collectionInfo))
+            if (tokenDict.TryGetValue(collectionSymbol+holderInfo.Metadata.ChainId, out var collectionInfo))
             {
                 tokenHolderInfo.NftCollection = _tokenInfoProvider.OfTokenBaseInfo(collectionInfo);
             }
 
+            tokenHolderInfo.ChainIds = new List<string>() { holderInfo.Metadata.ChainId };
             return tokenHolderInfo;
         });
 
