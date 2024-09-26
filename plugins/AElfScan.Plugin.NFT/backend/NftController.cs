@@ -53,7 +53,7 @@ public class NftController
     }
 
     [HttpGet("item-detail")]
-    public async Task<NftItemDetailDto> GetNftItemDetailAsync(string chainId, string symbol)
+    public async Task<NftItemDetailDto> GetNftItemDetailAsync(string symbol, string chainId = "")
     {
         return await _nftService.GetNftItemDetailAsync(chainId, symbol);
     }
