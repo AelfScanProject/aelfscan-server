@@ -548,6 +548,11 @@ public class NftService : INftService, ISingletonDependency
 
     public async Task<ListResponseDto<NftItemActivityDto>> GetNftItemActivityAsync(NftItemActivityInput input)
     {
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            input.ChainId = _globalOptions.CurrentValue.SideChainId;
+        }
+
         var activitiesInput = _objectMapper.Map<NftItemActivityInput, GetActivitiesInput>(input);
         activitiesInput.Types = _tokenInfoOptionsMonitor.CurrentValue.ActivityTypes;
         activitiesInput.NftInfoId = IdGeneratorHelper.GetNftInfoId(input.ChainId, input.Symbol);
@@ -707,6 +712,7 @@ public class NftService : INftService, ISingletonDependency
                     Math.Round(activityDto.Price * priceDto.Price, CommonConstant.UsdPriceValueDecimals);
             }
 
+            activityDto.ChainIds = new List<string>() { chainId };
             list.Add(activityDto);
         }
 
