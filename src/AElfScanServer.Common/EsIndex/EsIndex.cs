@@ -22,6 +22,71 @@ public class EsIndex
         esClient = client;
     }
 
+    public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(
+        int skip, int size,
+        string sortOrder = "desc", List<string> symbols = null, List<string> specialSymbols = null,
+        SymbolType symbolType = SymbolType.Token,
+        string CollectionSymbol = "")
+    {
+        var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
+            .Index("tokeninfoindex")
+            .Skip(skip)
+            .Size(size)
+            .Query(q => q
+                .Bool(b =>
+                {
+                    var mustClauses = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>
+                    {
+                        s => s.Term(t => t.Field(f => f.Type).Value(symbolType))
+                    };
+
+                    if (!symbols.IsNullOrEmpty())
+                    {
+                        mustClauses.Add(s => s.Terms(t => t.Field(f => f.Symbol).Terms(symbols)));
+                    }
+
+                    if (!CollectionSymbol.IsNullOrEmpty())
+                    {
+                        mustClauses.Add(s => s.Terms(t => t.Field(f => f.CollectionSymbol).Terms(CollectionSymbol)));
+                    }
+
+                    var shouldClauses = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>();
+                    if (!specialSymbols.IsNullOrEmpty())
+                    {
+                        shouldClauses.Add(s => s.Terms(t => t.Field(f => f.Symbol).Terms(specialSymbols)));
+                    }
+
+                    return b
+                        .Should(
+                            s => s.Bool(bq => bq.Must(mustClauses.ToArray())), // 要么 must 的所有条件都成立
+                            s => s.Bool(bq =>
+                                bq.Should(shouldClauses.ToArray()).MinimumShouldMatch(1)) // 要么 should 中至少一个成立
+                        )
+                        .MinimumShouldMatch(1);
+                })
+            )
+            .Sort(so =>
+            {
+                if (sortOrder == "asc")
+                {
+                    return so.Ascending("holderCount");
+                }
+
+                return so.Descending("holderCount");
+            });
+
+        var searchResponse = await esClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
+        long totalCount = searchResponse.Total;
+
+        if (!searchResponse.IsValid)
+        {
+            throw new Exception($"Elasticsearch query failed: {searchResponse.OriginalException.Message}");
+        }
+
+        List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
+
+        return (tokenInfoList, totalCount);
+    }
 
     // public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(
     //     int skip, int size,
@@ -51,14 +116,15 @@ public class EsIndex
     //                     mustClauses.Add(s => s.Terms(t => t.Field(f => f.CollectionSymbol).Terms(CollectionSymbol)));
     //                 }
     //
+    //                 var boolQuery = b.Must(mustClauses.ToArray());
+    //
     //                 if (!specialSymbols.IsNullOrEmpty())
     //                 {
-    //                     mustClauses.Add(s => s.Bool(bq => bq.Should(
-    //                         s1 => s1.Terms(t => t.Field(f => f.Symbol).Terms(specialSymbols))
-    //                     )));
+    //                     boolQuery.Should(s => s.Terms(t => t.Field(f => f.Symbol).Terms(specialSymbols)))
+    //                         .MinimumShouldMatch(0);
     //                 }
     //
-    //                 return b.Must(mustClauses.ToArray());
+    //                 return boolQuery;
     //             })
     //         )
     //         .Sort(so =>
@@ -83,69 +149,6 @@ public class EsIndex
     //
     //     return (tokenInfoList, totalCount);
     // }
-
-    
-    public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(
-    int skip, int size,
-    string sortOrder = "desc", List<string> symbols = null, List<string> specialSymbols = null,
-    SymbolType symbolType = SymbolType.Token,
-    string CollectionSymbol = "")
-{
-    var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
-        .Index("tokeninfoindex")
-        .Skip(skip)
-        .Size(size)
-        .Query(q => q
-            .Bool(b =>
-            {
-                var mustClauses = new List<Func<QueryContainerDescriptor<TokenInfoIndex>, QueryContainer>>
-                {
-                    s => s.Term(t => t.Field(f => f.Type).Value(symbolType))
-                };
-
-                if (!symbols.IsNullOrEmpty())
-                {
-                    mustClauses.Add(s => s.Terms(t => t.Field(f => f.Symbol).Terms(symbols)));
-                }
-
-                if (!CollectionSymbol.IsNullOrEmpty())
-                {
-                    mustClauses.Add(s => s.Terms(t => t.Field(f => f.CollectionSymbol).Terms(CollectionSymbol)));
-                }
-
-                var boolQuery = b.Must(mustClauses.ToArray());
-
-                if (!specialSymbols.IsNullOrEmpty())
-                {
-                    boolQuery.Should(s => s.Terms(t => t.Field(f => f.Symbol).Terms(specialSymbols)))
-                             .MinimumShouldMatch(0);  
-                }
-
-                return boolQuery;
-            })
-        )
-        .Sort(so =>
-        {
-            if (sortOrder == "asc")
-            {
-                return so.Ascending("holderCount");
-            }
-
-            return so.Descending("holderCount");
-        });
-
-    var searchResponse = await esClient.SearchAsync<TokenInfoIndex>(searchDescriptor);
-    long totalCount = searchResponse.Total;
-
-    if (!searchResponse.IsValid)
-    {
-        throw new Exception($"Elasticsearch query failed: {searchResponse.OriginalException.Message}");
-    }
-
-    List<TokenInfoIndex> tokenInfoList = searchResponse.Documents.ToList();
-
-    return (tokenInfoList, totalCount);
-}
 
     public static async Task<TokenInfoIndex> SearchTokenDetail(string symbol)
     {
