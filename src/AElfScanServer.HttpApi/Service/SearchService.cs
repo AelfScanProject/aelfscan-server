@@ -321,6 +321,8 @@ public class SearchService : ISearchService, ISingletonDependency
 
         searchResponseDto.Tokens.AddRange(searchTokensDic.Values);
         searchResponseDto.Nfts.AddRange(searchTNftsDic.Values);
+        searchResponseDto.Nfts = searchResponseDto.Nfts.GroupBy(p => p.Symbol) 
+            .Select(g => g.First()).ToList();
     }
 
     private async Task SearchMergeBlockAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
