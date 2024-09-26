@@ -216,6 +216,11 @@ public class AddressService : IAddressService, ISingletonDependency
     {
         try
         {
+            if (beginBlockTime == default)
+            {
+                return;
+            }
+
             var skip = 0;
             var maxResultCount = 1000;
             var tokenListInput = new TokenListInput()
