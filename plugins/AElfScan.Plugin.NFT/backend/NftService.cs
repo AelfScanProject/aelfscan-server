@@ -647,7 +647,6 @@ public class NftService : INftService, ISingletonDependency
         var addressList = indexerTokenHolderInfo
             .Where(value => !string.IsNullOrEmpty(value.Address))
             .Select(value => value.Address).Distinct().ToList();
-        // var groupAndSumSupplyTask = GetCollectionSupplyAsync(chainId, collectionSymbols);
         var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
 
         var contractInfoDictTask = _genesisPluginProvider.GetContractListAsync(chainId, addressList);
@@ -672,6 +671,7 @@ public class NftService : INftService, ISingletonDependency
                         CommonConstant.PercentageValueDecimals);
             }
 
+            tokenHolderInfoDto.ChainIds = new List<string>() { indexerTokenHolderInfoDto.Metadata.ChainId };
             list.Add(tokenHolderInfoDto);
         }
 
