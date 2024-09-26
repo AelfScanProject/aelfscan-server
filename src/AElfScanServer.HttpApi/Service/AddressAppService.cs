@@ -413,6 +413,7 @@ public class AddressAppService : IAddressAppService
     public async Task<GetAddressTokenListResultDto> GetAddressTokenListAsync(
         GetAddressTokenListInput input)
     {
+        var types = new List<SymbolType> { SymbolType.Token };
         input.SetDefaultSort();
         Dictionary<string, IndexerTokenInfoDto> tokenDict;
         IndexerTokenHolderInfoListDto holderInfos;
