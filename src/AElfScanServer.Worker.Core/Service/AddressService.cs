@@ -179,12 +179,10 @@ public class AddressService : IAddressService, ISingletonDependency
 
             foreach (var indexerTransferInfoDto in tokenTransferListDto.Items)
             {
-                SetSymbolMap(symbolDictionary, indexerTransferInfoDto);
+                SetSymbolMap(symbolDictionary, indexerTransferInfoDto,indexerTransferInfoDto.Token.Symbol);
                 if (SymbolType.Nft == TokenSymbolHelper.GetSymbolType(indexerTransferInfoDto.Token.Symbol))
                 {
-                    indexerTransferInfoDto.Token.Symbol =
-                        TokenSymbolHelper.GetCollectionSymbol(indexerTransferInfoDto.Token.Symbol);
-                    SetSymbolMap(symbolDictionary, indexerTransferInfoDto);
+                    SetSymbolMap(symbolDictionary, indexerTransferInfoDto,TokenSymbolHelper.GetCollectionSymbol(indexerTransferInfoDto.Token.Symbol));
                 }
             }
 
@@ -195,21 +193,21 @@ public class AddressService : IAddressService, ISingletonDependency
     }
 
     private static void SetSymbolMap(Dictionary<string, List<string>> symbolList,
-        IndexerTransferInfoDto indexerTransferInfoDto)
+        IndexerTransferInfoDto indexerTransferInfoDto,string symbol)
     {
-        var addresList = symbolList.GetValueOrDefault(indexerTransferInfoDto.Token.Symbol,
+        var addressList = symbolList.GetValueOrDefault(symbol,
             new List<string>());
-        if (!addresList.Contains(indexerTransferInfoDto.From))
+        if (!addressList.Contains(indexerTransferInfoDto.From))
         {
-            addresList.Add(indexerTransferInfoDto.From);
+            addressList.Add(indexerTransferInfoDto.From);
         }
 
-        if (!addresList.Contains(indexerTransferInfoDto.To))
+        if (!addressList.Contains(indexerTransferInfoDto.To))
         {
-            addresList.Add(indexerTransferInfoDto.To);
+            addressList.Add(indexerTransferInfoDto.To);
         }
 
-        symbolList[indexerTransferInfoDto.Token.Symbol] = addresList;
+        symbolList[symbol] = addressList;
     }
 
     private async Task AddCreatedTokenList(DateTime beginBlockTime)
