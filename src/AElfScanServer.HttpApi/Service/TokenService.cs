@@ -166,34 +166,42 @@ public class TokenService : ITokenService, ISingletonDependency
 
     public async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId = "")
     {
-        var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
-
-        AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
-
-        var list = await ConvertIndexerTokenDtoAsync(indexerTokenList, chainId);
-
-        var tokenInfo = list[0];
-
-        var tokenDetailDto = _objectMapper.Map<TokenCommonDto, TokenDetailDto>(tokenInfo);
-        tokenDetailDto.TokenContractAddress = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
-        if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
+        try
         {
-            //set others
-            var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
-            var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
-            var priceHisDto =
-                await _tokenPriceService.GetTokenHistoryPriceAsync(symbol, CurrencyConstant.UsdCurrency, timestamp);
-            tokenDetailDto.Price = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
-            if (priceHisDto.Price > 0)
+            var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
+
+            AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
+
+            var list = await ConvertIndexerTokenDtoAsync(indexerTokenList, chainId);
+
+            var tokenInfo = list[0];
+
+            var tokenDetailDto = _objectMapper.Map<TokenCommonDto, TokenDetailDto>(tokenInfo);
+            tokenDetailDto.TokenContractAddress =
+                _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
+            if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
             {
-                tokenDetailDto.PricePercentChange24h = (double)Math.Round(
-                    (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
-                    CommonConstant.PercentageValueDecimals);
+                //set others
+                var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
+                var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
+                var priceHisDto =
+                    await _tokenPriceService.GetTokenHistoryPriceAsync(symbol, CurrencyConstant.UsdCurrency, timestamp);
+                tokenDetailDto.Price = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
+                if (priceHisDto.Price > 0)
+                {
+                    tokenDetailDto.PricePercentChange24h = (double)Math.Round(
+                        (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
+                        CommonConstant.PercentageValueDecimals);
+                }
             }
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "GetTokenDetailAsync err");
         }
 
 
-        return tokenDetailDto;
+        return new TokenDetailDto();
     }
 
     public async Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol, string chainId)
