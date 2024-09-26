@@ -310,7 +310,7 @@ public class AddressService : IAddressService, ISingletonDependency
                     }
                     else
                     {
-                        tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
+                        tokenInfoIndex.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
                         dic.Add(tokenInfoIndex.Symbol, tokenInfoIndex);
                     }
                 }
@@ -430,7 +430,7 @@ public class AddressService : IAddressService, ISingletonDependency
                     }
                     else
                     {
-                        tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
+                        tokenInfoIndex.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
                         dic.Add(tokenInfoIndex.Address, tokenInfoIndex);
                     }
                 }
