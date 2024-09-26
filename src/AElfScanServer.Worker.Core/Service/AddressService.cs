@@ -123,7 +123,7 @@ public class AddressService : IAddressService, ISingletonDependency
 
     public async Task PullTokenInfo()
     {
-        var key = "token_transfer_change";
+        var key = "token_transfer_change_time";
         var beginTime = await GetBeginTime(key);
         _logger.LogInformation("PullTokenInfo bengin {Time}",
             TimeHelper.GetTimeStampFromDateTimeInSeconds(beginTime).ToString());
@@ -135,7 +135,7 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             return;
         }
-
+        
         await SaveMergeTokenList(symbolMap.Keys.ToList());
         await SaveHolderList(beginTime, symbolMap);
         if (beginTime == default)
@@ -261,6 +261,11 @@ public class AddressService : IAddressService, ISingletonDependency
 
     private async Task SaveMergeTokenList(List<string> symbolList)
     {
+        if (symbolList.IsNullOrEmpty())
+        {
+            return;
+        }
+
         try
         {
             var skip = 0;
@@ -353,7 +358,15 @@ public class AddressService : IAddressService, ISingletonDependency
                 var tokenList = searchResponse.Documents.ToList();
                 foreach (var item in tokenList)
                 {
-                    await SaveTokenHolderAsync(item.Symbol, new List<string>());
+                    try
+                    {
+                        await SaveTokenHolderAsync(item.Symbol, new List<string>());
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e,"SaveTokenHolderAsync Symbol:{Symbol}", item.Symbol
+                            );
+                    }
                 }
 
                 queryCount = tokenList.Count;
