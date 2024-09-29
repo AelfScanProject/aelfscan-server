@@ -162,7 +162,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     private static object _lock = new object();
     private static long PullLogEventTransactionInterval = 100 - 1;
     private static Timer timer;
-    private static long PullTransactioninterval = 4000 - 1;
+    private static long PullTransactioninterval = 500 - 1;
 
 
     public TransactionService(IOptions<RedisCacheOptions> optionsAccessor, AELFIndexerProvider aelfIndexerProvider,
@@ -515,7 +515,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             var tasks = new List<Task>();
             var blockSizeIndices = new List<BlockSizeDto>();
             var _lock = new object();
-
+            int failCount = 0;
             var startNew = Stopwatch.StartNew();
             try
             {
@@ -549,7 +549,13 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 if (blockSize.Header == null)
                 {
                     _logger.LogInformation("Block size index header is null:{chainId}", chainId);
+                    failCount++;
+                    if (failCount == 10)
+                    {
+                        return;
+                    }
                     continue;
+                  
                 }
 
 
