@@ -276,7 +276,9 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     public async Task MergeAddress()
     {
         var key = "address_date";
+        
         await ConnectAsync();
+        RedisDatabase.KeyDelete(key);
         try
         {
             while (true)
