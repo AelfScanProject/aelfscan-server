@@ -112,7 +112,7 @@ public static class DateTimeHelper
         return int.Parse(previousMonthFormatted);
     }
 
-    
+
     public static int GetNextYYMMDD(int dateMonth)
     {
         string inputDate = dateMonth.ToString();
@@ -127,7 +127,7 @@ public static class DateTimeHelper
 
         return int.Parse(previousMonthFormatted);
     }
-    
+
 
     public static int ConvertToYYYYMM(long timestamp)
     {
@@ -160,10 +160,31 @@ public static class DateTimeHelper
         return dateTime.AddDays(-1).ToUtc8String(dateFormat);
     }
 
+
+    public static string GetAfterDayDate(string dateString)
+    {
+        string dateFormat = "yyyy-MM-dd";
+
+        DateTime dateTime;
+        DateTime.TryParseExact(dateString, dateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None,
+            out dateTime);
+
+        return dateTime.AddDays(1).ToUtc8String(dateFormat);
+    }
+
     public static string GetDateStr(DateTime dateTime)
     {
         return new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, 0, 0, 0, DateTimeKind.Utc).ToString(
             "yyyy-MM-dd");
+    }
+
+
+    public static long ParseDateToLong(string dateString)
+    {
+        DateTime date = DateTime.ParseExact(dateString, "yyyy-MM-dd", null);
+        long longDate = long.Parse(date.ToString("yyyyMMdd"));
+
+        return longDate;
     }
 
 

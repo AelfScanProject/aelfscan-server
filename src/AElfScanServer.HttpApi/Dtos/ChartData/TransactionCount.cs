@@ -88,6 +88,15 @@ public class DailyTransactionCountResp
     public DailyTransactionCount LowesTransactionCount { get; set; }
 }
 
+public class DailyTransactionCountInfo
+{
+    public long Total { get; set; }
+    public List<DailyTransactionCount> List { get; set; }
+
+    public DailyTransactionCount HighestTransactionCount { get; set; }
+    public DailyTransactionCount LowesTransactionCount { get; set; }
+}
+
 public class DailyAvgTransactionFeeResp
 {
     public long Total { get; set; }
@@ -302,7 +311,8 @@ public class DailySupplyGrowth
     {
         get
         {
-            var totalSupply = 1000000000 - TotalOrganizationBalance - TotalConsensusBalance - TotalBurnt-TotalUnReceived;
+            var totalSupply = 1000000000 - TotalOrganizationBalance - TotalConsensusBalance - TotalBurnt -
+                              TotalUnReceived;
             if (!SideChainBurnt.IsNullOrEmpty())
             {
                 totalSupply -= decimal.Parse(SideChainBurnt);
@@ -359,6 +369,11 @@ public class DailyHolder
     public string DateStr { get; set; }
 
     public long Count { get; set; }
+    public long MergeCount { get; set; }
+
+    public long MainCount { get; set; }
+
+    public long SideCount { get; set; }
 }
 
 public class DailyStaked

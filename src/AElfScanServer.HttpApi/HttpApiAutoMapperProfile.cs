@@ -23,6 +23,9 @@ public class BlockChainAutoMapperProfile : Profile
 {
     public BlockChainAutoMapperProfile()
     {
+        CreateMap<MonthlyActiveAddressIndex, MonthlyActiveAddressCount>().ReverseMap();
+
+        CreateMap<DailyMergeUniqueAddressCountIndex, DailyUniqueAddressCount>().ReverseMap();
         CreateMap<AdsBannerIndex, AdsBannerResp>().ReverseMap();
         CreateMap<UpdateAdsBannerReq, AdsBannerIndex>().ReverseMap();
         CreateMap<AdsInfoDto, AdsResp>().ReverseMap();

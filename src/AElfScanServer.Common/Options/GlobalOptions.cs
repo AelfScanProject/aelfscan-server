@@ -11,6 +11,10 @@ public class GlobalOptions
 
     public bool NeedInitLastHeight { get; set; }
 
+
+    public string AddressStartDate { get; set; }
+
+
     public List<string> SpecialSymbols { get; set; } = new();
 
 
