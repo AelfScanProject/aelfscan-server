@@ -427,9 +427,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         tasks.Add(GetDailyHolderAsync("AELF").ContinueWith(task => { mainHolders = task.Result; }));
         tasks.Add(GetDailyHolderAsync(_globalOptions.CurrentValue.SideChainId)
             .ContinueWith(task => { sideHolders = task.Result; }));
-        
+
         await tasks.WhenAll();
-        var dic = sideHolders.ToDictionary(c => c.DateStr, c => c);
+        var dic = sideHolders
+            .GroupBy(c => c.DateStr)
+            .ToDictionary(g => g.Key, g => g.Last());
         foreach (var dailyHolder in mainHolders)
         {
             dailyHolder.MergeCount = dailyHolder.Count;

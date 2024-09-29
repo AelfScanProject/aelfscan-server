@@ -298,19 +298,19 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
                 var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
                 var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
-                var beforeMergeAddressList =
+                var beforeMergeAddressCountList =
                     queryableAsync.Where(c => c.DateStr == DateTimeHelper.GetBeforeDayDate(updateDate)).Take(2)
                         .ToList();
 
                 var queryable = await _addressRepository.GetQueryableAsync();
-                var nowAddressIndexList = queryable.Where(c => c.Date == updateDate.ToString()).Take(1000).ToList();
-                // var nowAddressIndexList = await GetBeforeAddressIndexList(updateDate);
+                var nowAddressIndexList = queryable.Where(c => c.Date == updateDate.ToString()).Take(10000).ToList();
                 if (nowAddressIndexList.IsNullOrEmpty())
                 {
-                    if (beforeMergeAddressList.IsNullOrEmpty())
+                    if (beforeMergeAddressCountList.IsNullOrEmpty())
                     {
-                        beforeMergeAddressList = queryableAsync.Where(c => c.DateStr == updateDate).Take(2).ToList();
-                        foreach (var addressInfo in beforeMergeAddressList)
+                        beforeMergeAddressCountList =
+                            queryableAsync.Where(c => c.DateStr == updateDate).Take(2).ToList();
+                        foreach (var addressInfo in beforeMergeAddressCountList)
                         {
                             mergeUniqueAddressInsertList.Add(
                                 new DailyMergeUniqueAddressCountIndex()
@@ -325,7 +325,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                     }
                     else
                     {
-                        foreach (var addressInfo in beforeMergeAddressList)
+                        foreach (var addressInfo in beforeMergeAddressCountList)
                         {
                             mergeUniqueAddressInsertList.Add(
                                 new DailyMergeUniqueAddressCountIndex()
@@ -413,11 +413,11 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
                 mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(mainChainUniqueAddressCount, "AELF",
                     updateDateLong, updateDate,
-                    beforeMergeAddressList));
+                    beforeMergeAddressCountList));
                 mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(sideChainUniqueAddressCount,
                     _globalOptions.CurrentValue.SideChainId,
                     updateDateLong, updateDate,
-                    beforeMergeAddressList));
+                    beforeMergeAddressCountList));
 
                 await _dailyMergeUniqueAddressCountRepository.AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
                 var newAddressInsertList = dictionary.Values.ToList();
