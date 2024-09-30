@@ -40,6 +40,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly IChartDataService _chartDataService;
     private readonly IEntityMappingRepository<AddressIndex, string> _addressRepository;
+    private readonly IEntityMappingRepository<MergeAddressIndex, string> _mergeAddressRepository;
     private readonly IElasticClient _elasticClient;
 
 
@@ -53,6 +54,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         IEntityMappingRepository<DailyUniqueAddressCountIndex, string> uniqueAddressRepository,
         ILogger<DataStrategyBase<string, HomeOverviewResponseDto>> logger, IDistributedCache<string> cache,
         IChartDataService chartDataService, IEntityMappingRepository<AddressIndex, string> addressRepository,
+        IEntityMappingRepository<MergeAddressIndex, string> mergeAddressRepository,
         IOptionsMonitor<ElasticsearchOptions> options) : base(
         optionsAccessor, logger, cache)
     {
@@ -70,6 +72,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
         _elasticClient = new ElasticClient(settings);
         EsIndex.SetElasticClient(_elasticClient);
+        _mergeAddressRepository = mergeAddressRepository;
     }
 
     public override async Task<HomeOverviewResponseDto> QueryData(string chainId)
@@ -206,6 +209,11 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
     public async Task<long> GetTotalAccount(string chainId)
     {
+        if (_globalOptions.CurrentValue.SwitchMergeAddress)
+        {
+            return await GetMergeTotalAccount(chainId);
+        }
+
         var totalCount = 0;
         try
         {
@@ -238,6 +246,42 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
         return totalCount;
     }
+
+    public async Task<long> GetMergeTotalAccount(string chainId)
+    {
+        var totalCount = 0;
+        try
+        {
+            var key = "MergeTotalAccount" + chainId;
+            var count = await _cache.GetAsync(key);
+            count = "";
+
+            var queryableAsync = await _mergeAddressRepository.GetQueryableAsync();
+            if (!chainId.IsNullOrEmpty())
+            {
+                queryableAsync = queryableAsync.Where(c => c.ChainId == chainId);
+            }
+
+            if (count.IsNullOrEmpty())
+            {
+                totalCount = queryableAsync.Count();
+                await _cache.SetAsync(key, totalCount.ToString());
+                DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
+                    chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
+                return totalCount;
+            }
+
+
+            return long.Parse(count);
+        }
+        catch (Exception e)
+        {
+            DataStrategyLogger.LogError(e, "get total account err");
+        }
+
+        return totalCount;
+    }
+
 
     public async Task<HomeOverviewResponseDto> QueryMergeChainData()
     {

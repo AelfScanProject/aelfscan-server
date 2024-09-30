@@ -459,6 +459,25 @@ public class DailyUniqueAddressCountIndex : AElfIndexerEntity<string>, IEntityMa
     [Keyword] public string DateStr { get; set; }
 }
 
+public class DailyMergeUniqueAddressCountIndex : AElfIndexerEntity<string>, IEntityMappingEntity
+{
+    [Keyword]
+    public override string Id
+    {
+        get { return DateStr + "_" + ChainId; }
+    }
+
+    public long Date { get; set; }
+
+    [Keyword] public string ChainId { get; set; }
+    public int AddressCount { get; set; }
+
+    public int TotalUniqueAddressees { get; set; }
+
+
+    [Keyword] public string DateStr { get; set; }
+}
+
 public class DailyActiveAddressCountIndex : AElfIndexerEntity<string>, IEntityMappingEntity
 {
     [Keyword]
@@ -487,6 +506,20 @@ public class AddressIndex : AElfIndexerEntity<string>, IEntityMappingEntity
     }
 
     [Keyword] public string Date { get; set; }
+
+    [Keyword] public string ChainId { get; set; }
+    [Keyword] public string Address { get; set; }
+}
+
+public class MergeAddressIndex : AElfIndexerEntity<string>, IEntityMappingEntity
+{
+    [Keyword]
+    public override string Id
+    {
+        get { return Address + "_" + ChainId; }
+    }
+
+    public long Date { get; set; }
 
     [Keyword] public string ChainId { get; set; }
     [Keyword] public string Address { get; set; }
@@ -718,7 +751,7 @@ public class MonthlyActiveAddressIndex : AElfIndexerEntity<string>, IEntityMappi
 
     [Keyword] public string ChainId { get; set; }
     public long AddressCount { get; set; }
-
+    
     public long SendAddressCount { get; set; }
     public long ReceiveAddressCount { get; set; }
 

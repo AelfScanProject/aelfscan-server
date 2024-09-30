@@ -20,16 +20,34 @@ public class ActiveAddressCountResp
     public string ChainId { get; set; }
 }
 
-
 public class MonthlyActiveAddressCountResp
 {
     public long Total { get; set; }
-    public List<MonthlyActiveAddressIndex> List { get; set; }
-    public MonthlyActiveAddressIndex HighestActiveCount { get; set; }
-    public MonthlyActiveAddressIndex LowestActiveCount { get; set; }
+    public List<MonthlyActiveAddressCount> List { get; set; }
+    public MonthlyActiveAddressCount HighestActiveCount { get; set; }
+    public MonthlyActiveAddressCount LowestActiveCount { get; set; }
     public string ChainId { get; set; }
 }
 
+public class MonthlyActiveAddressCount
+{
+    public string ChainId { get; set; }
+    public long AddressCount { get; set; }
+
+    public long MergeAddressCount { get; set; }
+    public long MainChainAddressCount { get; set; }
+    public long SideChainAddressCount { get; set; }
+
+    public long SendAddressCount { get; set; }
+    public long MergeSendAddressCount { get; set; }
+    public long MainChainSendAddressCount { get; set; }
+    public long SideChainSendAddressCount { get; set; }
+    public long ReceiveAddressCount { get; set; }
+    public long MergeReceiveAddressCount { get; set; }
+    public long MainChainReceiveAddressCount { get; set; }
+    public long SideChainReceiveAddressCount { get; set; }
+    public int DateMonth { get; set; }
+}
 
 public class BlockProduceRateResp
 {

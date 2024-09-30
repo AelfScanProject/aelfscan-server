@@ -13,7 +13,7 @@ public class ChartDataRequest
 
     public int DateInterval { get; set; }
 
-    public string ChainId { get; set; }
+    public string ChainId { get; set; } = "";
 }
 
 public class SetRoundRequest
@@ -80,6 +80,15 @@ public class JonInfoResp
 }
 
 public class DailyTransactionCountResp
+{
+    public long Total { get; set; }
+    public List<DailyTransactionCount> List { get; set; }
+
+    public DailyTransactionCount HighestTransactionCount { get; set; }
+    public DailyTransactionCount LowesTransactionCount { get; set; }
+}
+
+public class DailyTransactionCountInfo
 {
     public long Total { get; set; }
     public List<DailyTransactionCount> List { get; set; }
@@ -178,6 +187,12 @@ public class DailyTotalBurnt
     public long Date { get; set; }
 
     public string Burnt { get; set; }
+
+    public string MainChainBurnt { get; set; }
+
+    public string SideChainBurnt { get; set; }
+
+    public string MergeBurnt { get; set; }
 
     public int HasBurntBlockCount { get; set; }
     public string DateStr { get; set; }
@@ -302,7 +317,8 @@ public class DailySupplyGrowth
     {
         get
         {
-            var totalSupply = 1000000000 - TotalOrganizationBalance - TotalConsensusBalance - TotalBurnt-TotalUnReceived;
+            var totalSupply = 1000000000 - TotalOrganizationBalance - TotalConsensusBalance - TotalBurnt -
+                              TotalUnReceived;
             if (!SideChainBurnt.IsNullOrEmpty())
             {
                 totalSupply -= decimal.Parse(SideChainBurnt);
@@ -359,6 +375,11 @@ public class DailyHolder
     public string DateStr { get; set; }
 
     public long Count { get; set; }
+    public long MergeCount { get; set; }
+
+    public long MainCount { get; set; }
+
+    public long SideCount { get; set; }
 }
 
 public class DailyStaked
