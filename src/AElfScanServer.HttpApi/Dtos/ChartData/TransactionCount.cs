@@ -13,7 +13,7 @@ public class ChartDataRequest
 
     public int DateInterval { get; set; }
 
-    public string ChainId { get; set; }
+    public string ChainId { get; set; } = "";
 }
 
 public class SetRoundRequest
