@@ -373,8 +373,8 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         var mainFilterNewAddress = FilterNewAddress(nowAddressIndexList.Select(c => c.Address).Distinct().ToList(),
             updateDateLong).Result;
 
-        var mainChainUniqueAddressCount = sideNewAddressCount.Count;
-        var sideChainUniqueAddressCount = mainFilterNewAddress.Count;
+        var mainChainUniqueAddressCount = mainFilterNewAddress.Count;
+        var sideChainUniqueAddressCount = sideNewAddressCount.Count;
 
         var mergeAddressIndices = new List<MergeAddressIndex>();
         foreach (var addressIndex in sideNewAddressCount)
