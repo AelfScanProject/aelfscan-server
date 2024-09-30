@@ -282,7 +282,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     {
         var key = "address_date";
 
-        await _cache.RemoveAsync(key);
         await ConnectAsync();
         try
         {
