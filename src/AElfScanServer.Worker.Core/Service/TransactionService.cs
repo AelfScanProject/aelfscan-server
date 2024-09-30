@@ -278,7 +278,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         var key = "address_date";
         
         await ConnectAsync();
-        RedisDatabase.KeyDelete(key);
         try
         {
             while (true)

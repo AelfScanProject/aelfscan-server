@@ -11,7 +11,7 @@ public class GlobalOptions
 
     public bool NeedInitLastHeight { get; set; }
 
-
+    public bool SwitchMergeAddress { get; set; }
     public string AddressStartDate { get; set; }
 
 
