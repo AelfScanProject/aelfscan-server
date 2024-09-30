@@ -188,6 +188,12 @@ public class DailyTotalBurnt
 
     public string Burnt { get; set; }
 
+    public string MainChainBurnt { get; set; }
+
+    public string SideChainBurnt { get; set; }
+
+    public string MergeBurnt { get; set; }
+
     public int HasBurntBlockCount { get; set; }
     public string DateStr { get; set; }
 }

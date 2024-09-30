@@ -892,6 +892,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyTotalBurntResp> GetDailyTotalBurntRespAsync(ChartDataRequest request)
     {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeDailyTotalBurntRespAsync();
+        }
+
         var queryable = await _totalBurntRepository.GetQueryableAsync();
         var indexList = queryable.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000).ToList();
 
@@ -910,9 +915,49 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             Highest = datList.MaxBy(c => double.Parse(c.Burnt)),
             Lowest = datList.MinBy(c => double.Parse(c.Burnt)),
         };
+        ;
+        return resp;
+    }
+
+
+    public async Task<DailyTotalBurntResp> GetMergeDailyTotalBurntRespAsync()
+    {
+        var queryable = await _totalBurntRepository.GetQueryableAsync();
+        var mainList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
+        var mainDataList = _objectMapper.Map<List<DailyTotalBurntIndex>, List<DailyTotalBurnt>>(mainList);
+
+        var sideList = queryable.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.Date)
+            .Take(10000).ToList();
+        var sideDataList = _objectMapper.Map<List<DailyTotalBurntIndex>, List<DailyTotalBurnt>>(sideList);
+
+        var dic = sideDataList.ToDictionary(c => c.DateStr, c => c);
+
+        foreach (var data in mainDataList)
+        {
+            var burntDouble = double.Parse(data.Burnt);
+            data.Burnt = double.Parse(data.Burnt).ToString("F6");
+            data.MainChainBurnt = double.Parse(data.Burnt).ToString("F6");
+            data.MergeBurnt = double.Parse(data.Burnt).ToString("F6");
+            if (dic.TryGetValue(data.DateStr, out var sideData))
+            {
+                var sideBurnt = double.Parse(sideData.Burnt);
+                data.SideChainBurnt = sideBurnt.ToString("F6");
+                data.MergeBurnt = (burntDouble + sideBurnt).ToString("F6");
+            }
+        }
+
+
+        var resp = new DailyTotalBurntResp()
+        {
+            List = mainDataList.ToList(),
+            Total = mainDataList.Count,
+            Highest = mainDataList.MaxBy(c => double.Parse(c.MergeBurnt)),
+            Lowest = mainDataList.MinBy(c => double.Parse(c.MergeBurnt)),
+        };
 
         return resp;
     }
+
 
     public async Task<DailyDeployContractResp> GetDailyDeployContractRespAsync(ChartDataRequest request)
     {
@@ -1625,6 +1670,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             return await GetMergeUniqueAddressCountAsync();
         }
 
+        if (_globalOptions.CurrentValue.SwitchMergeAddress)
+        {
+            return await GetSwitchUniqueAddressCountAsync(request);
+        }
+
         var queryable = await _uniqueAddressRepository.GetQueryableAsync();
         var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
 
@@ -1639,7 +1689,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         var sideDataList =
             _objectMapper.Map<List<DailyUniqueAddressCountIndex>, List<DailyUniqueAddressCount>>(sideIndexList);
 
-        mainDataList[0].TotalUniqueAddressees = mainDataList[0].AddressCount; 
+        mainDataList[0].TotalUniqueAddressees = mainDataList[0].AddressCount;
 
         for (int i = 1; i < mainDataList.Count; i++)
         {
@@ -1693,6 +1743,75 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return resp;
     }
 
+    public async Task<UniqueAddressCountResp> GetSwitchUniqueAddressCountAsync(ChartDataRequest request)
+    {
+        var queryable = await _uniqueMergeAddressRepository.GetQueryableAsync();
+        var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
+
+        var sideIndexList = new List<DailyMergeUniqueAddressCountIndex>();
+
+        sideIndexList = queryable.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.Date)
+            .Take(10000).ToList();
+
+
+        var mainDataList =
+            _objectMapper.Map<List<DailyMergeUniqueAddressCountIndex>, List<DailyUniqueAddressCount>>(mainIndexList);
+        var sideDataList =
+            _objectMapper.Map<List<DailyMergeUniqueAddressCountIndex>, List<DailyUniqueAddressCount>>(sideIndexList);
+
+        mainDataList[0].TotalUniqueAddressees = mainDataList[0].AddressCount;
+
+        for (int i = 1; i < mainDataList.Count; i++)
+        {
+            var count1 = mainDataList[i - 1].TotalUniqueAddressees;
+            var count2 = mainDataList[i].AddressCount;
+            mainDataList[i].TotalUniqueAddressees = count1 + count2;
+        }
+
+        sideDataList[0].TotalUniqueAddressees = sideDataList[0].AddressCount;
+
+        for (int i = 1; i < sideDataList.Count; i++)
+        {
+            var count1 = sideDataList[i - 1].TotalUniqueAddressees;
+            var count2 = sideDataList[i].AddressCount;
+            sideDataList[i].TotalUniqueAddressees = count1 + count2;
+        }
+
+
+        var dic = new Dictionary<string, DailyUniqueAddressCount>();
+        var ownerList = new List<DailyUniqueAddressCount>();
+
+        if (request.ChainId == "AELF")
+        {
+            dic = sideDataList.ToDictionary(c => c.DateStr, c => c);
+            ownerList = mainDataList;
+        }
+        else
+        {
+            dic = mainDataList.ToDictionary(c => c.DateStr, c => c);
+            ownerList = sideDataList;
+        }
+
+
+        foreach (var data in ownerList)
+        {
+            data.OwnerUniqueAddressees = data.TotalUniqueAddressees;
+            if (dic.TryGetValue(data.DateStr, out var v))
+            {
+                data.TotalUniqueAddressees += v.TotalUniqueAddressees;
+            }
+        }
+
+        var resp = new UniqueAddressCountResp()
+        {
+            List = ownerList,
+            Total = ownerList.Count,
+            HighestIncrease = ownerList.MaxBy(c => c.AddressCount),
+            LowestIncrease = ownerList.MinBy(c => c.AddressCount),
+        };
+
+        return resp;
+    }
 
     public async Task<ActiveAddressCountResp> GetActiveAddressCountAsync(ChartDataRequest request)
     {
