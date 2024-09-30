@@ -492,7 +492,6 @@ public class NftService : INftService, ISingletonDependency
         var nftItemDetailDto = _objectMapper.Map<IndexerTokenInfoDto, NftItemDetailDto>(nftItem);
         nftItemDetailDto.Quantity = DecimalHelper.Divide(nftItem.TotalSupply, nftItem.Decimals);
 
-        nftItemDetailDto.Holders = nftItems.Sum(c => c.HolderCount);
         nftItemDetailDto.Item.ImageUrl = TokenInfoHelper.GetImageUrl(nftItem.ExternalInfo,
             () => _tokenInfoProvider.BuildImageUrl(nftItem.Symbol));
         var marketInfo = _tokenInfoOptionsMonitor.CurrentValue.GetMarketInfo(CommonConstant.DefaultMarket);

@@ -40,6 +40,7 @@ using Binance.Spot;
 using DeviceDetectorNET;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -154,6 +155,8 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     private readonly IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string>
         _dailyMergeUniqueAddressCountRepository;
 
+    private readonly IDistributedCache<string> _cache;
+
     private readonly NodeProvider _nodeProvider;
 
     private readonly ILogger<TransactionService> _logger;
@@ -213,6 +216,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         IEntityMappingRepository<MonthlyActiveAddressIndex, string> monthlyActiveAddressRepository,
         IEntityMappingRepository<MergeAddressIndex, string> mergeAddressRepository,
         IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> dailyMergeUniqueAddressCountRepository,
+        IDistributedCache<string> cache,
         IPriceServerProvider priceServerProvider) :
         base(optionsAccessor)
     {
@@ -270,172 +274,347 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         _monthlyActiveAddressRepository = monthlyActiveAddressRepository;
         _mergeAddressRepository = mergeAddressRepository;
         _dailyMergeUniqueAddressCountRepository = dailyMergeUniqueAddressCountRepository;
+        _cache = cache;
     }
 
 
     public async Task MergeAddress()
     {
         var key = "address_date";
-        
+
         await ConnectAsync();
         try
         {
             while (true)
             {
-                await Task.Delay(3 * 1000);
+                await Task.Delay(3000);
                 var mergeUniqueAddressInsertList = new List<DailyMergeUniqueAddressCountIndex>();
-                var updateDate = RedisDatabase.StringGet(key);
-
-                if (updateDate.IsNullOrEmpty)
+                var updateDate = await _cache.GetAsync(key);
+                if (updateDate.IsNullOrEmpty())
                 {
                     updateDate = _globalOptions.CurrentValue.AddressStartDate;
                 }
 
                 var nowDay = DateTime.Now.ToString("yyyy-MM-dd");
-                if (nowDay == updateDate)
-                {
-                    break;
-                }
+                if (nowDay == updateDate) break;
 
                 var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
                 var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
-                var beforeMergeAddressCountList =
-                    queryableAsync.Where(c => c.DateStr == DateTimeHelper.GetBeforeDayDate(updateDate)).Take(2)
-                        .ToList();
-
                 var queryable = await _addressRepository.GetQueryableAsync();
-                var nowAddressIndexList = queryable.Where(c => c.Date == updateDate.ToString()).Take(10000).ToList();
+                var nowAddressIndexList = queryable.Where(c => c.Date == updateDate)
+                    .Take(10000).ToList();
+
+                var beforeMergeAddressCountList = await GetBeforeMergeAddressCount(queryableAsync, updateDate);
+
                 if (nowAddressIndexList.IsNullOrEmpty())
                 {
-                    if (beforeMergeAddressCountList.IsNullOrEmpty())
-                    {
-                        beforeMergeAddressCountList =
-                            queryableAsync.Where(c => c.DateStr == updateDate).Take(2).ToList();
-                        foreach (var addressInfo in beforeMergeAddressCountList)
-                        {
-                            mergeUniqueAddressInsertList.Add(
-                                new DailyMergeUniqueAddressCountIndex()
-                                {
-                                    Date = updateDateLong,
-                                    ChainId = addressInfo.ChainId,
-                                    DateStr = updateDate,
-                                    AddressCount = addressInfo.TotalUniqueAddressees,
-                                    TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
-                                });
-                        }
-                    }
-                    else
-                    {
-                        foreach (var addressInfo in beforeMergeAddressCountList)
-                        {
-                            mergeUniqueAddressInsertList.Add(
-                                new DailyMergeUniqueAddressCountIndex()
-                                {
-                                    Date = updateDateLong,
-                                    ChainId = addressInfo.ChainId,
-                                    DateStr = updateDate,
-                                    AddressCount = 0,
-                                    TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
-                                });
-                        }
-                    }
-
-
-                    if (!mergeUniqueAddressInsertList.IsNullOrEmpty())
-                    {
-                        await _dailyMergeUniqueAddressCountRepository
-                            .AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
-                    }
-
-                    _logger.LogInformation($"MergeAddress date{updateDate} no new address");
-                    var afterDayDate = DateTimeHelper.GetAfterDayDate(updateDate);
-                    RedisDatabase.StringSet(key, afterDayDate);
+                    ProcessNoNewAddress(beforeMergeAddressCountList, mergeUniqueAddressInsertList, updateDateLong,
+                        updateDate);
+                    await SaveResults(mergeUniqueAddressInsertList, null, updateDate, key);
                     continue;
                 }
 
+                var (mainChainUniqueAddressCount, sideChainUniqueAddressCount, mergeAddressIndices) =
+                    ProcessNewAddresses(nowAddressIndexList, updateDateLong);
 
-                var nowAddressList = nowAddressIndexList.Select(c => c.Address).Distinct().ToList();
-                var mergeAddressIndexList = await GetMergeAddressIndexList(nowAddressList, updateDateLong);
+                mergeUniqueAddressInsertList.AddRange(await GetMergeAddressCounts(mainChainUniqueAddressCount,
+                    sideChainUniqueAddressCount, updateDateLong, updateDate, beforeMergeAddressCountList));
 
-                var dictionary = new Dictionary<string, MergeAddressIndex>();
-                var mergeAddressIndexDic =
-                    mergeAddressIndexList.Select(c => c.Address).Distinct().ToDictionary(c => c, c => c);
-
-                var filterAddressList = new List<AddressIndex>();
-                foreach (var index in nowAddressIndexList)
-                {
-                    if (!mergeAddressIndexDic.ContainsKey(index.Address))
-                    {
-                        filterAddressList.Add(index);
-                    }
-                }
-
-
-                var mainChainUniqueAddressCount = 0;
-                var sideChainUniqueAddressCount = 0;
-                if (!filterAddressList.IsNullOrEmpty())
-                {
-                    // all address is new 
-                    foreach (var index in filterAddressList)
-                    {
-                        if (index.ChainId == "AELF")
-                        {
-                            mainChainUniqueAddressCount++;
-                        }
-                        else
-                        {
-                            sideChainUniqueAddressCount++;
-                        }
-
-                        dictionary[index.Address + index.ChainId] = new MergeAddressIndex()
-                        {
-                            Address = index.Address,
-                            Date = updateDateLong,
-                            ChainId = index.ChainId
-                        };
-
-                        if (index.ChainId == _globalOptions.CurrentValue.SideChainId)
-                        {
-                            if (!dictionary.ContainsKey(index.Address + "AELF"))
-                            {
-                                mainChainUniqueAddressCount++;
-                            }
-
-                            dictionary[index.Address + "AELF"] = new MergeAddressIndex()
-                            {
-                                Address = index.Address,
-                                Date = updateDateLong,
-                                ChainId = "AELF"
-                            };
-                        }
-                    }
-                }
-
-
-                mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(mainChainUniqueAddressCount, "AELF",
-                    updateDateLong, updateDate,
-                    beforeMergeAddressCountList));
-                mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(sideChainUniqueAddressCount,
-                    _globalOptions.CurrentValue.SideChainId,
-                    updateDateLong, updateDate,
-                    beforeMergeAddressCountList));
-
-                await _dailyMergeUniqueAddressCountRepository.AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
-                var newAddressInsertList = dictionary.Values.ToList();
-                if (!newAddressInsertList.IsNullOrEmpty())
-                {
-                    await _mergeAddressRepository.AddOrUpdateManyAsync(newAddressInsertList);
-                }
-
-                RedisDatabase.StringSet(key, DateTimeHelper.GetAfterDayDate(updateDate));
-                _logger.LogInformation($"MergeAddress date{updateDate}  new address:{newAddressInsertList.Count}");
+                await SaveResults(mergeUniqueAddressInsertList, mergeAddressIndices, updateDate, key);
             }
         }
         catch (Exception e)
         {
-            _logger.LogError($"MergeAddress err:{e}");
+            _logger.LogError($"MergeAddress error: {e}");
         }
     }
+
+    private async Task<List<DailyMergeUniqueAddressCountIndex>> GetBeforeMergeAddressCount(
+        IQueryable<DailyMergeUniqueAddressCountIndex> queryableAsync, string updateDate)
+    {
+        var beforeDate = DateTimeHelper.GetBeforeDayDate(updateDate);
+        var result = queryableAsync.Where(c => c.DateStr == beforeDate)
+            .Take(2).ToList();
+        if (result.IsNullOrEmpty())
+        {
+            result = queryableAsync.Where(c => c.DateStr == updateDate)
+                .Take(2).ToList();
+        }
+
+        return result;
+    }
+
+    private void ProcessNoNewAddress(List<DailyMergeUniqueAddressCountIndex> beforeMergeAddressCountList,
+        List<DailyMergeUniqueAddressCountIndex> mergeUniqueAddressInsertList, long updateDateLong, string updateDate)
+    {
+        foreach (var addressInfo in beforeMergeAddressCountList)
+        {
+            mergeUniqueAddressInsertList.Add(new DailyMergeUniqueAddressCountIndex()
+            {
+                Date = updateDateLong,
+                ChainId = addressInfo.ChainId,
+                DateStr = updateDate,
+                AddressCount = addressInfo.TotalUniqueAddressees == 0 ? 0 : addressInfo.TotalUniqueAddressees,
+                TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
+            });
+        }
+    }
+
+  
+
+    private (int mainChainUniqueAddressCount, int sideChainUniqueAddressCount, List<MergeAddressIndex>
+        list)
+        ProcessNewAddresses(List<AddressIndex> nowAddressIndexList, long updateDateLong)
+    {
+        var sideNewAddressCount = nowAddressIndexList.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId)
+            .ToList();
+
+
+        var mainFilterNewAddress = FilterNewAddress(nowAddressIndexList.Select(c => c.Address).Distinct().ToList(),
+            updateDateLong).Result;
+
+        var mainChainUniqueAddressCount = sideNewAddressCount.Count;
+        var sideChainUniqueAddressCount = mainFilterNewAddress.Count;
+
+        var mergeAddressIndices = new List<MergeAddressIndex>();
+        foreach (var addressIndex in sideNewAddressCount)
+        {
+            mergeAddressIndices.Add(new MergeAddressIndex
+            {
+                Address = addressIndex.Address,
+                Date = updateDateLong,
+                ChainId = _globalOptions.CurrentValue.SideChainId
+            });
+        }
+
+        foreach (var address in mainFilterNewAddress)
+        {
+            mergeAddressIndices.Add(new MergeAddressIndex
+            {
+                Address = address,
+                Date = updateDateLong,
+                ChainId = "AELF"
+            });
+        }
+
+
+        return (mainChainUniqueAddressCount, sideChainUniqueAddressCount, mergeAddressIndices);
+    }
+
+    private async Task<List<string>> FilterNewAddress(List<string> nowAddressIndexList, long date)
+    {
+        var mergeAddressIndexList = await GetMergeAddressIndexList(nowAddressIndexList, date);
+
+        var mergeAddressIndexDic =
+            mergeAddressIndexList.Select(c => c.Address).Distinct().ToDictionary(c => c, c => c);
+
+        var filterAddressList = new List<string>();
+        foreach (var address in nowAddressIndexList)
+        {
+            if (!mergeAddressIndexDic.ContainsKey(address))
+            {
+                filterAddressList.Add(address);
+            }
+        }
+
+        return filterAddressList;
+    }
+
+    private async Task<List<DailyMergeUniqueAddressCountIndex>> GetMergeAddressCounts(int mainChainCount,
+        int sideChainCount, long updateDateLong, string updateDate,
+        List<DailyMergeUniqueAddressCountIndex> beforeMergeAddressCountList)
+    {
+        var result = new List<DailyMergeUniqueAddressCountIndex>
+        {
+            await GetMergeAddressIndex(mainChainCount, "AELF", updateDateLong, updateDate, beforeMergeAddressCountList),
+            await GetMergeAddressIndex(sideChainCount, _globalOptions.CurrentValue.SideChainId, updateDateLong,
+                updateDate, beforeMergeAddressCountList)
+        };
+        return result;
+    }
+
+    private async Task SaveResults(List<DailyMergeUniqueAddressCountIndex> mergeUniqueAddressInsertList,
+        List<MergeAddressIndex> newAddressInsertList, string updateDate, string key)
+    {
+        if (!mergeUniqueAddressInsertList.IsNullOrEmpty())
+        {
+            await _dailyMergeUniqueAddressCountRepository.AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
+        }
+
+        if (!newAddressInsertList.IsNullOrEmpty())
+        {
+            await _mergeAddressRepository.AddOrUpdateManyAsync(newAddressInsertList);
+            _logger.LogInformation($"MergeAddress date {updateDate}: new addresses: {newAddressInsertList.Count}");
+        }
+
+        await _cache.SetAsync(key, DateTimeHelper.GetAfterDayDate(updateDate), new DistributedCacheEntryOptions
+            { SlidingExpiration = null, AbsoluteExpiration = DateTimeOffset.MaxValue });
+    }
+
+
+    // public async Task MergeAddress()
+    // {
+    //     var key = "address_date";
+    //
+    //     await ConnectAsync();
+    //     try
+    //     {
+    //         while (true)
+    //         {
+    //             await Task.Delay(3 * 1000);
+    //             var mergeUniqueAddressInsertList = new List<DailyMergeUniqueAddressCountIndex>();
+    //             var updateDate = RedisDatabase.StringGet(key);
+    //
+    //             if (updateDate.IsNullOrEmpty)
+    //             {
+    //                 updateDate = _globalOptions.CurrentValue.AddressStartDate;
+    //             }
+    //
+    //             var nowDay = DateTime.Now.ToString("yyyy-MM-dd");
+    //             if (nowDay == updateDate)
+    //             {
+    //                 break;
+    //             }
+    //
+    //             var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
+    //             var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
+    //             var beforeMergeAddressCountList =
+    //                 queryableAsync.Where(c => c.DateStr == DateTimeHelper.GetBeforeDayDate(updateDate)).Take(2)
+    //                     .ToList();
+    //
+    //             var queryable = await _addressRepository.GetQueryableAsync();
+    //             var nowAddressIndexList = queryable.Where(c => c.Date == updateDate.ToString()).Take(10000).ToList();
+    //             if (nowAddressIndexList.IsNullOrEmpty())
+    //             {
+    //                 if (beforeMergeAddressCountList.IsNullOrEmpty())
+    //                 {
+    //                     beforeMergeAddressCountList =
+    //                         queryableAsync.Where(c => c.DateStr == updateDate).Take(2).ToList();
+    //                     foreach (var addressInfo in beforeMergeAddressCountList)
+    //                     {
+    //                         mergeUniqueAddressInsertList.Add(
+    //                             new DailyMergeUniqueAddressCountIndex()
+    //                             {
+    //                                 Date = updateDateLong,
+    //                                 ChainId = addressInfo.ChainId,
+    //                                 DateStr = updateDate,
+    //                                 AddressCount = addressInfo.TotalUniqueAddressees,
+    //                                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
+    //                             });
+    //                     }
+    //                 }
+    //                 else
+    //                 {
+    //                     foreach (var addressInfo in beforeMergeAddressCountList)
+    //                     {
+    //                         mergeUniqueAddressInsertList.Add(
+    //                             new DailyMergeUniqueAddressCountIndex()
+    //                             {
+    //                                 Date = updateDateLong,
+    //                                 ChainId = addressInfo.ChainId,
+    //                                 DateStr = updateDate,
+    //                                 AddressCount = 0,
+    //                                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
+    //                             });
+    //                     }
+    //                 }
+    //
+    //
+    //                 if (!mergeUniqueAddressInsertList.IsNullOrEmpty())
+    //                 {
+    //                     await _dailyMergeUniqueAddressCountRepository
+    //                         .AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
+    //                 }
+    //
+    //                 _logger.LogInformation($"MergeAddress date{updateDate} no new address");
+    //                 var afterDayDate = DateTimeHelper.GetAfterDayDate(updateDate);
+    //                 RedisDatabase.StringSet(key, afterDayDate);
+    //                 continue;
+    //             }
+    //
+    //
+    //             var nowAddressList = nowAddressIndexList.Select(c => c.Address).Distinct().ToList();
+    //             var mergeAddressIndexList = await GetMergeAddressIndexList(nowAddressList, updateDateLong);
+    //
+    //             var dictionary = new Dictionary<string, MergeAddressIndex>();
+    //             var mergeAddressIndexDic =
+    //                 mergeAddressIndexList.Select(c => c.Address).Distinct().ToDictionary(c => c, c => c);
+    //
+    //             var filterAddressList = new List<AddressIndex>();
+    //             foreach (var index in nowAddressIndexList)
+    //             {
+    //                 if (!mergeAddressIndexDic.ContainsKey(index.Address))
+    //                 {
+    //                     filterAddressList.Add(index);
+    //                 }
+    //             }
+    //
+    //
+    //             var mainChainUniqueAddressCount = 0;
+    //             var sideChainUniqueAddressCount = 0;
+    //             if (!filterAddressList.IsNullOrEmpty())
+    //             {
+    //                 // all address is new 
+    //                 foreach (var index in filterAddressList)
+    //                 {
+    //                     if (index.ChainId == "AELF")
+    //                     {
+    //                         mainChainUniqueAddressCount++;
+    //                     }
+    //                     else
+    //                     {
+    //                         sideChainUniqueAddressCount++;
+    //                     }
+    //
+    //                     dictionary[index.Address + index.ChainId] = new MergeAddressIndex()
+    //                     {
+    //                         Address = index.Address,
+    //                         Date = updateDateLong,
+    //                         ChainId = index.ChainId
+    //                     };
+    //
+    //                     if (index.ChainId == _globalOptions.CurrentValue.SideChainId)
+    //                     {
+    //                         if (!dictionary.ContainsKey(index.Address + "AELF"))
+    //                         {
+    //                             mainChainUniqueAddressCount++;
+    //                         }
+    //
+    //                         dictionary[index.Address + "AELF"] = new MergeAddressIndex()
+    //                         {
+    //                             Address = index.Address,
+    //                             Date = updateDateLong,
+    //                             ChainId = "AELF"
+    //                         };
+    //                     }
+    //                 }
+    //             }
+    //
+    //
+    //             mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(mainChainUniqueAddressCount, "AELF",
+    //                 updateDateLong, updateDate,
+    //                 beforeMergeAddressCountList));
+    //             mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(sideChainUniqueAddressCount,
+    //                 _globalOptions.CurrentValue.SideChainId,
+    //                 updateDateLong, updateDate,
+    //                 beforeMergeAddressCountList));
+    //
+    //             await _dailyMergeUniqueAddressCountRepository.AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
+    //             var newAddressInsertList = dictionary.Values.ToList();
+    //             if (!newAddressInsertList.IsNullOrEmpty())
+    //             {
+    //                 await _mergeAddressRepository.AddOrUpdateManyAsync(newAddressInsertList);
+    //             }
+    //
+    //             RedisDatabase.StringSet(key, DateTimeHelper.GetAfterDayDate(updateDate));
+    //             _logger.LogInformation($"MergeAddress date{updateDate}  new address:{newAddressInsertList.Count}");
+    //         }
+    //     }
+    //     catch (Exception e)
+    //     {
+    //         _logger.LogError($"MergeAddress err:{e}");
+    //     }
+    // }
 
 
     public async Task<DailyMergeUniqueAddressCountIndex> GetMergeAddressIndex(int count, string chainId, long date,
