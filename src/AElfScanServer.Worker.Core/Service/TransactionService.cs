@@ -282,6 +282,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     {
         var key = "address_date";
 
+        _cache.Remove(key);
         await ConnectAsync();
         try
         {
@@ -360,7 +361,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         }
     }
 
-  
 
     private (int mainChainUniqueAddressCount, int sideChainUniqueAddressCount, List<MergeAddressIndex>
         list)
