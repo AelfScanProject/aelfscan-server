@@ -997,7 +997,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         foreach (var dailyAvgTransactionFee in mainDataList)
         {
-            var curAvgFeeUsdt = (double.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8).ToString("F6");
+            var curAvgFeeUsdt = (double.Parse(dailyAvgTransactionFee.AvgFeeUsdt)).ToString("F6");
             dailyAvgTransactionFee.MainChainAvgFeeUsdt = curAvgFeeUsdt;
             dailyAvgTransactionFee.MergeAvgFeeUsdt = curAvgFeeUsdt;
 
@@ -1005,9 +1005,9 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             if (dic.TryGetValue(dailyAvgTransactionFee.Date, out var v))
             {
                 dailyAvgTransactionFee.MergeAvgFeeUsdt =
-                    (double.Parse(dailyAvgTransactionFee.MergeAvgFeeUsdt) + double.Parse(v.AvgFeeUsdt) / 1e8)
+                    (double.Parse(dailyAvgTransactionFee.MergeAvgFeeUsdt) + double.Parse(v.AvgFeeUsdt))
                     .ToString("F6");
-                dailyAvgTransactionFee.SideChainAvgFeeUsdt = (double.Parse(v.AvgFeeUsdt) / 1e8).ToString("F6");
+                dailyAvgTransactionFee.SideChainAvgFeeUsdt = double.Parse(v.AvgFeeUsdt).ToString("F6");
             }
         }
 
