@@ -865,6 +865,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyAvgTransactionFeeResp> GetDailyAvgTransactionFeeRespAsync(ChartDataRequest request)
     {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeDailyAvgTransactionFeeRespAsync();
+        }
+
         var queryable = await _avgTransactionFeeRepository.GetQueryableAsync();
         var indexList = queryable.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000).ToList();
 
@@ -885,6 +890,48 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             Total = datList.Count,
             Highest = datList.MaxBy(c => double.Parse(c.AvgFeeElf)),
             Lowest = datList.MinBy(c => double.Parse(c.AvgFeeElf)),
+        };
+
+        return resp;
+    }
+
+
+    public async Task<DailyAvgTransactionFeeResp> GetMergeDailyAvgTransactionFeeRespAsync()
+    {
+        var queryable = await _avgTransactionFeeRepository.GetQueryableAsync();
+        var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
+        var mainDataList =
+            _objectMapper.Map<List<DailyAvgTransactionFeeIndex>, List<DailyAvgTransactionFee>>(mainIndexList);
+
+        var sideIndexList = queryable.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId)
+            .OrderBy(c => c.Date).Take(10000).ToList();
+        var sideDataList =
+            _objectMapper.Map<List<DailyAvgTransactionFeeIndex>, List<DailyAvgTransactionFee>>(sideIndexList);
+
+        var dic = sideDataList.ToDictionary(c => c.Date, c => c);
+
+
+        foreach (var dailyAvgTransactionFee in mainDataList)
+        {
+            var curAvgFeeUsdt = (double.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8).ToString("F6");
+            dailyAvgTransactionFee.MainChainAvgFeeUsdt = curAvgFeeUsdt;
+            dailyAvgTransactionFee.MergeAvgFeeUsdt = curAvgFeeUsdt;
+
+
+            if (dic.TryGetValue(dailyAvgTransactionFee.Date, out var v))
+            {
+                dailyAvgTransactionFee.MergeAvgFeeUsdt =
+                    (double.Parse(dailyAvgTransactionFee.MergeAvgFeeUsdt)+double.Parse(v.AvgFeeUsdt) / 1e8).ToString("F6");
+                dailyAvgTransactionFee.SideChainAvgFeeUsdt = (double.Parse(v.AvgFeeUsdt) / 1e8).ToString("F6");
+            }
+        }
+
+        var resp = new DailyAvgTransactionFeeResp()
+        {
+            List = mainDataList.ToList(),
+            Total = mainDataList.Count,
+            Highest = mainDataList.MaxBy(c => double.Parse(c.MergeAvgFeeUsdt)),
+            Lowest = mainDataList.MinBy(c => double.Parse(c.MergeAvgFeeUsdt)),
         };
 
         return resp;
@@ -1568,6 +1615,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             data.MainChainAddressCount = data.AddressCount;
             data.MergeAddressCount = data.AddressCount;
             data.MergeTotalUniqueAddressees = data.TotalUniqueAddressees;
+            data.Date = DateTimeHelper.GetIntDateTimeToTimestamp(data.Date);
             if (dic.TryGetValue(data.DateStr, out var v))
             {
                 data.SideChainAddressCount = v.AddressCount;
@@ -1692,6 +1740,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             var count1 = mainDataList[i - 1].TotalUniqueAddressees;
             var count2 = mainDataList[i].AddressCount;
             mainDataList[i].TotalUniqueAddressees = count1 + count2;
+            mainDataList[i].Date = DateTimeHelper.GetIntDateTimeToTimestamp(mainDataList[i].Date);
         }
 
         sideDataList[0].TotalUniqueAddressees = sideDataList[0].AddressCount;
@@ -1701,6 +1750,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             var count1 = sideDataList[i - 1].TotalUniqueAddressees;
             var count2 = sideDataList[i].AddressCount;
             sideDataList[i].TotalUniqueAddressees = count1 + count2;
+            sideDataList[i].Date = DateTimeHelper.GetIntDateTimeToTimestamp(sideDataList[i].Date);
         }
 
 

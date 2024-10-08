@@ -121,6 +121,9 @@ public class DailyAvgTransactionFee
 
     public string AvgFeeUsdt { get; set; }
 
+    public string MainChainAvgFeeUsdt { get; set; }
+    public string SideChainAvgFeeUsdt { get; set; }
+    public string MergeAvgFeeUsdt { get; set; }
     public string AvgFeeElf { get; set; }
 
     public string TotalFeeElf { get; set; }
