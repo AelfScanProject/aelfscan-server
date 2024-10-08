@@ -865,7 +865,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     public async Task<TopContractCallResp> GetTopContractCallRespAsync(ChartDataRequest request)
     {
         var queryable = await _dailyContractCallRepository.GetQueryableAsync();
-        queryable = queryable.Where(c => c.ChainId == request.ChainId);
+        if (!request.ChainId.IsNullOrEmpty())
+        {
+            queryable = queryable.Where(c => c.ChainId == request.ChainId);
+        }
+
 
         var lastIndex = queryable.OrderByDescending(c => c.Date).OrderBy(c => c.Date).Take(1).ToList().First();
 
@@ -898,6 +902,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
                     ContractAddress = dailyContractCall.ContractAddress,
                     ContractName = await GetContractName(request.ChainId, dailyContractCall.ContractAddress),
                     CallCount = dailyContractCall.CallCount,
+                    ChainIds = new List<string>() { dailyContractCall.ChainId }
                 };
                 totalCall += dailyContractCall.CallCount;
 
@@ -924,6 +929,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         return resp;
     }
+
 
     public async Task<DailyTransactionFeeResp> GetDailyTransactionFeeRespAsync(ChartDataRequest request)
     {

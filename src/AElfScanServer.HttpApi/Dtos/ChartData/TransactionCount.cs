@@ -308,6 +308,8 @@ public class TopContractCall
     public string ContractName { get; set; }
 
     public string ContractAddress { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
 }
 
 public class DailyMarketCapResp
