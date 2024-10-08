@@ -121,6 +121,9 @@ public class DailyAvgTransactionFee
 
     public string AvgFeeUsdt { get; set; }
 
+    public string MainChainAvgFeeUsdt { get; set; }
+    public string SideChainAvgFeeUsdt { get; set; } = "0";
+    public string MergeAvgFeeUsdt { get; set; }
     public string AvgFeeElf { get; set; }
 
     public string TotalFeeElf { get; set; }
@@ -134,6 +137,12 @@ public class DailyTransactionFee
     public long Date { get; set; }
 
     public string TotalFeeElf { get; set; }
+
+    public string MainChainTotalFeeElf { get; set; }
+
+    public string SideChainTotalFeeElf { get; set; } = "0";
+
+    public string MergeTotalFeeElf { get; set; }
 
     public string DateStr { get; set; }
 }
@@ -161,6 +170,10 @@ public class DailyAvgBlockSize
     public long Date { get; set; }
     public string DateStr { get; set; }
     public string AvgBlockSize { get; set; }
+
+    public string MergeAvgBlockSize { get; set; }
+    public string MainChainAvgBlockSize { get; set; }
+    public string SideChainAvgBlockSize { get; set; }
     public long TotalSize { get; set; }
     public int BlockCount { get; set; }
 }
@@ -169,6 +182,12 @@ public class DailyBlockReward
 {
     public long Date { get; set; }
     public string BlockReward { get; set; }
+
+    public string MergeBlockReward { get; set; }
+
+    public string MainChainBlockReward { get; set; }
+
+    public string SideChainBlockReward { get; set; }
     public string DateStr { get; set; }
     public long TotalBlockCount { get; set; }
 }
@@ -214,6 +233,12 @@ public class DailyDeployContract
     public string Count { get; set; }
 
     public string TotalCount { get; set; }
+
+    public string MainChainTotalCount { get; set; }
+
+    public string SideChainTotalCount { get; set; }
+
+    public string MergeTotalCount { get; set; }
 
     public string DateStr { get; set; }
 }
@@ -264,6 +289,12 @@ public class DailyTotalContractCall
 
     public long CallCount { get; set; }
 
+    public long MainChainCallCount { get; set; }
+
+    public long SideChainCallCount { get; set; }
+
+    public long MergeCallCount { get; set; }
+
     public long CallAddressCount { get; set; }
 }
 
@@ -277,6 +308,8 @@ public class TopContractCall
     public string ContractName { get; set; }
 
     public string ContractAddress { get; set; }
+
+    public List<string> ChainIds { get; set; } = new();
 }
 
 public class DailyMarketCapResp

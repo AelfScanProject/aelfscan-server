@@ -49,6 +49,18 @@ public static class DateTimeHelper
     }
 
 
+    public static long GetIntDateTimeToTimestamp(long date)
+    {
+        string dateString = date.ToString();
+
+        DateTime dateTime = DateTime.ParseExact(dateString, "yyyyMMdd", null);
+
+        long timestamp = new DateTimeOffset(dateTime).ToUnixTimeMilliseconds();
+
+        return timestamp;
+    }
+
+
     public static string FormatDateStr(string date)
     {
         DateTime dateTime = DateTime.Parse(date, CultureInfo.InvariantCulture,
