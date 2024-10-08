@@ -171,10 +171,10 @@ public class DailyAvgBlockSize
     public string DateStr { get; set; }
     public string AvgBlockSize { get; set; }
 
+    public string MergeAvgBlockSize { get; set; }
+    public string MainChainAvgBlockSize { get; set; }
+    public string SideChainAvgBlockSize { get; set; }
     public long TotalSize { get; set; }
-    public long MainChainTotalSize { get; set; }
-    public long SideChainTotalSize { get; set; }
-    public long MergeTotalSize { get; set; }
     public int BlockCount { get; set; }
 }
 
@@ -182,6 +182,12 @@ public class DailyBlockReward
 {
     public long Date { get; set; }
     public string BlockReward { get; set; }
+
+    public string MergeBlockReward { get; set; }
+
+    public string MainChainBlockReward { get; set; }
+
+    public string SideChainBlockReward { get; set; }
     public string DateStr { get; set; }
     public long TotalBlockCount { get; set; }
 }
@@ -227,6 +233,12 @@ public class DailyDeployContract
     public string Count { get; set; }
 
     public string TotalCount { get; set; }
+    
+    public string MainChainTotalCount { get; set; }
+    
+    public string SideChainTotalCount { get; set; }
+    
+    public string MergeTotalCount { get; set; }
 
     public string DateStr { get; set; }
 }

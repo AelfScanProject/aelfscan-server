@@ -774,13 +774,15 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         var dic = sideDataList.ToDictionary(c => c.Date, c => c);
         foreach (var dailyAvgBlockSize in mainDataList)
         {
-            dailyAvgBlockSize.MainChainTotalSize = dailyAvgBlockSize.TotalSize;
-            dailyAvgBlockSize.MergeTotalSize = dailyAvgBlockSize.TotalSize;
+            dailyAvgBlockSize.MainChainAvgBlockSize = dailyAvgBlockSize.AvgBlockSize;
+            dailyAvgBlockSize.MergeAvgBlockSize = dailyAvgBlockSize.AvgBlockSize;
 
             if (dic.TryGetValue(dailyAvgBlockSize.Date, out var sideData))
             {
-                dailyAvgBlockSize.SideChainTotalSize = sideData.TotalSize;
-                dailyAvgBlockSize.MergeTotalSize = (sideData.TotalSize + dailyAvgBlockSize.MergeTotalSize)/(dailyAvgBlockSize.BlockCount+sideData.BlockCount);
+                dailyAvgBlockSize.SideChainAvgBlockSize = sideData.AvgBlockSize;
+                dailyAvgBlockSize.MergeAvgBlockSize =
+                    ((double.Parse(sideData.AvgBlockSize) + double.Parse(dailyAvgBlockSize.AvgBlockSize)) /
+                     (dailyAvgBlockSize.BlockCount + sideData.BlockCount)).ToString();
             }
         }
 
@@ -788,8 +790,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         {
             List = mainDataList.ToList(),
             Total = mainDataList.Count,
-            Highest = mainDataList.MaxBy(c => double.Parse(c.AvgBlockSize)),
-            Lowest = mainDataList.MinBy(c => double.Parse(c.AvgBlockSize)),
+            Highest = mainDataList.MaxBy(c => double.Parse(c.MergeAvgBlockSize)),
+            Lowest = mainDataList.MinBy(c => double.Parse(c.MergeAvgBlockSize)),
         };
 
         return resp;
@@ -1095,6 +1097,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyDeployContractResp> GetDailyDeployContractRespAsync(ChartDataRequest request)
     {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeDailyDeployContractRespAsync();
+        }
+
         var queryable = await _deployContractRepository.GetQueryableAsync();
         var indexList = queryable.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000).ToList();
 
@@ -1122,6 +1129,44 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         };
 
         return resp;
+    }
+
+
+    public async Task<DailyDeployContractResp> GetMergeDailyDeployContractRespAsync()
+    {
+        var tasks = new List<Task>();
+        var mainResp = new DailyDeployContractResp();
+        var sideResp = new DailyDeployContractResp();
+        tasks.Add(GetDailyDeployContractRespAsync(new ChartDataRequest
+        {
+            ChainId = _globalOptions.CurrentValue.SideChainId
+        }).ContinueWith(task => { sideResp = task.Result; }));
+
+        tasks.Add(GetDailyDeployContractRespAsync(new ChartDataRequest
+        {
+            ChainId = "AELF"
+        }).ContinueWith(task => { mainResp = task.Result; }));
+
+        await tasks.WhenAll();
+
+        var dic = sideResp.List.ToDictionary(c => c.Date, c => c);
+
+        foreach (var dailyDeployContract in mainResp.List)
+        {
+            dailyDeployContract.MainChainTotalCount = dailyDeployContract.TotalCount;
+            dailyDeployContract.MergeTotalCount = dailyDeployContract.TotalCount;
+            if (dic.TryGetValue(dailyDeployContract.Date, out var sideData))
+            {
+                dailyDeployContract.SideChainTotalCount = sideData.TotalCount;
+                dailyDeployContract.MergeTotalCount =
+                    (int.Parse(dailyDeployContract.MergeTotalCount) + int.Parse(sideData.TotalCount)).ToString();
+            }
+        }
+
+        mainResp.Highest = mainResp.List.MaxBy(c => double.Parse(c.MergeTotalCount));
+        mainResp.Lowest = mainResp.List.MinBy(c => double.Parse(c.MergeTotalCount));
+
+        return mainResp;
     }
 
     public async Task<ElfPriceIndexResp> GetElfPriceIndexRespAsync()
@@ -1182,6 +1227,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         return resp;
     }
+
 
     public async Task<InitRoundResp> InitDailyNetwork(SetRoundRequest request)
     {
