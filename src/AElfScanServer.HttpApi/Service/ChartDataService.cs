@@ -910,7 +910,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             }
         }
 
-
         var list = dic.Values.Select(c =>
         {
             c.CallAddressCount = addressDic[c.ContractAddress].Count;
