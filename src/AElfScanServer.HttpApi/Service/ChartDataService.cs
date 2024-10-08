@@ -740,6 +740,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyAvgBlockSizeResp> GetDailyAvgBlockSizeRespRespAsync(ChartDataRequest request)
     {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeDailyAvgBlockSizeRespRespAsync();
+        }
+
         var queryable = await _blockSizeRepository.GetQueryableAsync();
         var indexList = queryable.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000).ToList();
 
@@ -751,6 +756,40 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             Total = datList.Count,
             Highest = datList.MaxBy(c => double.Parse(c.AvgBlockSize)),
             Lowest = datList.MinBy(c => double.Parse(c.AvgBlockSize)),
+        };
+
+        return resp;
+    }
+
+    public async Task<DailyAvgBlockSizeResp> GetMergeDailyAvgBlockSizeRespRespAsync()
+    {
+        var queryable = await _blockSizeRepository.GetQueryableAsync();
+        var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
+        var mainDataList = _objectMapper.Map<List<DailyAvgBlockSizeIndex>, List<DailyAvgBlockSize>>(mainIndexList);
+
+        var sideIndexList = queryable.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId)
+            .OrderBy(c => c.Date).Take(10000).ToList();
+        var sideDataList = _objectMapper.Map<List<DailyAvgBlockSizeIndex>, List<DailyAvgBlockSize>>(sideIndexList);
+
+        var dic = sideDataList.ToDictionary(c => c.Date, c => c);
+        foreach (var dailyAvgBlockSize in mainDataList)
+        {
+            dailyAvgBlockSize.MainChainTotalSize = dailyAvgBlockSize.TotalSize;
+            dailyAvgBlockSize.MergeTotalSize = dailyAvgBlockSize.TotalSize;
+
+            if (dic.TryGetValue(dailyAvgBlockSize.Date, out var sideData))
+            {
+                dailyAvgBlockSize.SideChainTotalSize = sideData.TotalSize;
+                dailyAvgBlockSize.MergeTotalSize = sideData.TotalSize + dailyAvgBlockSize.MergeTotalSize;
+            }
+        }
+
+        var resp = new DailyAvgBlockSizeResp()
+        {
+            List = mainDataList.ToList(),
+            Total = mainDataList.Count,
+            Highest = mainDataList.MaxBy(c => double.Parse(c.AvgBlockSize)),
+            Lowest = mainDataList.MinBy(c => double.Parse(c.AvgBlockSize)),
         };
 
         return resp;
@@ -840,6 +879,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyTransactionFeeResp> GetDailyTransactionFeeRespAsync(ChartDataRequest request)
     {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeDailyTransactionFeeRespAsync();
+        }
+
         var queryable = await _avgTransactionFeeRepository.GetQueryableAsync();
         var indexList = queryable.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000).ToList();
 
@@ -858,6 +902,46 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             Total = datList.Count,
             Highest = datList.MaxBy(c => double.Parse(c.TotalFeeElf)),
             Lowest = datList.MinBy(c => double.Parse(c.TotalFeeElf)),
+        };
+
+        return resp;
+    }
+
+    public async Task<DailyTransactionFeeResp> GetMergeDailyTransactionFeeRespAsync()
+    {
+        var queryable = await _avgTransactionFeeRepository.GetQueryableAsync();
+        var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
+        var mainDataList =
+            _objectMapper.Map<List<DailyAvgTransactionFeeIndex>, List<DailyTransactionFee>>(mainIndexList);
+
+
+        var sideIndexList = queryable.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId)
+            .OrderBy(c => c.Date).Take(10000).ToList();
+        var sideDataList =
+            _objectMapper.Map<List<DailyAvgTransactionFeeIndex>, List<DailyTransactionFee>>(sideIndexList);
+        var dic = sideDataList.ToDictionary(c => c.DateStr, c => c);
+
+        foreach (var dailyAvgTransactionFee in mainDataList)
+        {
+            var curTotalFeeElf = (double.Parse(dailyAvgTransactionFee.TotalFeeElf) / 1e8).ToString("F6");
+            dailyAvgTransactionFee.MainChainTotalFeeElf = curTotalFeeElf;
+            dailyAvgTransactionFee.MergeTotalFeeElf = curTotalFeeElf;
+
+            if (dic.TryGetValue(dailyAvgTransactionFee.DateStr, out var v))
+            {
+                dailyAvgTransactionFee.SideChainTotalFeeElf = (double.Parse(v.TotalFeeElf) / 1e8).ToString("F6");
+                dailyAvgTransactionFee.MergeTotalFeeElf = (double.Parse(dailyAvgTransactionFee.MergeTotalFeeElf) +
+                                                           double.Parse(v.TotalFeeElf) / 1e8)
+                    .ToString("F6");
+            }
+        }
+
+        var resp = new DailyTransactionFeeResp()
+        {
+            List = mainDataList.ToList(),
+            Total = mainDataList.Count,
+            Highest = mainDataList.MaxBy(c => double.Parse(c.MergeTotalFeeElf)),
+            Lowest = mainDataList.MinBy(c => double.Parse(c.MergeTotalFeeElf)),
         };
 
         return resp;
@@ -921,7 +1005,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             if (dic.TryGetValue(dailyAvgTransactionFee.Date, out var v))
             {
                 dailyAvgTransactionFee.MergeAvgFeeUsdt =
-                    (double.Parse(dailyAvgTransactionFee.MergeAvgFeeUsdt)+double.Parse(v.AvgFeeUsdt) / 1e8).ToString("F6");
+                    (double.Parse(dailyAvgTransactionFee.MergeAvgFeeUsdt) + double.Parse(v.AvgFeeUsdt) / 1e8)
+                    .ToString("F6");
                 dailyAvgTransactionFee.SideChainAvgFeeUsdt = (double.Parse(v.AvgFeeUsdt) / 1e8).ToString("F6");
             }
         }

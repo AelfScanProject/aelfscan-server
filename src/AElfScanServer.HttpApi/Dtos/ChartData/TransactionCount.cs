@@ -122,7 +122,7 @@ public class DailyAvgTransactionFee
     public string AvgFeeUsdt { get; set; }
 
     public string MainChainAvgFeeUsdt { get; set; }
-    public string SideChainAvgFeeUsdt { get; set; }
+    public string SideChainAvgFeeUsdt { get; set; } = "0";
     public string MergeAvgFeeUsdt { get; set; }
     public string AvgFeeElf { get; set; }
 
@@ -137,6 +137,12 @@ public class DailyTransactionFee
     public long Date { get; set; }
 
     public string TotalFeeElf { get; set; }
+
+    public string MainChainTotalFeeElf { get; set; }
+
+    public string SideChainTotalFeeElf { get; set; } = "0";
+
+    public string MergeTotalFeeElf { get; set; }
 
     public string DateStr { get; set; }
 }
@@ -164,7 +170,11 @@ public class DailyAvgBlockSize
     public long Date { get; set; }
     public string DateStr { get; set; }
     public string AvgBlockSize { get; set; }
+
     public long TotalSize { get; set; }
+    public long MainChainTotalSize { get; set; }
+    public long SideChainTotalSize { get; set; }
+    public long MergeTotalSize { get; set; }
     public int BlockCount { get; set; }
 }
 
