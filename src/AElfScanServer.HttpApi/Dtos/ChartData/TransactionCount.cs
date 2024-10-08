@@ -233,11 +233,11 @@ public class DailyDeployContract
     public string Count { get; set; }
 
     public string TotalCount { get; set; }
-    
+
     public string MainChainTotalCount { get; set; }
-    
+
     public string SideChainTotalCount { get; set; }
-    
+
     public string MergeTotalCount { get; set; }
 
     public string DateStr { get; set; }
@@ -288,6 +288,12 @@ public class DailyTotalContractCall
 
 
     public long CallCount { get; set; }
+
+    public long MainChainCallCount { get; set; }
+
+    public long SideChainCallCount { get; set; }
+
+    public long MergeCallCount { get; set; }
 
     public long CallAddressCount { get; set; }
 }

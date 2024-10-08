@@ -781,7 +781,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             {
                 dailyAvgBlockSize.SideChainAvgBlockSize = sideData.AvgBlockSize;
                 dailyAvgBlockSize.MergeAvgBlockSize =
-                    ((double.Parse(sideData.AvgBlockSize) + double.Parse(dailyAvgBlockSize.AvgBlockSize)) /
+                    ((double.Parse(sideData.AvgBlockSize) * dailyAvgBlockSize.BlockCount +
+                      double.Parse(dailyAvgBlockSize.AvgBlockSize) * sideData.BlockCount) /
                      (dailyAvgBlockSize.BlockCount + sideData.BlockCount)).ToString();
             }
         }
@@ -800,6 +801,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyTotalContractCallResp> GetDailyTotalContractCallRespRespAsync(ChartDataRequest request)
     {
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeDailyTotalContractCallRespRespAsync();
+        }
+
         var queryable = await _dailyTotalContractCallRepository.GetQueryableAsync();
         var indexList = queryable.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000).ToList();
 
@@ -811,6 +817,46 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             Total = dataList.Count,
             Highest = dataList.MaxBy(c => c.CallCount),
             Lowest = dataList.MinBy(c => c.CallCount),
+        };
+
+        return resp;
+    }
+
+
+    public async Task<DailyTotalContractCallResp> GetMergeDailyTotalContractCallRespRespAsync()
+    {
+        var queryable = await _dailyTotalContractCallRepository.GetQueryableAsync();
+        var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
+
+        var mainDataList =
+            _objectMapper.Map<List<DailyTotalContractCallIndex>, List<DailyTotalContractCall>>(mainIndexList);
+
+        var sideIndexList = queryable.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId)
+            .OrderBy(c => c.Date).Take(10000).ToList();
+
+        var sideDataList =
+            _objectMapper.Map<List<DailyTotalContractCallIndex>, List<DailyTotalContractCall>>(sideIndexList);
+
+        var dic = sideDataList.ToDictionary(c => c.Date, c => c);
+
+        foreach (var dailyTotalContractCall in mainDataList)
+        {
+            dailyTotalContractCall.MainChainCallCount = dailyTotalContractCall.CallCount;
+            dailyTotalContractCall.MergeCallCount = dailyTotalContractCall.CallCount;
+            if (dic.TryGetValue(dailyTotalContractCall.Date, out var sideData))
+            {
+                dailyTotalContractCall.SideChainCallCount = sideData.CallCount;
+                dailyTotalContractCall.MergeCallCount =
+                    dailyTotalContractCall.CallCount + sideData.CallCount;
+            }
+        }
+
+        var resp = new DailyTotalContractCallResp()
+        {
+            List = mainDataList.ToList(),
+            Total = mainDataList.Count,
+            Highest = mainDataList.MaxBy(c => c.MergeCallCount),
+            Lowest = mainDataList.MinBy(c => c.MergeCallCount),
         };
 
         return resp;
