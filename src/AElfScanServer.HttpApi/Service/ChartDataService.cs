@@ -894,7 +894,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
                 {
                     addressDic[dailyContractCall.ContractAddress].Add(s);
                 }
-            }K
+            }
             else
             {
                 dic[dailyContractCall.ContractAddress] = new TopContractCall()
