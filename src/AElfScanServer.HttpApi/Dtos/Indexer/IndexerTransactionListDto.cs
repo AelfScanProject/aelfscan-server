@@ -16,17 +16,15 @@ public class IndexerTransactionResultDto
     public IndexerTransactionListResultDto TransactionInfos { get; set; }
 }
 
-
 public class IndexerTransactionByHashResultDto
 {
     public IndexerTransactionListResultDto TransactionByHash { get; set; }
 }
 
-
 public class IndexerTransactionListResultDto
 {
     public long TotalCount { get; set; }
-    public List<IndexerTransactionInfoDto> Items { get; set; }
+    public List<IndexerTransactionInfoDto> Items { get; set; } = new();
 }
 
 public class IndexerTransactionInfoDto

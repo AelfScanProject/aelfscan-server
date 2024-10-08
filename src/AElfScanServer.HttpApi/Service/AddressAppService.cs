@@ -348,12 +348,12 @@ public class AddressAppService : IAddressAppService
 
         result.TokenHoldings = holderInfos.Count;
 
-        if (!lastTransaction.Items.IsNullOrEmpty())
+        if (lastTransaction != null && !lastTransaction.Items.IsNullOrEmpty())
         {
             result.LastTransactionSend = OfTransactionInfo(lastTransaction.Items.First());
         }
 
-        if (!firstTransaction.Items.IsNullOrEmpty())
+        if (firstTransaction != null && !firstTransaction.Items.IsNullOrEmpty())
         {
             result.FirstTransactionSend = OfTransactionInfo(firstTransaction.Items.First());
         }
