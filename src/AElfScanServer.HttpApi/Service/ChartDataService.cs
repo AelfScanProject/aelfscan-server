@@ -894,13 +894,13 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
                 {
                     addressDic[dailyContractCall.ContractAddress].Add(s);
                 }
-            }
+            }K
             else
             {
                 dic[dailyContractCall.ContractAddress] = new TopContractCall()
                 {
                     ContractAddress = dailyContractCall.ContractAddress,
-                    ContractName = await GetContractName(request.ChainId, dailyContractCall.ContractAddress),
+                    ContractName = await GetContractName(dailyContractCall.ChainId, dailyContractCall.ContractAddress),
                     CallCount = dailyContractCall.CallCount,
                     ChainIds = new List<string>() { dailyContractCall.ChainId }
                 };
