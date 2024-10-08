@@ -1201,16 +1201,18 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         {
             dailyDeployContract.MainChainTotalCount = dailyDeployContract.TotalCount;
             dailyDeployContract.MergeTotalCount = dailyDeployContract.TotalCount;
+
             if (dic.TryGetValue(dailyDeployContract.Date, out var sideData))
             {
                 dailyDeployContract.SideChainTotalCount = sideData.TotalCount;
+                dailyDeployContract.Count += sideData.Count;
                 dailyDeployContract.MergeTotalCount =
                     (int.Parse(dailyDeployContract.MergeTotalCount) + int.Parse(sideData.TotalCount)).ToString();
             }
         }
 
-        mainResp.Highest = mainResp.List.MaxBy(c => double.Parse(c.MergeTotalCount));
-        mainResp.Lowest = mainResp.List.MinBy(c => double.Parse(c.MergeTotalCount));
+        mainResp.Highest = mainResp.List.MaxBy(c => double.Parse(c.Count));
+        mainResp.Lowest = mainResp.List.MinBy(c => double.Parse(c.Count));
 
         return mainResp;
     }
