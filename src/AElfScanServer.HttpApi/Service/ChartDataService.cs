@@ -10,6 +10,7 @@ using AElf.Contracts.Consensus.AEDPoS;
 using AElf.EntityMapping.Repositories;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
@@ -35,6 +36,7 @@ using Nest;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
+using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -101,6 +103,8 @@ public interface IChartDataService
     public Task<JonInfoResp> GetJobInfo(SetJob request);
 
     public Task FixDailyData(FixDailyData request);
+    
+    Task FixTokenHolderAsync(FixTokenHolderInput request);
 }
 
 public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDependency
@@ -137,7 +141,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IObjectMapper _objectMapper;
-
+    private readonly IDistributedCache<string> _cache;
 
     public ChartDataService(IOptions<RedisCacheOptions> optionsAccessor, ILogger<ChartDataService> logger,
         IEntityMappingRepository<RoundIndex, string> roundIndexRepository,
@@ -167,6 +171,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         IEntityMappingRepository<MonthlyActiveAddressIndex, string> monthlyActiveAddressIndexRepository,
         IPriceServerProvider priceServerProvider,
         IDailyHolderProvider dailyHolderProvider,
+        IDistributedCache<string> cache,
         IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> uniqueMergeAddressRepository,
         IOptionsMonitor<ElasticsearchOptions> options) : base(
         optionsAccessor)
@@ -205,6 +210,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         _priceServerProvider = priceServerProvider;
         _monthlyActiveAddressIndexRepository = monthlyActiveAddressIndexRepository;
         _uniqueMergeAddressRepository = uniqueMergeAddressRepository;
+        _cache = cache;
     }
 
     public async Task FixDailyData(FixDailyData request)
@@ -212,6 +218,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         await ConnectAsync();
         var serializeObject = JsonConvert.SerializeObject(request);
         RedisDatabase.StringSet(RedisKeyHelper.FixDailyData(), serializeObject);
+    }
+
+    public async Task FixTokenHolderAsync(FixTokenHolderInput request)
+    {
+        await _cache.SetAsync(RedisKeyHelper.FixTokenHolder(), JsonConvert.SerializeObject(request));
     }
 
     public async Task<JonInfoResp> GetJobInfo(SetJob request)
