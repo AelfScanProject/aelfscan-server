@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
@@ -8,9 +9,11 @@ using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.Contracts.Consensus.AEDPoS;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
 using AElfScanServer.DataStrategy;
@@ -1018,7 +1021,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             dailyAvgTransactionFee.AvgFeeElf = (decimal.Parse(dailyAvgTransactionFee.AvgFeeElf) / 1e8m).ToString("F6");
             dailyAvgTransactionFee.TotalFeeElf =
                 (decimal.Parse(dailyAvgTransactionFee.TotalFeeElf) / 1e8m).ToString("F6");
-            dailyAvgTransactionFee.AvgFeeUsdt = (decimal.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8m).ToString("F6");
+            dailyAvgTransactionFee.AvgFeeUsdt =
+                (decimal.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8m).ToString("F6");
         }
 
         var resp = new DailyAvgTransactionFeeResp()
@@ -1714,8 +1718,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return cycleCountResp;
     }
 
-    public async Task<DailyTransactionCountResp> GetDailyTransactionCountAsync(ChartDataRequest request)
-
+    public virtual async Task<DailyTransactionCountResp> GetDailyTransactionCountAsync(ChartDataRequest request)
     {
         if (request.ChainId.IsNullOrEmpty())
         {
@@ -2099,6 +2102,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return round;
     }
 
+
     internal async Task<Round> GetRound(string chainId, long num)
     {
         var client = new AElfClient(_globalOptions.CurrentValue.ChainNodeHosts[chainId]);
@@ -2126,30 +2130,24 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return round;
     }
 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public async Task<double> GetElfPrice(string date)
     {
-        try
+        var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
         {
-            var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
-            {
-                TokenPair = "elf-usdt",
-                TimeStamp = date.Replace("-", "")
-            });
+            TokenPair = "elf-usdt",
+            TimeStamp = date.Replace("-", "")
+        });
 
-            var s = ((double)res.Data.Price / 1e8).ToString();
-            _elfPriceRepository.AddOrUpdateAsync(new ElfPriceIndex()
-            {
-                DateStr = date,
-                Close = s
-            });
-
-            _logger.LogInformation("GetElfPrice date:{dateStr},price{elfPrice}", date, s);
-            return (double)res.Data.Price / 1e8;
-        }
-        catch (Exception e)
+        var s = ((double)res.Data.Price / 1e8).ToString();
+        _elfPriceRepository.AddOrUpdateAsync(new ElfPriceIndex()
         {
-            _logger.LogError("GetElfPrice err:{e},date:{dateStr}", e, date.Replace("-", ""));
-            return 0;
-        }
+            DateStr = date,
+            Close = s
+        });
+
+        _logger.LogInformation("GetElfPrice date:{dateStr},price{elfPrice}", date, s);
+        return (double)res.Data.Price / 1e8;
     }
 }

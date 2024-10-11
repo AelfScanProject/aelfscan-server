@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
@@ -10,6 +11,7 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -33,7 +35,7 @@ public interface IAddressService
     Task PatchAddressInfoAsync(string chainId, string address, List<AddressIndex> list);
 
     public Task PullTokenInfo();
-    
+
     public Task SaveCollectionHolderList();
 
     public Task DeleteMergeBlock();
@@ -135,7 +137,7 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             return;
         }
-        
+
         await SaveMergeTokenList(symbolMap.Keys.ToList());
         await SaveHolderList(beginTime, symbolMap);
         if (beginTime == default)
@@ -179,10 +181,11 @@ public class AddressService : IAddressService, ISingletonDependency
 
             foreach (var indexerTransferInfoDto in tokenTransferListDto.Items)
             {
-                SetSymbolMap(symbolDictionary, indexerTransferInfoDto,indexerTransferInfoDto.Token.Symbol);
+                SetSymbolMap(symbolDictionary, indexerTransferInfoDto, indexerTransferInfoDto.Token.Symbol);
                 if (SymbolType.Nft == TokenSymbolHelper.GetSymbolType(indexerTransferInfoDto.Token.Symbol))
                 {
-                    SetSymbolMap(symbolDictionary, indexerTransferInfoDto,TokenSymbolHelper.GetCollectionSymbol(indexerTransferInfoDto.Token.Symbol));
+                    SetSymbolMap(symbolDictionary, indexerTransferInfoDto,
+                        TokenSymbolHelper.GetCollectionSymbol(indexerTransferInfoDto.Token.Symbol));
                 }
             }
 
@@ -193,7 +196,7 @@ public class AddressService : IAddressService, ISingletonDependency
     }
 
     private static void SetSymbolMap(Dictionary<string, List<string>> symbolList,
-        IndexerTransferInfoDto indexerTransferInfoDto,string symbol)
+        IndexerTransferInfoDto indexerTransferInfoDto, string symbol)
     {
         var addressList = symbolList.GetValueOrDefault(symbol,
             new List<string>());
@@ -210,127 +213,118 @@ public class AddressService : IAddressService, ISingletonDependency
         symbolList[symbol] = addressList;
     }
 
-    private async Task AddCreatedTokenList(DateTime beginBlockTime)
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task AddCreatedTokenList(DateTime beginBlockTime)
     {
-        try
+        if (beginBlockTime == default)
         {
-            if (beginBlockTime == default)
-            {
-                return;
-            }
-
-            var skip = 0;
-            var maxResultCount = 1000;
-            var tokenListInput = new TokenListInput()
-            {
-                Types = new List<SymbolType>() { SymbolType.Token, SymbolType.Nft_Collection, SymbolType.Nft },
-                BeginBlockTime = beginBlockTime,
-                SkipCount = skip,
-                MaxResultCount = maxResultCount,
-                Sort = "Desc",
-                OrderBy = "Symbol"
-            };
-            while (true)
-            {
-                tokenListInput.SkipCount = skip;
-                var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
-                if (tokenListAsync.Items.Count == 0)
-                {
-                    break;
-                }
-
-                var tokenInfoList =
-                    _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
-
-
-                foreach (var tokenInfoIndex in tokenInfoList)
-                {
-                    tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
-                }
-
-                await _tokenInfoRepository.AddOrUpdateManyAsync(tokenInfoList);
-                _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
-                skip += maxResultCount;
-            }
+            return;
         }
-        catch (Exception e)
+
+        var skip = 0;
+        var maxResultCount = 1000;
+        var tokenListInput = new TokenListInput()
         {
-            _logger.LogError(e, "PullTokenInfo error");
+            Types = new List<SymbolType>() { SymbolType.Token, SymbolType.Nft_Collection, SymbolType.Nft },
+            BeginBlockTime = beginBlockTime,
+            SkipCount = skip,
+            MaxResultCount = maxResultCount,
+            Sort = "Desc",
+            OrderBy = "Symbol"
+        };
+        while (true)
+        {
+            tokenListInput.SkipCount = skip;
+            var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
+            if (tokenListAsync.Items.Count == 0)
+            {
+                break;
+            }
+
+            var tokenInfoList =
+                _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
+
+
+            foreach (var tokenInfoIndex in tokenInfoList)
+            {
+                tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
+            }
+
+            await _tokenInfoRepository.AddOrUpdateManyAsync(tokenInfoList);
+            _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
+            skip += maxResultCount;
         }
     }
 
-    private async Task SaveMergeTokenList(List<string> symbolList)
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task SaveMergeTokenList(List<string> symbolList)
     {
         if (symbolList.IsNullOrEmpty())
         {
             return;
         }
 
-        try
+
+        var skip = 0;
+        var maxResultCount = 1000;
+        TokenInfoIndex lastTokenIndex = null;
+        var tokenListInput = new TokenListInput()
         {
-            var skip = 0;
-            var maxResultCount = 1000;
-            TokenInfoIndex lastTokenIndex = null;
-            var tokenListInput = new TokenListInput()
+            Types = new List<SymbolType>() { SymbolType.Token, SymbolType.Nft_Collection, SymbolType.Nft },
+            Symbols = symbolList,
+            SkipCount = skip,
+            MaxResultCount = maxResultCount,
+            Sort = "Desc",
+            OrderBy = "Symbol"
+        };
+        while (true)
+        {
+            tokenListInput.SkipCount = skip;
+            var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
+            if (tokenListAsync.Items.Count == 0)
             {
-                Types = new List<SymbolType>() { SymbolType.Token, SymbolType.Nft_Collection, SymbolType.Nft },
-                Symbols = symbolList,
-                SkipCount = skip,
-                MaxResultCount = maxResultCount,
-                Sort = "Desc",
-                OrderBy = "Symbol"
-            };
-            while (true)
-            {
-                tokenListInput.SkipCount = skip;
-                var tokenListAsync = await _tokenIndexerProvider.GetTokenListAsync(tokenListInput);
-                if (tokenListAsync.Items.Count == 0)
-                {
-                    break;
-                }
-
-                var tokenInfoList =
-                    _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
-
-                if (lastTokenIndex != null)
-                {
-                    if (tokenInfoList.Exists(o => o.Symbol == lastTokenIndex.Symbol))
-                    {
-                        tokenInfoList.Add(lastTokenIndex);
-                    }
-                }
-
-                lastTokenIndex = tokenInfoList.Last();
-
-                var dic = new Dictionary<string, TokenInfoIndex>();
-                foreach (var tokenInfoIndex in tokenInfoList)
-                {
-                    if (dic.TryGetValue(tokenInfoIndex.Symbol, out var value))
-                    {
-                        var flag = value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
-                        if (flag)
-                        {
-                            value.HolderCount += tokenInfoIndex.HolderCount;
-                            value.TransferCount += tokenInfoIndex.TransferCount;
-                            value.ItemCount += tokenInfoIndex.ItemCount;
-                            value.Supply += tokenInfoIndex.Supply;
-                        }
-                    }
-                    else
-                    {
-                        tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
-                        dic.Add(tokenInfoIndex.Symbol, tokenInfoIndex);
-                    }
-                }
-
-                await _tokenInfoRepository.AddOrUpdateManyAsync(dic.Values.ToList());
-                _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
-                skip += maxResultCount;
+                break;
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "PullTokenInfo error");
+
+            var tokenInfoList =
+                _objectMapper.Map<List<IndexerTokenInfoDto>, List<TokenInfoIndex>>(tokenListAsync.Items);
+
+            if (lastTokenIndex != null)
+            {
+                if (tokenInfoList.Exists(o => o.Symbol == lastTokenIndex.Symbol))
+                {
+                    tokenInfoList.Add(lastTokenIndex);
+                }
+            }
+
+            lastTokenIndex = tokenInfoList.Last();
+
+            var dic = new Dictionary<string, TokenInfoIndex>();
+            foreach (var tokenInfoIndex in tokenInfoList)
+            {
+                if (dic.TryGetValue(tokenInfoIndex.Symbol, out var value))
+                {
+                    var flag = value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
+                    if (flag)
+                    {
+                        value.HolderCount += tokenInfoIndex.HolderCount;
+                        value.TransferCount += tokenInfoIndex.TransferCount;
+                        value.ItemCount += tokenInfoIndex.ItemCount;
+                        value.Supply += tokenInfoIndex.Supply;
+                    }
+                }
+                else
+                {
+                    tokenInfoIndex.ChainIds.Add(tokenInfoIndex.ChainId);
+                    dic.Add(tokenInfoIndex.Symbol, tokenInfoIndex);
+                }
+            }
+
+            await _tokenInfoRepository.AddOrUpdateManyAsync(dic.Values.ToList());
+            _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
+            skip += maxResultCount;
         }
     }
 
@@ -364,8 +358,8 @@ public class AddressService : IAddressService, ISingletonDependency
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e,"SaveTokenHolderAsync Symbol:{Symbol}", item.Symbol
-                            );
+                        _logger.LogError(e, "SaveTokenHolderAsync Symbol:{Symbol}", item.Symbol
+                        );
                     }
                 }
 
@@ -439,7 +433,7 @@ public class AddressService : IAddressService, ISingletonDependency
                 {
                     if (dic.TryGetValue(tokenInfoIndex.Address, out var value))
                     {
-                        var flag= value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
+                        var flag = value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
                         if (flag)
                         {
                             value.TransferCount += tokenInfoIndex.TransferCount;
@@ -474,47 +468,48 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             beginDate = DateTimeOffset.FromUnixTimeSeconds(dateLong).DateTime;
         }
+
         return beginDate;
     }
-    
-    
+
+
     public async Task SaveCollectionHolderList()
     {
-            var queryCount = 0;
-            var limit = 1000;
-            var skip = 0;
-            do
+        var queryCount = 0;
+        var limit = 1000;
+        var skip = 0;
+        do
+        {
+            var searchResponse = _elasticClient.Search<TokenInfoIndex>(s => s
+                .Index("tokeninfoindex")
+                .Query(q => q
+                    .Bool(b => b
+                        .Must(
+                            m =>
+                            {
+                                return m.Term(t => t
+                                    .Field(f => f.Type).Value(SymbolType.Nft_Collection)
+                                );
+                            })
+                    )
+                )
+                .Sort(sort => sort
+                    .Field(f => f
+                        .Field(c => c.Symbol)
+                        .Order(SortOrder.Ascending)
+                    )
+                )
+                .From(skip)
+                .Size(limit)
+            );
+            var tokenList = searchResponse.Documents.ToList();
+            foreach (var item in tokenList)
             {
-                var searchResponse = _elasticClient.Search<TokenInfoIndex>(s => s
-                    .Index("tokeninfoindex")
-                    .Query(q => q
-                        .Bool(b => b
-                            .Must(
-                                m =>
-                                {
-                                    return m.Term(t => t
-                                        .Field(f => f.Type).Value(SymbolType.Nft_Collection)
-                                    );
-                                })
-                        )
-                    )
-                    .Sort(sort => sort
-                        .Field(f => f
-                            .Field(c => c.Symbol)
-                            .Order(SortOrder.Ascending)
-                        )
-                    )
-                    .From(skip)
-                    .Size(limit)
-                );
-                var tokenList = searchResponse.Documents.ToList();
-                foreach (var item in tokenList)
-                {
-                    await SaveTokenHolderAsync(item.Symbol, new List<string>());
-                }
+                await SaveTokenHolderAsync(item.Symbol, new List<string>());
+            }
 
-                queryCount = tokenList.Count;
-                skip += limit;
-            } while (queryCount == limit);
+            queryCount = tokenList.Count;
+            skip += limit;
+        } while (queryCount == limit);
     }
 }

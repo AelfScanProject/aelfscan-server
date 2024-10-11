@@ -1,5 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
+using AElfScanServer.Common.ExceptionHandling;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,36 +29,25 @@ public class StorageProvider : AbpRedisCache, IStorageProvider, ITransientDepend
         _serializer = serializer;
     }
 
-    public async Task SetAsync<T>(string key, T data) where T : class
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task SetAsync<T>(string key, T data) where T : class
     {
-        try
-        {
-            await ConnectAsync();
+        await ConnectAsync();
 
-            await RedisDatabase.StringSetAsync(key, _serializer.Serialize(data));
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Set {key} to redis error.", key);
-        }
+        await RedisDatabase.StringSetAsync(key, _serializer.Serialize(data));
     }
 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public async Task<T> GetAsync<T>(string key) where T : class, new()
     {
-        try
-        {
-            await ConnectAsync();
+        await ConnectAsync();
 
-            var redisValue = await RedisDatabase.StringGetAsync(key);
+        var redisValue = await RedisDatabase.StringGetAsync(key);
 
-            _logger.LogDebug("[StorageProvider] {key} spec: {spec}", key, redisValue);
+        _logger.LogDebug("[StorageProvider] {key} spec: {spec}", key, redisValue);
 
-            return redisValue.HasValue ? _serializer.Deserialize<T>(redisValue) : null;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Get {key} error.", key);
-            return null;
-        }
+        return redisValue.HasValue ? _serializer.Deserialize<T>(redisValue) : null;
     }
 }

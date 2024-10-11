@@ -22,6 +22,7 @@ using Nest;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
+using AElf.ExceptionHandler;
 using AElf.OpenTelemetry;
 using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos.Indexer;
@@ -29,6 +30,7 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Common.ExceptionHandling;
 using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -95,6 +97,8 @@ public class DynamicTransactionService : IDynamicTransactionService
     }
 
 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
     {
         var transactionDetailResponseDto = new TransactionDetailResponseDto();
@@ -103,63 +107,54 @@ public class DynamicTransactionService : IDynamicTransactionService
             return transactionDetailResponseDto;
         }
 
-        try
+
+        var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
+        if (detailResponseDto != null)
         {
-            var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
-            if (detailResponseDto != null)
-            {
-                return detailResponseDto;
-            }
-
-            var blockHeight = 0l;
-            NodeTransactionDto transactionDto = new NodeTransactionDto();
-            var tasks = new List<Task>();
-            tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
-            {
-                blockHeight = task.Result.BlockHeight;
-            }));
-
-
-            tasks.Add(_blockChainProvider.GetTransactionDetailAsync(request.ChainId,
-                request.TransactionId).ContinueWith(task => { transactionDto = task.Result; }));
-
-            await tasks.WhenAll();
-            var transactionIndex = _aelfIndexerProvider.GetTransactionsAsync(request.ChainId,
-                transactionDto.BlockNumber,
-                transactionDto.BlockNumber, request.TransactionId).Result.First();
-
-
-            var detailDto = new TransactionDetailDto();
-            detailDto.TransactionId = transactionIndex.TransactionId;
-            detailDto.Status = transactionIndex.Status;
-            detailDto.BlockConfirmations = detailDto.Status == TransactionStatus.Mined ? blockHeight : 0;
-            detailDto.BlockHeight = transactionIndex.BlockHeight;
-            detailDto.Timestamp = DateTimeHelper.GetTotalSeconds(transactionIndex.BlockTime);
-            detailDto.Method = transactionIndex.MethodName;
-            detailDto.TransactionParams = transactionDto.Transaction.Params;
-            detailDto.TransactionSignature = transactionIndex.Signature;
-            detailDto.Confirmed = transactionIndex.Confirmed;
-            detailDto.From = ConvertAddress(transactionIndex.From, transactionIndex.ChainId);
-            detailDto.To = ConvertAddress(transactionIndex.To, transactionIndex.ChainId);
-
-
-            await AnalysisExtraPropertiesAsync(detailDto, transactionIndex);
-            await AnalysisTransferredAsync(detailDto, transactionIndex);
-            await AnalysisLogEventAsync(detailDto, transactionIndex);
-            var result = new TransactionDetailResponseDto()
-            {
-                List = new List<TransactionDetailDto>() { detailDto }
-            };
-            await _transactionDetailCache.SetAsync(request.TransactionId, result);
-            return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTransactionDetailAsync error ");
+            return detailResponseDto;
         }
 
+        var blockHeight = 0l;
+        NodeTransactionDto transactionDto = new NodeTransactionDto();
+        var tasks = new List<Task>();
+        tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
+        {
+            blockHeight = task.Result.BlockHeight;
+        }));
 
-        return transactionDetailResponseDto;
+
+        tasks.Add(_blockChainProvider.GetTransactionDetailAsync(request.ChainId,
+            request.TransactionId).ContinueWith(task => { transactionDto = task.Result; }));
+
+        await tasks.WhenAll();
+        var transactionIndex = _aelfIndexerProvider.GetTransactionsAsync(request.ChainId,
+            transactionDto.BlockNumber,
+            transactionDto.BlockNumber, request.TransactionId).Result.First();
+
+
+        var detailDto = new TransactionDetailDto();
+        detailDto.TransactionId = transactionIndex.TransactionId;
+        detailDto.Status = transactionIndex.Status;
+        detailDto.BlockConfirmations = detailDto.Status == TransactionStatus.Mined ? blockHeight : 0;
+        detailDto.BlockHeight = transactionIndex.BlockHeight;
+        detailDto.Timestamp = DateTimeHelper.GetTotalSeconds(transactionIndex.BlockTime);
+        detailDto.Method = transactionIndex.MethodName;
+        detailDto.TransactionParams = transactionDto.Transaction.Params;
+        detailDto.TransactionSignature = transactionIndex.Signature;
+        detailDto.Confirmed = transactionIndex.Confirmed;
+        detailDto.From = ConvertAddress(transactionIndex.From, transactionIndex.ChainId);
+        detailDto.To = ConvertAddress(transactionIndex.To, transactionIndex.ChainId);
+
+
+        await AnalysisExtraPropertiesAsync(detailDto, transactionIndex);
+        await AnalysisTransferredAsync(detailDto, transactionIndex);
+        await AnalysisLogEventAsync(detailDto, transactionIndex);
+        var result = new TransactionDetailResponseDto()
+        {
+            List = new List<TransactionDetailDto>() { detailDto }
+        };
+        await _transactionDetailCache.SetAsync(request.TransactionId, result);
+        return result;
     }
 
 
@@ -412,51 +407,45 @@ public class DynamicTransactionService : IDynamicTransactionService
         }
     }
 
-    public async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
     {
         var result = new TransactionsResponseDto();
         result.Transactions = new List<TransactionResponseDto>();
 
-        try
+
+        requestDto.SetDefaultSort();
+        var indexerTransactionList = await _blockChainIndexerProvider.GetTransactionsAsync(requestDto);
+
+
+        foreach (var transactionIndex in indexerTransactionList.Items)
         {
-            requestDto.SetDefaultSort();
-            var indexerTransactionList = await _blockChainIndexerProvider.GetTransactionsAsync(requestDto);
-
-
-            foreach (var transactionIndex in indexerTransactionList.Items)
+            var transactionRespDto = new TransactionResponseDto()
             {
-                var transactionRespDto = new TransactionResponseDto()
-                {
-                    TransactionId = transactionIndex.TransactionId,
-                    Timestamp = DateTimeHelper.GetTotalSeconds(transactionIndex.Metadata.Block.BlockTime),
-                    TransactionValue = transactionIndex.TransactionValue.ToString(),
-                    BlockHeight = transactionIndex.BlockHeight,
-                    Method = transactionIndex.MethodName,
-                    Status = transactionIndex.Status,
-                    TransactionFee = transactionIndex.Fee.ToString(),
-                    BlockTime = transactionIndex.Metadata.Block.BlockTime,
-                    ChainIds = new List<string>() { transactionIndex.Metadata.ChainId }
-                };
+                TransactionId = transactionIndex.TransactionId,
+                Timestamp = DateTimeHelper.GetTotalSeconds(transactionIndex.Metadata.Block.BlockTime),
+                TransactionValue = transactionIndex.TransactionValue.ToString(),
+                BlockHeight = transactionIndex.BlockHeight,
+                Method = transactionIndex.MethodName,
+                Status = transactionIndex.Status,
+                TransactionFee = transactionIndex.Fee.ToString(),
+                BlockTime = transactionIndex.Metadata.Block.BlockTime,
+                ChainIds = new List<string>() { transactionIndex.Metadata.ChainId }
+            };
 
 
-                transactionRespDto.From = ConvertAddress(transactionIndex.From, transactionIndex.Metadata.ChainId);
+            transactionRespDto.From = ConvertAddress(transactionIndex.From, transactionIndex.Metadata.ChainId);
 
-                transactionRespDto.To = ConvertAddress(transactionIndex.To, transactionIndex.Metadata.ChainId);
-                result.Transactions.Add(transactionRespDto);
-            }
-
-            result.Transactions = result.Transactions.OrderByDescending(item => item.BlockTime)
-                .ThenByDescending(item => item.TransactionId)
-                .ToList();
-
-            result.Total = indexerTransactionList.TotalCount;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestTransactionsAsync error");
-            return result;
+            transactionRespDto.To = ConvertAddress(transactionIndex.To, transactionIndex.Metadata.ChainId);
+            result.Transactions.Add(transactionRespDto);
         }
 
+        result.Transactions = result.Transactions.OrderByDescending(item => item.BlockTime)
+            .ThenByDescending(item => item.TransactionId)
+            .ToList();
+
+        result.Total = indexerTransactionList.TotalCount;
         return result;
     }
 

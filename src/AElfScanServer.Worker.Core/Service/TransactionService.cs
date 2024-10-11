@@ -2653,6 +2653,40 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         return newList;
     }
 
+    public async Task<List<TransactionCountPerMinuteDto>> GetMergeTransactionCount(List<TransactionCountPerMinuteDto> newList,
+        string key)
+    {
+        await ConnectAsync();
+        var redisValue = RedisDatabase.StringGet(key);
+        if (redisValue.IsNullOrEmpty)
+        {
+            return newList;
+        }
+
+        var oldList = JsonConvert.DeserializeObject<List<TransactionCountPerMinuteDto>>(redisValue);
+
+        var last = oldList.Last();
+        var subOldList = oldList.GetRange(0, oldList.Count - 1);
+
+        var subNewList = newList.Where(c => c.Start >= last.Start).ToList();
+
+        if (!subNewList.IsNullOrEmpty() && subNewList.Count > 0)
+        {
+            subOldList.AddRange(subNewList);
+        }
+
+        if (subOldList.Count == 0)
+        {
+            subOldList = newList;
+        }
+
+        _logger.LogInformation(
+            "Merge transaction per minute data chainId:{chainId},oldList:{oldList},newList:{newList}", key,
+            oldList.Count, newList.Count);
+
+        return subOldList;
+    }
+
     public async Task<double> GetElfPrice(string date)
     {
         try

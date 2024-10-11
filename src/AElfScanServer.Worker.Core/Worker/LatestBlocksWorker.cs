@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using AElfScanServer.HttpApi.DataStrategy;
 using AElfScanServer.Common.Options;
@@ -38,7 +39,15 @@ public class LatestBlocksWorker : AsyncPeriodicBackgroundWorkerBase
         foreach (var chainId in _workerOptions.CurrentValue.ChainIds)
         {
             _logger.LogInformation("Start to load latest blocks for chain {chainId}", chainId);
-            await _latestBlockssDataStrategy.LoadData(chainId);
+            try
+            {
+                await _latestBlockssDataStrategy.LoadData(chainId);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            
         }
     }
 }

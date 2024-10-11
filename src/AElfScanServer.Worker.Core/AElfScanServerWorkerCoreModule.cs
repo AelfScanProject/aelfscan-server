@@ -1,4 +1,5 @@
 ﻿using AElf.EntityMapping.Elasticsearch;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElfScanServer.HttpApi.DataStrategy;
 using AElfScanServer.Common.Options;
@@ -12,7 +13,8 @@ namespace AElfScanServer.Worker.Core;
 
 [DependsOn(
     typeof(AbpAutoMapperModule),
-    typeof(HttpApiModule)
+    typeof(HttpApiModule),
+    typeof(AOPExceptionModule)
 )]
 public class AElfScanServerWorkerCoreModule : AbpModule
 {

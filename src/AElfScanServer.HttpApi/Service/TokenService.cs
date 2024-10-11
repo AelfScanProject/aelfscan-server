@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
@@ -11,6 +12,7 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -82,39 +84,30 @@ public class TokenService : ITokenService, ISingletonDependency
         _globalOptions = globalOptions;
     }
 
-    public async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
     {
-        try
+        if (input.ChainId.IsNullOrEmpty())
         {
-            if (input.ChainId.IsNullOrEmpty())
-            {
-                return await GetMergeTokenListAsync(input);
-            }
-
-            input.SetDefaultSort();
-
-            var indexerTokenListDto = await _tokenIndexerProvider.GetTokenListAsync(input);
-
-            if (indexerTokenListDto.Items.IsNullOrEmpty())
-            {
-                return new ListResponseDto<TokenCommonDto>();
-            }
-
-            var list = await ConvertIndexerTokenDtoAsync(indexerTokenListDto.Items, input.ChainId);
-
-            return new ListResponseDto<TokenCommonDto>
-            {
-                Total = indexerTokenListDto.TotalCount,
-                List = list
-            };
+            return await GetMergeTokenListAsync(input);
         }
-        catch (Exception e)
+
+        input.SetDefaultSort();
+
+        var indexerTokenListDto = await _tokenIndexerProvider.GetTokenListAsync(input);
+
+        if (indexerTokenListDto.Items.IsNullOrEmpty())
         {
-            _logger.LogError(e, "GetTokenListAsync err");
+            return new ListResponseDto<TokenCommonDto>();
         }
+
+        var list = await ConvertIndexerTokenDtoAsync(indexerTokenListDto.Items, input.ChainId);
 
         return new ListResponseDto<TokenCommonDto>
         {
+            Total = indexerTokenListDto.TotalCount,
+            List = list
         };
     }
 
@@ -122,7 +115,7 @@ public class TokenService : ITokenService, ISingletonDependency
     {
         var result = await EsIndex.SearchMergeTokenList(
             (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
-            null,_globalOptions.CurrentValue.SpecialSymbols);
+            null, _globalOptions.CurrentValue.SpecialSymbols);
 
         _logger.LogInformation("GetMergeTokenListAsync:{count}", result.list.Count);
         if (result.list.IsNullOrEmpty())
@@ -175,47 +168,38 @@ public class TokenService : ITokenService, ISingletonDependency
         public List<string> ChainIds { get; set; }
     }
 
-
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId = "")
     {
-        try
+        var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
+
+        AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
+
+        var list = await ConvertIndexerTokenDtoAsync(indexerTokenList, chainId);
+
+        var tokenInfo = list[0];
+
+        var tokenDetailDto = _objectMapper.Map<TokenCommonDto, TokenDetailDto>(tokenInfo);
+        tokenDetailDto.TokenContractAddress =
+            _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
+        if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
         {
-            var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
-
-            AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
-
-            var list = await ConvertIndexerTokenDtoAsync(indexerTokenList, chainId);
-
-            var tokenInfo = list[0];
-
-            var tokenDetailDto = _objectMapper.Map<TokenCommonDto, TokenDetailDto>(tokenInfo);
-            tokenDetailDto.TokenContractAddress =
-                _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
-            if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
+            //set others
+            var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
+            var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
+            var priceHisDto =
+                await _tokenPriceService.GetTokenHistoryPriceAsync(symbol, CurrencyConstant.UsdCurrency, timestamp);
+            tokenDetailDto.Price = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
+            if (priceHisDto.Price > 0)
             {
-                //set others
-                var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
-                var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
-                var priceHisDto =
-                    await _tokenPriceService.GetTokenHistoryPriceAsync(symbol, CurrencyConstant.UsdCurrency, timestamp);
-                tokenDetailDto.Price = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
-                if (priceHisDto.Price > 0)
-                {
-                    tokenDetailDto.PricePercentChange24h = (double)Math.Round(
-                        (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
-                        CommonConstant.PercentageValueDecimals);
-                }
+                tokenDetailDto.PricePercentChange24h = (double)Math.Round(
+                    (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
+                    CommonConstant.PercentageValueDecimals);
             }
-
-            return tokenDetailDto;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTokenDetailAsync err");
         }
 
-
-        return new TokenDetailDto();
+        return tokenDetailDto;
     }
 
     public async Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol, string chainId)

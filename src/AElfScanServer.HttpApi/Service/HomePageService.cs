@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AElf.Client.Service;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using Elasticsearch.Net;
 using AElfScanServer.HttpApi.Dtos;
@@ -13,6 +14,7 @@ using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -30,7 +32,6 @@ namespace AElfScanServer.HttpApi.Service;
 
 public interface IHomePageService
 {
-    public Task<LatestTransactionsResponseSto> GetLatestTransactionsAsync(LatestTransactionsReq req);
     public Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto);
 
 
@@ -116,6 +117,8 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         return transactionPerMinuteResp;
     }
 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public async Task<HomeOverviewResponseDto> GetBlockchainOverviewAsync(BlockchainOverviewRequestDto req)
     {
         var overviewResp = new HomeOverviewResponseDto();
@@ -126,122 +129,40 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
             return overviewResp;
         }
 
-        try
-        {
-            var tasks = new List<Task>();
-            tasks.Add(_aelfIndexerProvider.GetLatestBlockHeightAsync(req.ChainId).ContinueWith(
-                task => { overviewResp.BlockHeight = task.Result; }));
 
-            tasks.Add(_blockChainIndexerProvider.GetTransactionCount(req.ChainId).ContinueWith(task =>
+        var tasks = new List<Task>();
+        tasks.Add(_aelfIndexerProvider.GetLatestBlockHeightAsync(req.ChainId).ContinueWith(
+            task => { overviewResp.BlockHeight = task.Result; }));
+
+        tasks.Add(_blockChainIndexerProvider.GetTransactionCount(req.ChainId).ContinueWith(task =>
+        {
+            overviewResp.Transactions = task.Result;
+        }));
+
+        tasks.Add(_tokenIndexerProvider.GetAccountCountAsync(req.ChainId).ContinueWith(
+            task => { overviewResp.Accounts = task.Result; }));
+
+
+        tasks.Add(_homePageProvider.GetRewardAsync(req.ChainId).ContinueWith(
+            task =>
             {
-                overviewResp.Transactions = task.Result;
+                overviewResp.Reward = task.Result.ToDecimalsString(8);
+                overviewResp.CitizenWelfare = (task.Result * 0.75).ToDecimalsString(8);
             }));
 
-            tasks.Add(_tokenIndexerProvider.GetAccountCountAsync(req.ChainId).ContinueWith(
-                task => { overviewResp.Accounts = task.Result; }));
+        tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync("ELF").ContinueWith(
+            task =>
+            {
+                overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
+                overviewResp.TokenPriceInUsd = task.Result.LastPrice;
+            }));
+        tasks.Add(_homePageProvider.GetTransactionCountPerLastMinute(req.ChainId).ContinueWith(
+            task => { overviewResp.Tps = (task.Result / 60).ToString("F2"); }));
 
+        await Task.WhenAll(tasks);
 
-            tasks.Add(_homePageProvider.GetRewardAsync(req.ChainId).ContinueWith(
-                task =>
-                {
-                    overviewResp.Reward = task.Result.ToDecimalsString(8);
-                    overviewResp.CitizenWelfare = (task.Result * 0.75).ToDecimalsString(8);
-                }));
-
-            tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync("ELF").ContinueWith(
-                task =>
-                {
-                    overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
-                    overviewResp.TokenPriceInUsd = task.Result.LastPrice;
-                }));
-            tasks.Add(_homePageProvider.GetTransactionCountPerLastMinute(req.ChainId).ContinueWith(
-                task => { overviewResp.Tps = (task.Result / 60).ToString("F2"); }));
-
-            await Task.WhenAll(tasks);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "get home page overview err,chainId:{chainId}", req.ChainId);
-        }
 
         return overviewResp;
-    }
-
-
-    public void SetSearchAddress(SearchResponseDto searchResponseDto, SearchRequestDto requestDto,
-        SearchTypes searchType, AddressType addressType)
-    {
-        var accounts = new List<string>();
-        var contracts = new List<SearchContract>();
-        searchResponseDto.Accounts = new List<SearchAccount>();
-        searchResponseDto.Contracts = contracts;
-        try
-        {
-            if (requestDto.Keyword.Length <= 2)
-            {
-                return;
-            }
-
-            var mustQuery = new List<Func<QueryContainerDescriptor<AddressIndex>, QueryContainer>>();
-
-
-            mustQuery.Add(q => q.Term(t => t.Field(t => t.AddressType).Value(addressType)));
-            if (searchType == SearchTypes.ExactSearch)
-            {
-                if (CommomHelper.IsValidAddress(requestDto.Keyword))
-                {
-                    mustQuery.Add(mu => mu.Term(t => t.Field(f => f.LowerAddress).Value(requestDto.Keyword)));
-                }
-                else
-                {
-                    mustQuery.Add(mu => mu.Term(t => t.Field(f => f.LowerName).Value(requestDto.Keyword)));
-                }
-            }
-
-            if (searchType == SearchTypes.FuzzySearch)
-            {
-                if (requestDto.Keyword.Length > 9)
-                {
-                    mustQuery.Add(q => q.Bool(b =>
-                        b.Should(
-                            sh => sh.Wildcard(
-                                w => w.Field(f => f.LowerAddress)
-                                    .Value($"*{requestDto.Keyword}*")),
-                            sh => sh.Wildcard(w => w.Field(f => f.LowerName).Value($"*{requestDto.Keyword}*"))
-                        )));
-                }
-                else
-                {
-                    mustQuery.Add(q => q.Bool(b =>
-                        b.Should(
-                            sh => sh.Wildcard(w => w.Field(f => f.LowerName).Value($"*{requestDto.Keyword}*"))
-                        )));
-                }
-            }
-
-
-            QueryContainer Filter(QueryContainerDescriptor<AddressIndex> f) => f.Bool(b => b.Filter(mustQuery));
-            var result = _addressIndexRepository.GetListAsync(Filter, skip: 0, limit: 20,
-                index: BlockChainIndexNameHelper.GenerateAddressIndexName(requestDto.ChainId)).Result;
-            result.Item2.ForEach(addressIndex =>
-            {
-                if (addressIndex.AddressType == AddressType.EoaAddress)
-                {
-                    accounts.Add(addressIndex.Address);
-                }
-                else
-                {
-                    var searchContract = new SearchContract();
-                    searchContract.Address = addressIndex.Address;
-                    searchContract.Name = addressIndex.Name;
-                    contracts.Add(searchContract);
-                }
-            });
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "set search address err");
-        }
     }
 
 
@@ -264,6 +185,8 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     }
 
 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public async Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto)
     {
         var result = new BlocksResponseDto() { };
@@ -275,68 +198,39 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         }
 
 
-        try
+        var aElfClient = new AElfClient(_globalOptions.CurrentValue.ChainNodeHosts[requestDto.ChainId]);
+        var blockHeightAsync = await aElfClient.GetBlockHeightAsync();
+
+
+        var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
+            blockHeightAsync - requestDto.MaxResultCount,
+            blockHeightAsync);
+
+
+        // var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
+        //     100,
+        //     300);
+        result.Blocks = new List<BlockRespDto>();
+        result.Total = blockList.Count;
+
+        for (var i = blockList.Count - 1; i > 0; i--)
         {
-            var aElfClient = new AElfClient(_globalOptions.CurrentValue.ChainNodeHosts[requestDto.ChainId]);
-            var blockHeightAsync = await aElfClient.GetBlockHeightAsync();
+            var indexerBlockDto = blockList[i];
+            var latestBlockDto = new BlockRespDto();
 
+            latestBlockDto.BlockHeight = indexerBlockDto.BlockHeight;
+            latestBlockDto.Timestamp = DateTimeHelper.GetTotalSeconds(indexerBlockDto.BlockTime);
+            latestBlockDto.TransactionCount = indexerBlockDto.TransactionIds.Count;
 
-            var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
-                blockHeightAsync - requestDto.MaxResultCount,
-                blockHeightAsync);
-
-
-            // var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
-            //     100,
-            //     300);
-            result.Blocks = new List<BlockRespDto>();
-            result.Total = blockList.Count;
-
-            for (var i = blockList.Count - 1; i > 0; i--)
-            {
-                var indexerBlockDto = blockList[i];
-                var latestBlockDto = new BlockRespDto();
-
-                latestBlockDto.BlockHeight = indexerBlockDto.BlockHeight;
-                latestBlockDto.Timestamp = DateTimeHelper.GetTotalSeconds(indexerBlockDto.BlockTime);
-                latestBlockDto.TransactionCount = indexerBlockDto.TransactionIds.Count;
-
-                latestBlockDto.TimeSpan = (Convert.ToDouble(0 < blockList.Count
-                    ? DateTimeHelper.GetTotalMilliseconds(indexerBlockDto.BlockTime) -
-                      DateTimeHelper.GetTotalMilliseconds(blockList[i - 1].BlockTime)
-                    : 0) / 1000).ToString("0.0");
-                //todo
-                latestBlockDto.Reward = "";
-                result.Blocks.Add(latestBlockDto);
-            }
-
-            return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestBlocksAsync error");
+            latestBlockDto.TimeSpan = (Convert.ToDouble(0 < blockList.Count
+                ? DateTimeHelper.GetTotalMilliseconds(indexerBlockDto.BlockTime) -
+                  DateTimeHelper.GetTotalMilliseconds(blockList[i - 1].BlockTime)
+                : 0) / 1000).ToString("0.0");
+            //todo
+            latestBlockDto.Reward = "";
+            result.Blocks.Add(latestBlockDto);
         }
 
         return result;
     }
-
-
-    public async Task<LatestTransactionsResponseSto> GetLatestTransactionsAsync(LatestTransactionsReq req)
-    {
-        var result = new LatestTransactionsResponseSto();
-
-
-        result.Transactions = new List<TransactionResponseDto>();
-        try
-        {
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestTransactionsAsync error");
-        }
-
-        return result;
-    }
-
-    private CommonAddressDto ConvertAddress(string address) => new() { Address = address };
 }

@@ -30,7 +30,7 @@ public class AddressController : AbpController
     [HttpGet("detail")]
     public async Task<GetAddressDetailResultDto> GetAddressDetailAsync(GetAddressDetailInput input)
         => await _addressAppService.GetAddressDetailAsync(input);
-
+ 
     [HttpGet("tokens")]
     public async Task<GetAddressTokenListResultDto> GetAddressTokenListAsync(
         GetAddressTokenListInput input) => await _addressAppService.GetAddressTokenListAsync(input);

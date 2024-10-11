@@ -1,5 +1,6 @@
 using AElf.Client.Service;
 using AElf.EntityMapping.Options;
+using AElf.ExceptionHandler;
 using AElf.OpenTelemetry;
 using AElfScanServer.Common.Address.Provider;
 using AElfScanServer.Common.Contract.Provider;
@@ -24,7 +25,8 @@ namespace AElfScanServer.Common;
     typeof(AbpAutoMapperModule),
     typeof(AbpAutoMapperModule),
     typeof(AbpCachingStackExchangeRedisModule),
-    typeof(AetherlinkPriceServerModule)
+    typeof(AetherlinkPriceServerModule),
+    typeof(AOPExceptionModule)
 )]
 public class AElfScanCommonModule : AbpModule
 {

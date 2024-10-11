@@ -8,6 +8,7 @@ using Serilog.Events;
 
 namespace AElfScanServer;
 
+//todo 
 public class Program
 {
     public async static Task<int> Main(string[] args)

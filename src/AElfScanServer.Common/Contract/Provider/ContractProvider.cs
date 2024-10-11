@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using GraphQL;
 using Microsoft.Extensions.Logging;
@@ -36,44 +38,39 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
         _contractAddressCache = contractAddressCache;
     }
 
-    public async Task<bool> IsContractAddressAsync(string chainId, string address)
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionBoolException))]
+    public virtual async Task<bool> IsContractAddressAsync(string chainId, string address)
     {
-        try
+        var addr = await _contractAddressCache.GetAsync(chainId + address);
+        if (!addr.IsNullOrEmpty())
         {
-            var addr = await _contractAddressCache.GetAsync(chainId + address);
-            if (!addr.IsNullOrEmpty())
-            {
-                return true;
-            }
-
-            var result = await GetContractAddressAsync(chainId, address);
-
-            if (result != null && result.ContractList != null && !result.ContractList.Items.IsNullOrEmpty())
-            {
-                await _contractAddressCache.SetAsync(chainId + address, "1", null);
-                return true;
-            }
-
-
-            return false;
+            return true;
         }
-        catch (Exception e)
+
+        var result = await GetContractAddressAsync(chainId, address);
+
+        if (result != null && result.ContractList != null && !result.ContractList.Items.IsNullOrEmpty())
         {
-            _logger.LogError(e, "Determine whether it is a contract address failed.address:{address}", address);
-            return false;
+            await _contractAddressCache.SetAsync(chainId + address, "1", null);
+            return true;
         }
+
+
+        return false;
     }
 
-    public async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
+    //todo 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
         List<string> addressList)
     {
-        try
-        {
-            var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListDto>(
-                new GraphQLRequest
-                {
-                    Query =
-                        @"query($chainId:String!,$addressList:[String!],$skipCount:Int!,$maxResultCount:Int!){
+        var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListDto>(
+            new GraphQLRequest
+            {
+                Query =
+                    @"query($chainId:String!,$addressList:[String!],$skipCount:Int!,$maxResultCount:Int!){
                             contractList(input: {chainId:$chainId,addressList:$addressList,skipCount:$skipCount,maxResultCount:$maxResultCount}){
                                totalCount
                                items {
@@ -95,27 +92,24 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                               }
                             }
                         }",
-                    Variables = new
-                    {
-                        chainId, addressList,
-                        skipCount = 0, maxResultCount = addressList.Count
-                    }
-                });
-            if (chainId.IsNullOrEmpty())
-            {
-                return result.Items.ToDictionary(s => s.Address + s.Metadata.ChainId, s => s);
-            }
-
-            return result.Items.ToDictionary(s => s.Address, s => s);
-        }
-        catch (Exception e)
+                Variables = new
+                {
+                    chainId, addressList,
+                    skipCount = 0, maxResultCount = addressList.Count
+                }
+            });
+        if (chainId.IsNullOrEmpty())
         {
-            _logger.LogError(e, "Query Contract failed.");
-            return new Dictionary<string, ContractInfoDto>();
+            return result.Items.ToDictionary(s => s.Address + s.Metadata.ChainId, s => s);
         }
+
+        return result.Items.ToDictionary(s => s.Address, s => s);
     }
 
-    public async Task<IndexerContractListResultDto> GetContractAddressAsync(string chainId, string address)
+    //todo 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task<IndexerContractListResultDto> GetContractAddressAsync(string chainId, string address)
     {
         var indexerContractListResultDto = new IndexerContractListResultDto()
         {
@@ -124,13 +118,12 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                 Items = new List<ContractInfoDto>()
             }
         };
-        try
-        {
-            var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
-                new GraphQLRequest
-                {
-                    Query =
-                        @"query($chainId:String!,$orderBy:String,$sort:String,$skipCount:Int!,$maxResultCount:Int!,$address:String){
+
+        var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
+            new GraphQLRequest
+            {
+                Query =
+                    @"query($chainId:String!,$orderBy:String,$sort:String,$skipCount:Int!,$maxResultCount:Int!,$address:String){
                             contractList(input: {chainId:$chainId,orderBy:$orderBy,sort:$sort,skipCount:$skipCount,maxResultCount:$maxResultCount,address:$address}){
                                totalCount
                                items {
@@ -151,18 +144,12 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                               }
                             }
                         }",
-                    Variables = new
-                    {
-                        chainId = chainId, orderBy = "", sort = "", skipCount = 0,
-                        maxResultCount = 1, address = address
-                    }
-                });
-            return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query ContractList failed.");
-            return indexerContractListResultDto;
-        }
+                Variables = new
+                {
+                    chainId = chainId, orderBy = "", sort = "", skipCount = 0,
+                    maxResultCount = 1, address = address
+                }
+            });
+        return result;
     }
 }

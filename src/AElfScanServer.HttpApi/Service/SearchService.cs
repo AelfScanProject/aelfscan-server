@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AElf.Client.Dto;
 using AElf.Client.Service;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Constant;
@@ -13,6 +14,7 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.NodeProvider;
@@ -65,53 +67,48 @@ public class SearchService : ISearchService, ISingletonDependency
         _indexerGenesisProvider = indexerGenesisProvider;
     }
 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
     {
         var searchResp = new SearchResponseDto();
-        try
+
+        //Step 1: check param
+        if (!ValidParam(request.ChainId, request.Keyword))
         {
-            //Step 1: check param
-            if (!ValidParam(request.ChainId, request.Keyword))
-            {
-                return searchResp;
-            }
-            //Step 2: convert 
-
-            //Step 3: execute query
-            switch (request.FilterType)
-            {
-                case FilterTypes.Accounts:
-                    await AssemblySearchAddressAsync(searchResp, request);
-                    break;
-                case FilterTypes.Contracts:
-                    await AssemblySearchAddressAsync(searchResp, request);
-                    break;
-                case FilterTypes.Tokens:
-                    await AssemblySearchTokenAsync(searchResp, request, new List<SymbolType> { SymbolType.Token });
-                    break;
-                case FilterTypes.Nfts:
-                    await AssemblySearchTokenAsync(searchResp, request,
-                        new List<SymbolType> { SymbolType.Nft, SymbolType.Nft_Collection });
-                    break;
-                case FilterTypes.AllFilter:
-                    var tokenTask =
-                        AssemblySearchTokenAsync(searchResp, request, new List<SymbolType> { SymbolType.Token });
-                    var nftTask = AssemblySearchTokenAsync(searchResp, request,
-                        new List<SymbolType> { SymbolType.Nft, SymbolType.Nft_Collection });
-                    var addressTask = AssemblySearchAddressAsync(searchResp, request);
-                    var txTask = AssemblySearchTransactionAsync(searchResp, request);
-                    var blockTask = AssemblySearchBlockAsync(searchResp, request);
-                    await Task.WhenAll(tokenTask, nftTask, addressTask, txTask, blockTask);
-                    break;
-            }
-
             return searchResp;
         }
-        catch (Exception e)
+        //Step 2: convert 
+
+        //Step 3: execute query
+        switch (request.FilterType)
         {
-            _logger.LogError(e, "Execute search error.");
-            return searchResp;
+            case FilterTypes.Accounts:
+                await AssemblySearchAddressAsync(searchResp, request);
+                break;
+            case FilterTypes.Contracts:
+                await AssemblySearchAddressAsync(searchResp, request);
+                break;
+            case FilterTypes.Tokens:
+                await AssemblySearchTokenAsync(searchResp, request, new List<SymbolType> { SymbolType.Token });
+                break;
+            case FilterTypes.Nfts:
+                await AssemblySearchTokenAsync(searchResp, request,
+                    new List<SymbolType> { SymbolType.Nft, SymbolType.Nft_Collection });
+                break;
+            case FilterTypes.AllFilter:
+                var tokenTask =
+                    AssemblySearchTokenAsync(searchResp, request, new List<SymbolType> { SymbolType.Token });
+                var nftTask = AssemblySearchTokenAsync(searchResp, request,
+                    new List<SymbolType> { SymbolType.Nft, SymbolType.Nft_Collection });
+                var addressTask = AssemblySearchAddressAsync(searchResp, request);
+                var txTask = AssemblySearchTransactionAsync(searchResp, request);
+                var blockTask = AssemblySearchBlockAsync(searchResp, request);
+                await Task.WhenAll(tokenTask, nftTask, addressTask, txTask, blockTask);
+                break;
         }
+
+        return searchResp;
     }
 
     private bool ValidParam(string chainId, string keyword)
@@ -321,7 +318,7 @@ public class SearchService : ISearchService, ISingletonDependency
 
         searchResponseDto.Tokens.AddRange(searchTokensDic.Values);
         searchResponseDto.Nfts.AddRange(searchTNftsDic.Values);
-        searchResponseDto.Nfts = searchResponseDto.Nfts.GroupBy(p => p.Symbol) 
+        searchResponseDto.Nfts = searchResponseDto.Nfts.GroupBy(p => p.Symbol)
             .Select(g => g.First()).ToList();
     }
 
@@ -439,7 +436,7 @@ public class SearchService : ISearchService, ISingletonDependency
         }
     }
 
-    private async Task SearchMergeTransaction(SearchResponseDto searchResponseDto, SearchRequestDto request)
+    private  async Task SearchMergeTransaction(SearchResponseDto searchResponseDto, SearchRequestDto request)
     {
         if (!BlockHelper.IsTxHash(request.Keyword))
         {

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos.ChartData;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Provider;
@@ -65,6 +67,8 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
         blockBurntFee = await ParseBlockBurntAsync(chainId,
             blockHeightAsync - 10,
             blockHeightAsync);
+
+
         for (var i = blockList.Count - 1; i >= 0; i--)
         {
             var indexerBlockDto = blockList[i];
@@ -126,24 +130,20 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
     }
 
 
-    public async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
+    [ExceptionHandler(typeof(Exception), Message = "ParseBlockBurntAsync err", TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
         long endBlockHeight)
     {
         var result = new Dictionary<long, long>();
-        try
-        {
-            var blockBurntFeeListAsync =
-                await _tokenIndexerProvider.GetBlockBurntFeeListAsync(chainId, startBlockHeight, endBlockHeight);
+
+        var blockBurntFeeListAsync =
+            await _tokenIndexerProvider.GetBlockBurntFeeListAsync(chainId, startBlockHeight, endBlockHeight);
 
 
-            foreach (var blockBurnFeeDto in blockBurntFeeListAsync)
-            {
-                result.Add(blockBurnFeeDto.BlockHeight, blockBurnFeeDto.Amount);
-            }
-        }
-        catch (Exception e)
+        foreach (var blockBurnFeeDto in blockBurntFeeListAsync)
         {
-            DataStrategyLogger.LogError($"ParseBlockBurntAsync error:{e}");
+            result.Add(blockBurnFeeDto.BlockHeight, blockBurnFeeDto.Amount);
         }
 
 

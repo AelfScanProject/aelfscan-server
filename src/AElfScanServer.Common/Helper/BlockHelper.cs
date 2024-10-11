@@ -1,5 +1,7 @@
 using System;
+using AElf.ExceptionHandler;
 using AElf.Types;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Options;
 
 namespace AElfScanServer.Common.Helper;
@@ -45,21 +47,16 @@ public class BlockHelper
         return false;
     }
 
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public static string GetContractName(GlobalOptions option, string chainId, string address)
     {
-        try
+        if (option.ContractNames.TryGetValue(chainId, out var names))
         {
-            if (option.ContractNames.TryGetValue(chainId, out var names))
+            if (names.TryGetValue(address, out var name))
             {
-                if (names.TryGetValue(address, out var name))
-                {
-                    return name;
-                }
+                return name;
             }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
         }
 
         return "";

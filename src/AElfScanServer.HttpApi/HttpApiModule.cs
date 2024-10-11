@@ -1,4 +1,5 @@
 using AElf.EntityMapping.Elasticsearch;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElf.OpenTelemetry;
 using AElfScanServer.HttpApi.Options;
@@ -65,7 +66,8 @@ namespace AElfScanServer.HttpApi;
     typeof(AbpTenantManagementHttpApiModule),
     typeof(AbpFeatureManagementHttpApiModule),
     typeof(AbpSettingManagementHttpApiModule),
-    typeof(AbpObjectExtendingModule)
+    typeof(AbpObjectExtendingModule),
+    typeof(AOPExceptionModule)
 )]
 public class HttpApiModule : AbpModule
 {
@@ -129,7 +131,6 @@ public class HttpApiModule : AbpModule
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-       
     }
 
     private void ConfigureLocalization()

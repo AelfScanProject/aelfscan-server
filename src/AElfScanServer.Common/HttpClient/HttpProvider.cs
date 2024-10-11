@@ -66,7 +66,7 @@ public class HttpProvider : IHttpProvider
         _logger = logger;
     }
 
-    public async Task<T> InvokeAsync<T>(string domain, ApiInfo apiInfo,
+    public virtual async Task<T> InvokeAsync<T>(string domain, ApiInfo apiInfo,
         Dictionary<string, string> pathParams = null,
         Dictionary<string, string> param = null,
         string body = null,

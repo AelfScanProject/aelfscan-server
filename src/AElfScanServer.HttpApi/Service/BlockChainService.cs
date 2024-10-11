@@ -22,6 +22,7 @@ using Nest;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
+using AElf.ExceptionHandler;
 using AElf.OpenTelemetry;
 using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos.Indexer;
@@ -31,6 +32,7 @@ using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -115,8 +117,9 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         _objectMapper = objectMapper;
     }
 
-
-    public async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
+    [ExceptionHandler(typeof(Exception), TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
     {
         var transactionDetailResponseDto = new TransactionDetailResponseDto();
         if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == request.ChainId))
@@ -124,66 +127,56 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             return transactionDetailResponseDto;
         }
 
-        try
+        var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
+        if (detailResponseDto != null)
         {
-            var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
-            if (detailResponseDto != null)
-            {
-                return detailResponseDto;
-            }
-
-            var blockHeight = 0l;
-            NodeTransactionDto transactionDto = new NodeTransactionDto();
-
-            var tasks = new List<Task>();
-
-
-            tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
-            {
-                blockHeight = task.Result.BlockHeight;
-            }));
-
-
-            tasks.Add(_blockChainProvider.GetTransactionDetailAsync(request.ChainId,
-                request.TransactionId).ContinueWith(task => { transactionDto = task.Result; }));
-
-            await tasks.WhenAll();
-            var transactionIndex = _aelfIndexerProvider.GetTransactionsAsync(request.ChainId,
-                transactionDto.BlockNumber,
-                transactionDto.BlockNumber, request.TransactionId).Result.First();
-
-
-            var detailDto = new TransactionDetailDto();
-            detailDto.TransactionId = transactionIndex.TransactionId;
-            detailDto.Status = transactionIndex.Status;
-            detailDto.BlockConfirmations = detailDto.Status == TransactionStatus.Mined ? blockHeight : 0;
-            detailDto.BlockHeight = transactionIndex.BlockHeight;
-            detailDto.Timestamp = DateTimeHelper.GetTotalSeconds(transactionIndex.BlockTime);
-            detailDto.Method = transactionIndex.MethodName;
-            detailDto.TransactionParams = transactionDto.Transaction.Params;
-            detailDto.TransactionSignature = transactionIndex.Signature;
-            detailDto.Confirmed = transactionIndex.Confirmed;
-            detailDto.From = ConvertAddress(transactionIndex.From, transactionIndex.ChainId);
-            detailDto.To = ConvertAddress(transactionIndex.To, transactionIndex.ChainId);
-
-
-            await AnalysisExtraPropertiesAsync(detailDto, transactionIndex);
-            await AnalysisTransferredAsync(detailDto, transactionIndex);
-            await AnalysisLogEventAsync(detailDto, transactionIndex);
-            var result = new TransactionDetailResponseDto()
-            {
-                List = new List<TransactionDetailDto>() { detailDto }
-            };
-            await _transactionDetailCache.SetAsync(request.TransactionId, result);
-            return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTransactionDetailAsync error ");
+            return detailResponseDto;
         }
 
+        var blockHeight = 0l;
+        NodeTransactionDto transactionDto = new NodeTransactionDto();
 
-        return transactionDetailResponseDto;
+        var tasks = new List<Task>();
+
+
+        tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
+        {
+            blockHeight = task.Result.BlockHeight;
+        }));
+
+
+        tasks.Add(_blockChainProvider.GetTransactionDetailAsync(request.ChainId,
+            request.TransactionId).ContinueWith(task => { transactionDto = task.Result; }));
+
+        await tasks.WhenAll();
+        var transactionIndex = _aelfIndexerProvider.GetTransactionsAsync(request.ChainId,
+            transactionDto.BlockNumber,
+            transactionDto.BlockNumber, request.TransactionId).Result.First();
+
+
+        var detailDto = new TransactionDetailDto();
+        detailDto.TransactionId = transactionIndex.TransactionId;
+        detailDto.Status = transactionIndex.Status;
+        detailDto.BlockConfirmations = detailDto.Status == TransactionStatus.Mined ? blockHeight : 0;
+        detailDto.BlockHeight = transactionIndex.BlockHeight;
+        detailDto.Timestamp = DateTimeHelper.GetTotalSeconds(transactionIndex.BlockTime);
+        detailDto.Method = transactionIndex.MethodName;
+        detailDto.TransactionParams = transactionDto.Transaction.Params;
+        detailDto.TransactionSignature = transactionIndex.Signature;
+        detailDto.Confirmed = transactionIndex.Confirmed;
+        detailDto.From = ConvertAddress(transactionIndex.From, transactionIndex.ChainId);
+        detailDto.To = ConvertAddress(transactionIndex.To, transactionIndex.ChainId);
+
+
+        await AnalysisExtraPropertiesAsync(detailDto, transactionIndex);
+        await AnalysisTransferredAsync(detailDto, transactionIndex);
+        await AnalysisLogEventAsync(detailDto, transactionIndex);
+        var result = new TransactionDetailResponseDto()
+        {
+            List = new List<TransactionDetailDto>() { detailDto }
+        };
+        await _transactionDetailCache.SetAsync(request.TransactionId, result);
+        return result;
     }
 
 
@@ -934,38 +927,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         transaction.TransactionFee = fee.ToString();
     }
 
-
-    public async Task SetBlockBurntFee(List<BlockRespDto> list, string chainId)
-    {
-        try
-        {
-            var longs = list.Select(a => a.BlockHeight).ToList();
-            var mustQuery = new List<Func<QueryContainerDescriptor<BlockExtraIndex>, QueryContainer>>();
-            mustQuery.Add(q => q.Terms(t => t.Field(f => f.BlockHeight).Terms(longs)));
-            QueryContainer Filter(QueryContainerDescriptor<BlockExtraIndex> f) => f.Bool(b => b.Must(mustQuery));
-            var result = await _blockExtraIndexRepository.GetListAsync(Filter, skip: 0, limit: 10000,
-                index: BlockChainIndexNameHelper.GenerateBlockExtraIndexName(chainId));
-            if (result.Item2.IsNullOrEmpty())
-            {
-                return;
-            }
-
-            Dictionary<long, long> myDictionary = result.Item2.ToDictionary(x => x.BlockHeight, x => x.BurntFee);
-
-            foreach (var blockDto in list)
-            {
-                if (myDictionary.TryGetValue(blockDto.BlockHeight, out var value))
-                {
-                    blockDto.BurntFees = value.ToString();
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "SetBlockBurntFee err");
-            throw;
-        }
-    }
 
     private CommonAddressDto ConvertAddress(string address, string chainId)
     {
