@@ -882,12 +882,12 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         await ConnectAsync();
         var redisValue = RedisDatabase.StringGet(RedisKeyHelper.BlockSizeLastBlockHeight(chainId));
         var lastBlockHeight = redisValue.IsNullOrEmpty ? 0 : long.Parse(redisValue);
+        int failCount = 0;
         while (true)
         {
             var tasks = new List<Task>();
             var blockSizeIndices = new List<BlockSizeDto>();
             var _lock = new object();
-            int failCount = 0;
             var startNew = Stopwatch.StartNew();
             try
             {
