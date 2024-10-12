@@ -1232,7 +1232,8 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             try
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
-
+      
+                _logger.LogInformation($"BatchPullTransactionTask: lastBlockHeight:{lastBlockHeight}");
                 var batchTransactionList =
                     await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight + PullTransactioninterval);
 
