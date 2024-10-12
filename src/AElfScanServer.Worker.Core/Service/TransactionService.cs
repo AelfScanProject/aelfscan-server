@@ -975,6 +975,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                     return;
                 }
             }
+
             if (dic.Count >= 2)
             {
                 var sizeIndices = dic.Values.OrderBy(c => c.DateStr).ToList();
@@ -1045,6 +1046,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
     public async Task BatchPullTransactionTask()
     {
+        await BatchPullTransactionJob("AELF");
         await ConnectAsync();
 
         if (_globalOptions.CurrentValue.NeedInitLastHeight && !FinishInitChartData)
@@ -1227,15 +1229,18 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionLastBlockHeight(chainId));
         lastBlockHeight = redisValue.IsNullOrEmpty ? 1 : long.Parse(redisValue) + 1;
 
+        lastBlockHeight = 243873104;
         while (true)
         {
             try
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
-      
+
                 _logger.LogInformation($"BatchPullTransactionTask: lastBlockHeight:{lastBlockHeight}");
+                // var batchTransactionList =
+                //     await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight + PullTransactioninterval);
                 var batchTransactionList =
-                    await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight + PullTransactioninterval);
+                    await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight);
 
                 if (batchTransactionList.IsNullOrEmpty())
                 {
@@ -1261,10 +1266,10 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                     return s;
                 }).ToList();
 
-                if (dateSet.Min(c => c) == DateTimeHelper.GetDateStr(DateTime.UtcNow))
-                {
-                    break;
-                }
+                // if (dateSet.Min(c => c) == DateTimeHelper.GetDateStr(DateTime.UtcNow))
+                // {
+                //     break;
+                // }
 
 
                 stopwatch.Stop();
@@ -1404,7 +1409,10 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             }
 
             var dailyData = dic[date];
+
             var transactionFees = LogEventHelper.ParseTransactionFees(transaction.ExtraProperties);
+
+
             if (transactionFees > 0)
             {
                 dailyData.TransactionFeeRecords.Add(transaction.TransactionId + "_" + transactionFees);
