@@ -1229,7 +1229,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionLastBlockHeight(chainId));
         lastBlockHeight = redisValue.IsNullOrEmpty ? 1 : long.Parse(redisValue) + 1;
 
-        lastBlockHeight = 243873104;
         while (true)
         {
             try
@@ -1237,10 +1236,9 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 Stopwatch stopwatch = Stopwatch.StartNew();
 
                 _logger.LogInformation($"BatchPullTransactionTask: lastBlockHeight:{lastBlockHeight}");
-                // var batchTransactionList =
-                //     await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight + PullTransactioninterval);
                 var batchTransactionList =
-                    await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight);
+                    await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight + PullTransactioninterval);
+        
 
                 if (batchTransactionList.IsNullOrEmpty())
                 {
@@ -1266,10 +1264,10 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                     return s;
                 }).ToList();
 
-                // if (dateSet.Min(c => c) == DateTimeHelper.GetDateStr(DateTime.UtcNow))
-                // {
-                //     break;
-                // }
+                if (dateSet.Min(c => c) == DateTimeHelper.GetDateStr(DateTime.UtcNow))
+                {
+                    break;
+                }
 
 
                 stopwatch.Stop();
