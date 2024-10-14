@@ -185,7 +185,7 @@ public class AddressService : IAddressService, ISingletonDependency
                 new OrderInfo()
                 {
                     Sort = "Asc",
-                    OrderBy = "BlockHeight"
+                    OrderBy = "BlockTime"
                 }
             };
             tokenTransferInput.SkipCount = 0;
