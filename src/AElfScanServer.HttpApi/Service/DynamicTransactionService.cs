@@ -151,7 +151,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             {
                 List = new List<TransactionDetailDto>() { detailDto }
             };
-            await _transactionDetailCache.SetAsync(request.TransactionId, result,new DistributedCacheEntryOptions()
+            await _transactionDetailCache.SetAsync(request.TransactionId, result, new DistributedCacheEntryOptions()
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
             });
@@ -251,7 +251,7 @@ public class DynamicTransactionService : IDynamicTransactionService
         var transactionValues = new Dictionary<string, ValueInfoDto>();
 
         var transactionFees = new Dictionary<string, ValueInfoDto>();
-        
+
         var burntFees = new Dictionary<string, ValueInfoDto>();
 
         foreach (var txnLogEvent in transactionIndex.LogEvents)
@@ -279,7 +279,7 @@ public class DynamicTransactionService : IDynamicTransactionService
                     var transferred = new Transferred();
                     transferred.MergeFrom(logEvent);
                     await SetValueInfoAsync(transactionValues, transferred.Symbol, transferred.Amount);
-                    
+
                     if (TokenSymbolHelper.GetSymbolType(transferred.Symbol) == SymbolType.Token)
                     {
                         _globalOptions.CurrentValue.TokenImageUrls.TryGetValue(transferred.Symbol, out var imageUrl);
@@ -317,11 +317,7 @@ public class DynamicTransactionService : IDynamicTransactionService
                             ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(transferred.Symbol,
                                 txnLogEvent.ChainId),
                         };
-                        // if (_tokenInfoOptionsMonitor.CurrentValue.TokenInfos.TryGetValue(
-                        //         TokenSymbolHelper.GetCollectionSymbol(transferred.Symbol), out var info))
-                        // {
-                        //     nft.ImageUrl = info.ImageUrl;
-                        // }
+
 
                         detailDto.NftsTransferreds.Add(nft);
                     }
