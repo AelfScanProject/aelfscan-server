@@ -98,7 +98,7 @@ public static class LogEventHelper
                 }
             }
         }
-        catch (Exception e)
+        catch (JsonSerializationException e)
         {
             // ignore test data
             Log.Error(e, $"ParseTransactionFees error");
