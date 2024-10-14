@@ -1046,7 +1046,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
     public async Task BatchPullTransactionTask()
     {
-        await BatchPullTransactionJob("AELF");
         await ConnectAsync();
 
         if (_globalOptions.CurrentValue.NeedInitLastHeight && !FinishInitChartData)

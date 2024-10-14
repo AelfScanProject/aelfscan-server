@@ -100,7 +100,8 @@ public static class LogEventHelper
         }
         catch (Exception e)
         {
-            Log.Error($"ParseTransactionFees error:{e} ");
+            // ignore test data
+            Log.Error(e, $"ParseTransactionFees error");
         }
 
         return result;

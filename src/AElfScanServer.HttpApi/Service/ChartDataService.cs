@@ -103,7 +103,7 @@ public interface IChartDataService
     public Task<JonInfoResp> GetJobInfo(SetJob request);
 
     public Task FixDailyData(FixDailyData request);
-    
+
     Task FixTokenHolderAsync(FixTokenHolderInput request);
 }
 
@@ -1029,7 +1029,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             dailyAvgTransactionFee.AvgFeeElf = (decimal.Parse(dailyAvgTransactionFee.AvgFeeElf) / 1e8m).ToString("F6");
             dailyAvgTransactionFee.TotalFeeElf =
                 (decimal.Parse(dailyAvgTransactionFee.TotalFeeElf) / 1e8m).ToString("F6");
-            dailyAvgTransactionFee.AvgFeeUsdt = (decimal.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8m).ToString("F6");
+            dailyAvgTransactionFee.AvgFeeUsdt =
+                (decimal.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8m).ToString("F6");
         }
 
         var resp = new DailyAvgTransactionFeeResp()
@@ -1820,6 +1821,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
                 data.MergeAddressCount += v.AddressCount;
                 data.MergeTotalUniqueAddressees += v.TotalUniqueAddressees;
             }
+
+            data.OwnerUniqueAddressees = data.MergeTotalUniqueAddressees;
         }
 
 
@@ -1836,6 +1839,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<UniqueAddressCountResp> GetUniqueAddressCountAsync(ChartDataRequest request)
     {
+        return await GetMergeUniqueAddressCountAsync();
+        
         if (request.ChainId.IsNullOrEmpty())
         {
             return await GetMergeUniqueAddressCountAsync();

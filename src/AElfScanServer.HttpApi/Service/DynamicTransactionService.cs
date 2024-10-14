@@ -36,6 +36,7 @@ using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.DataStrategy;
+using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -150,7 +151,10 @@ public class DynamicTransactionService : IDynamicTransactionService
             {
                 List = new List<TransactionDetailDto>() { detailDto }
             };
-            await _transactionDetailCache.SetAsync(request.TransactionId, result);
+            await _transactionDetailCache.SetAsync(request.TransactionId, result,new DistributedCacheEntryOptions()
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+            });
             return result;
         }
         catch (Exception e)
