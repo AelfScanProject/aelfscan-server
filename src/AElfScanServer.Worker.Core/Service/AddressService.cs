@@ -19,6 +19,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nest;
+using Newtonsoft.Json;
 using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -37,6 +38,8 @@ public interface IAddressService
     public Task SaveCollectionHolderList();
 
     public Task DeleteMergeBlock();
+    
+    Task FixTokenHolderAsync();
 }
 
 public class AddressService : IAddressService, ISingletonDependency
@@ -90,6 +93,23 @@ public class AddressService : IAddressService, ISingletonDependency
         }
     }
 
+    public async Task FixTokenHolderAsync()
+    {
+        var redisValue = await _cache.GetAsync(RedisKeyHelper.FixTokenHolder());
+        if (redisValue.IsNullOrEmpty())
+        {
+            _logger.LogInformation("No fixTokenHolder data");
+            return;
+        }
+
+        var fixTokenHolderInput = JsonConvert.DeserializeObject<FixTokenHolderInput>(redisValue);
+        foreach (var symbol in fixTokenHolderInput.SymbolList)
+        {
+            await SaveTokenHolderAsync(symbol, new List<string>());
+        }
+        await _cache.RemoveAsync(RedisKeyHelper.FixTokenHolder());
+    }
+
     public async Task<(long, List<AddressIndex>)> GetAddressIndexAsync(string chainId, List<string> addressList)
     {
         var mustQuery = new List<Func<QueryContainerDescriptor<AddressIndex>, QueryContainer>>();
@@ -125,7 +145,7 @@ public class AddressService : IAddressService, ISingletonDependency
     {
         var key = "token_transfer_change_time";
         var beginTime = await GetBeginTime(key);
-        _logger.LogInformation("PullTokenInfo bengin {Time}",
+        _logger.LogInformation("PullTokenInfo begin {Time}",
             TimeHelper.GetTimeStampFromDateTimeInSeconds(beginTime).ToString());
         await AddCreatedTokenList(beginTime);
         Dictionary<string, List<string>> symbolMap;
@@ -165,7 +185,7 @@ public class AddressService : IAddressService, ISingletonDependency
                 new OrderInfo()
                 {
                     Sort = "Asc",
-                    OrderBy = "BlockHeight"
+                    OrderBy = "BlockTime"
                 }
             };
             tokenTransferInput.SkipCount = 0;
@@ -261,11 +281,6 @@ public class AddressService : IAddressService, ISingletonDependency
 
     private async Task SaveMergeTokenList(List<string> symbolList)
     {
-        if (symbolList.IsNullOrEmpty())
-        {
-            return;
-        }
-
         try
         {
             var skip = 0;
@@ -455,8 +470,8 @@ public class AddressService : IAddressService, ISingletonDependency
                 }
 
                 await _accountTokenRepository.AddOrUpdateManyAsync(dic.Values.ToList());
-                _logger.LogInformation("accountTokenInfoIndices Symbol:{Symbol},count:{count}", symbol,
-                    tokenInfoList.Count());
+                _logger.LogInformation("accountTokenInfoIndices Symbol:{Symbol},queryCount:{count},saveCount:{saveCount}", symbol,
+                    tokenInfoList.Count(),dic.Values.Count);
                 skip += maxResultCount;
             } while (queryCount == maxResultCount);
         }

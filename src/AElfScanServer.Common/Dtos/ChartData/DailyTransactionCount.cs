@@ -36,7 +36,7 @@ public class DailyUniqueAddressCount
 
     public int SideChainTotalUniqueAddressees { get; set; }
 
-    public int OwnerUniqueAddressees { get; set; }
+    public int OwnerUniqueAddressees { get; set; } 
 
 
     public string DateStr { get; set; }

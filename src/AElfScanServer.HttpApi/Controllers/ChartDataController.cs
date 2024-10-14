@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElf.OpenTelemetry.ExecutionTime;
+using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.HttpApi.Dtos.ChartData;
 using AElfScanServer.HttpApi.Service;
 using Asp.Versioning;
@@ -201,5 +202,11 @@ public class ChartDataController : AbpController
     public async Task FixDailyData(FixDailyData request)
     {
         await _chartDataService.FixDailyData(request);
+    }
+    
+    [HttpPost("fixTokenHolder")]
+    public async Task FixTokenHolderAsync(FixTokenHolderInput request)
+    {
+        await _chartDataService.FixTokenHolderAsync(request);
     }
 }

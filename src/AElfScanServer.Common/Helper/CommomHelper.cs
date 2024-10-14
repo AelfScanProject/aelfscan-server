@@ -7,6 +7,7 @@ using AElfScanServer.Common.Dtos;
 using Google.Protobuf;
 using Nethereum.Util;
 using Newtonsoft.Json;
+using Serilog;
 
 namespace AElfScanServer.Common.Helper;
 
@@ -65,34 +66,42 @@ public static class LogEventHelper
 
         return logEvent;
     }
-    
+
     public static long ParseTransactionFees(Dictionary<string, string> extraProperties)
     {
         var result = 0l;
-        var feeMap = new Dictionary<string, long>();
-        if (extraProperties == null)
+        try
         {
-            return 0;
-        }
-
-        if (extraProperties.TryGetValue("TransactionFee", out var transactionFee))
-        {
-            feeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(transactionFee) ??
-                     new Dictionary<string, long>();
-            if (feeMap.TryGetValue("ELF", out var fee))
+            var feeMap = new Dictionary<string, long>();
+            if (extraProperties == null)
             {
-                result += fee;
+                return 0;
+            }
+
+            if (extraProperties.TryGetValue("TransactionFee", out var transactionFee))
+            {
+                feeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(transactionFee) ??
+                         new Dictionary<string, long>();
+                if (feeMap.TryGetValue("ELF", out var fee))
+                {
+                    result += fee;
+                }
+            }
+
+            if (extraProperties.TryGetValue("ResourceFee", out var resourceFee))
+            {
+                var resourceFeeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(resourceFee) ??
+                                     new Dictionary<string, long>();
+                if (resourceFeeMap.TryGetValue("ELF", out var fee))
+                {
+                    result += fee;
+                }
             }
         }
-
-        if (extraProperties.TryGetValue("ResourceFee", out var resourceFee))
+        catch (JsonSerializationException e)
         {
-            var resourceFeeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(resourceFee) ??
-                                 new Dictionary<string, long>();
-            if (resourceFeeMap.TryGetValue("ELF", out var fee))
-            {
-                result += fee;
-            }
+            // ignore test data
+            Log.Error(e, $"ParseTransactionFees error");
         }
 
         return result;
@@ -113,8 +122,7 @@ public static class LogEventHelper
 
         return 0;
     }
-    
-    
+
 
     public static readonly Dictionary<string, List<string>> AddressListMap = new()
     {

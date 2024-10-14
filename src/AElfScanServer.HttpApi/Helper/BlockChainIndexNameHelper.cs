@@ -85,7 +85,7 @@ public class RedisKeyHelper
 
     public static string FixDailyData()
     {
-        return $"explore_FixDailyDaya";
+        return $"explore_FixDailyData";
     }
 
     
@@ -111,5 +111,10 @@ public class RedisKeyHelper
     public static string TokenInfoKey(string chainId, string symbol)
     {
         return $"explore_{chainId}_token_info_{symbol}";
+    }
+    
+    public static string FixTokenHolder()
+    {
+        return $"explore_FixTokenHolder";
     }
 }

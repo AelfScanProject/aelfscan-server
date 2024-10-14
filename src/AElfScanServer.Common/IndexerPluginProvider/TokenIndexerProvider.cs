@@ -364,7 +364,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 {
                     ChainId = chainId,
                     Symbols = new List<string>() { symbol },
-                    MaxResultCount = 1
+                    MaxResultCount = 1,
+                    Types = new List<SymbolType>() { SymbolType.Token, SymbolType.Nft }
                 };
 
                 var indexerTokenListDto = await GetTokenListAsync(input);
@@ -486,7 +487,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             ChainId = chainId,
             Symbols = symbols,
             Types = EnumConverter.GetEnumValuesList<SymbolType>(),
-            MaxResultCount = symbols.Count*2
+            MaxResultCount = symbols.Count * 2
         };
         var indexerTokenListDto = await GetTokenListAsync(input);
         return indexerTokenListDto.Items.ToDictionary(token => token.Symbol + token.Metadata.ChainId, token => token);

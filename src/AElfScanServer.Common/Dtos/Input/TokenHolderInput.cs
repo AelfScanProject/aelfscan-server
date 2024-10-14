@@ -36,3 +36,9 @@ public class TokenHolderInput : BaseInput
         OfOrderInfos((SortField.FormatAmount, SortDirection.Desc), (SortField.Address, SortDirection.Desc));
     }
 }
+
+
+public class FixTokenHolderInput
+{
+    public List<string> SymbolList { get; set; } = new();
+}

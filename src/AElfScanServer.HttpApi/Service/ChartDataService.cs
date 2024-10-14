@@ -10,6 +10,7 @@ using AElf.Contracts.Consensus.AEDPoS;
 using AElf.EntityMapping.Repositories;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
@@ -35,6 +36,7 @@ using Nest;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
+using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -101,6 +103,8 @@ public interface IChartDataService
     public Task<JonInfoResp> GetJobInfo(SetJob request);
 
     public Task FixDailyData(FixDailyData request);
+
+    Task FixTokenHolderAsync(FixTokenHolderInput request);
 }
 
 public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDependency
@@ -137,7 +141,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IObjectMapper _objectMapper;
-
+    private readonly IDistributedCache<string> _cache;
 
     public ChartDataService(IOptions<RedisCacheOptions> optionsAccessor, ILogger<ChartDataService> logger,
         IEntityMappingRepository<RoundIndex, string> roundIndexRepository,
@@ -167,6 +171,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         IEntityMappingRepository<MonthlyActiveAddressIndex, string> monthlyActiveAddressIndexRepository,
         IPriceServerProvider priceServerProvider,
         IDailyHolderProvider dailyHolderProvider,
+        IDistributedCache<string> cache,
         IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> uniqueMergeAddressRepository,
         IOptionsMonitor<ElasticsearchOptions> options) : base(
         optionsAccessor)
@@ -205,6 +210,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         _priceServerProvider = priceServerProvider;
         _monthlyActiveAddressIndexRepository = monthlyActiveAddressIndexRepository;
         _uniqueMergeAddressRepository = uniqueMergeAddressRepository;
+        _cache = cache;
     }
 
     public async Task FixDailyData(FixDailyData request)
@@ -212,6 +218,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         await ConnectAsync();
         var serializeObject = JsonConvert.SerializeObject(request);
         RedisDatabase.StringSet(RedisKeyHelper.FixDailyData(), serializeObject);
+    }
+
+    public async Task FixTokenHolderAsync(FixTokenHolderInput request)
+    {
+        await _cache.SetAsync(RedisKeyHelper.FixTokenHolder(), JsonConvert.SerializeObject(request));
     }
 
     public async Task<JonInfoResp> GetJobInfo(SetJob request)
@@ -1018,7 +1029,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             dailyAvgTransactionFee.AvgFeeElf = (decimal.Parse(dailyAvgTransactionFee.AvgFeeElf) / 1e8m).ToString("F6");
             dailyAvgTransactionFee.TotalFeeElf =
                 (decimal.Parse(dailyAvgTransactionFee.TotalFeeElf) / 1e8m).ToString("F6");
-            dailyAvgTransactionFee.AvgFeeUsdt = (decimal.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8m).ToString("F6");
+            dailyAvgTransactionFee.AvgFeeUsdt =
+                (decimal.Parse(dailyAvgTransactionFee.AvgFeeUsdt) / 1e8m).ToString("F6");
         }
 
         var resp = new DailyAvgTransactionFeeResp()
@@ -1809,6 +1821,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
                 data.MergeAddressCount += v.AddressCount;
                 data.MergeTotalUniqueAddressees += v.TotalUniqueAddressees;
             }
+
+            data.OwnerUniqueAddressees = data.MergeTotalUniqueAddressees;
         }
 
 
@@ -1825,82 +1839,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<UniqueAddressCountResp> GetUniqueAddressCountAsync(ChartDataRequest request)
     {
-        if (request.ChainId.IsNullOrEmpty())
-        {
-            return await GetMergeUniqueAddressCountAsync();
-        }
-
-        if (_globalOptions.CurrentValue.SwitchMergeAddress)
-        {
-            return await GetSwitchUniqueAddressCountAsync(request);
-        }
-
-        var queryable = await _uniqueAddressRepository.GetQueryableAsync();
-        var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
-
-        var sideIndexList = new List<DailyUniqueAddressCountIndex>();
-
-        sideIndexList = queryable.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.Date)
-            .Take(10000).ToList();
-
-
-        var mainDataList =
-            _objectMapper.Map<List<DailyUniqueAddressCountIndex>, List<DailyUniqueAddressCount>>(mainIndexList);
-        var sideDataList =
-            _objectMapper.Map<List<DailyUniqueAddressCountIndex>, List<DailyUniqueAddressCount>>(sideIndexList);
-
-        mainDataList[0].TotalUniqueAddressees = mainDataList[0].AddressCount;
-
-        for (int i = 1; i < mainDataList.Count; i++)
-        {
-            var count1 = mainDataList[i - 1].TotalUniqueAddressees;
-            var count2 = mainDataList[i].AddressCount;
-            mainDataList[i].TotalUniqueAddressees = count1 + count2;
-        }
-
-        sideDataList[0].TotalUniqueAddressees = sideDataList[0].AddressCount;
-
-        for (int i = 1; i < sideDataList.Count; i++)
-        {
-            var count1 = sideDataList[i - 1].TotalUniqueAddressees;
-            var count2 = sideDataList[i].AddressCount;
-            sideDataList[i].TotalUniqueAddressees = count1 + count2;
-        }
-
-
-        var dic = new Dictionary<string, DailyUniqueAddressCount>();
-        var ownerList = new List<DailyUniqueAddressCount>();
-
-        if (request.ChainId == "AELF")
-        {
-            dic = sideDataList.ToDictionary(c => c.DateStr, c => c);
-            ownerList = mainDataList;
-        }
-        else
-        {
-            dic = mainDataList.ToDictionary(c => c.DateStr, c => c);
-            ownerList = sideDataList;
-        }
-
-
-        foreach (var data in ownerList)
-        {
-            data.OwnerUniqueAddressees = data.TotalUniqueAddressees;
-            if (dic.TryGetValue(data.DateStr, out var v))
-            {
-                data.TotalUniqueAddressees += v.TotalUniqueAddressees;
-            }
-        }
-
-        var resp = new UniqueAddressCountResp()
-        {
-            List = ownerList,
-            Total = ownerList.Count,
-            HighestIncrease = ownerList.MaxBy(c => c.AddressCount),
-            LowestIncrease = ownerList.MinBy(c => c.AddressCount),
-        };
-
-        return resp;
+        return await GetMergeUniqueAddressCountAsync();
+        
     }
 
     public async Task<UniqueAddressCountResp> GetSwitchUniqueAddressCountAsync(ChartDataRequest request)
