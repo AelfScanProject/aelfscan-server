@@ -98,6 +98,7 @@ public class HttpApiModule : AbpModule
         context.Services.AddTransient<IChartDataService, ChartDataService>();
         context.Services.AddTransient<IUserAppService, UserAppService>();
         context.Services.AddTransient<IAddressTypeService, AddressTypeService>();
+        context.Services.AddTransient<IOpenApiService, OpenApiService>();
         context.Services.AddSingleton<IDynamicTransactionService, DynamicTransactionService>();
 
         var configuration = context.Services.GetConfiguration();
@@ -129,7 +130,6 @@ public class HttpApiModule : AbpModule
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-       
     }
 
     private void ConfigureLocalization()
