@@ -148,14 +148,14 @@ public class OpenApiService : IOpenApiService
         dailyTransactionCountApiResp.MainChain.TransactionAvgByAllType =
             mainDailyTransactionCounts.Sum(c => c.TransactionCount) / days;
         dailyTransactionCountApiResp.MainChain.TransactionAvgByExcludeSystem =
-            mainDailyTransactionCounts.Sum(c => c.TransactionCount) -
-            mainDailyTransactionCounts.Sum(c => c.BlockCount) * 2 / days;
+            (mainDailyTransactionCounts.Sum(c => c.TransactionCount) -
+             mainDailyTransactionCounts.Sum(c => c.BlockCount) * 2) / days;
 
         dailyTransactionCountApiResp.SideChain.TransactionAvgByAllType =
             sideDailyTransactionAddressCounts.Sum(c => c.TransactionCount) / days;
         dailyTransactionCountApiResp.SideChain.TransactionAvgByExcludeSystem =
-            sideDailyTransactionAddressCounts.Sum(c => c.TransactionCount) -
-            sideDailyTransactionAddressCounts.Sum(c => c.BlockCount) * 2 / days;
+            (sideDailyTransactionAddressCounts.Sum(c => c.TransactionCount) -
+             sideDailyTransactionAddressCounts.Sum(c => c.BlockCount) * 2) / days;
 
         return dailyTransactionCountApiResp;
     }
