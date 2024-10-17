@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using AElf;
 using AElf.Client.Service;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using Elasticsearch.Net;
 using AElfScanServer.HttpApi.Dtos;
@@ -13,6 +16,7 @@ using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -30,7 +34,7 @@ namespace AElfScanServer.HttpApi.Service;
 
 public interface IHomePageService
 {
-    public Task<LatestTransactionsResponseSto> GetLatestTransactionsAsync(LatestTransactionsReq req);
+
     public Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto);
 
 
@@ -116,7 +120,11 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         return transactionPerMinuteResp;
     }
 
-    public async Task<HomeOverviewResponseDto> GetBlockchainOverviewAsync(BlockchainOverviewRequestDto req)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetBlockchainOverviewAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["req"])]
+    public virtual async Task<HomeOverviewResponseDto> GetBlockchainOverviewAsync(BlockchainOverviewRequestDto req)
     {
         var overviewResp = new HomeOverviewResponseDto();
         if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == req.ChainId))
@@ -126,8 +134,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
             return overviewResp;
         }
 
-        try
-        {
+      
             var tasks = new List<Task>();
             tasks.Add(_aelfIndexerProvider.GetLatestBlockHeightAsync(req.ChainId).ContinueWith(
                 task => { overviewResp.BlockHeight = task.Result; }));
@@ -158,93 +165,12 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
                 task => { overviewResp.Tps = (task.Result / 60).ToString("F2"); }));
 
             await Task.WhenAll(tasks);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "get home page overview err,chainId:{chainId}", req.ChainId);
-        }
+       
 
         return overviewResp;
     }
 
-
-    public void SetSearchAddress(SearchResponseDto searchResponseDto, SearchRequestDto requestDto,
-        SearchTypes searchType, AddressType addressType)
-    {
-        var accounts = new List<string>();
-        var contracts = new List<SearchContract>();
-        searchResponseDto.Accounts = new List<SearchAccount>();
-        searchResponseDto.Contracts = contracts;
-        try
-        {
-            if (requestDto.Keyword.Length <= 2)
-            {
-                return;
-            }
-
-            var mustQuery = new List<Func<QueryContainerDescriptor<AddressIndex>, QueryContainer>>();
-
-
-            mustQuery.Add(q => q.Term(t => t.Field(t => t.AddressType).Value(addressType)));
-            if (searchType == SearchTypes.ExactSearch)
-            {
-                if (CommomHelper.IsValidAddress(requestDto.Keyword))
-                {
-                    mustQuery.Add(mu => mu.Term(t => t.Field(f => f.LowerAddress).Value(requestDto.Keyword)));
-                }
-                else
-                {
-                    mustQuery.Add(mu => mu.Term(t => t.Field(f => f.LowerName).Value(requestDto.Keyword)));
-                }
-            }
-
-            if (searchType == SearchTypes.FuzzySearch)
-            {
-                if (requestDto.Keyword.Length > 9)
-                {
-                    mustQuery.Add(q => q.Bool(b =>
-                        b.Should(
-                            sh => sh.Wildcard(
-                                w => w.Field(f => f.LowerAddress)
-                                    .Value($"*{requestDto.Keyword}*")),
-                            sh => sh.Wildcard(w => w.Field(f => f.LowerName).Value($"*{requestDto.Keyword}*"))
-                        )));
-                }
-                else
-                {
-                    mustQuery.Add(q => q.Bool(b =>
-                        b.Should(
-                            sh => sh.Wildcard(w => w.Field(f => f.LowerName).Value($"*{requestDto.Keyword}*"))
-                        )));
-                }
-            }
-
-
-            QueryContainer Filter(QueryContainerDescriptor<AddressIndex> f) => f.Bool(b => b.Filter(mustQuery));
-            var result = _addressIndexRepository.GetListAsync(Filter, skip: 0, limit: 20,
-                index: BlockChainIndexNameHelper.GenerateAddressIndexName(requestDto.ChainId)).Result;
-            result.Item2.ForEach(addressIndex =>
-            {
-                if (addressIndex.AddressType == AddressType.EoaAddress)
-                {
-                    accounts.Add(addressIndex.Address);
-                }
-                else
-                {
-                    var searchContract = new SearchContract();
-                    searchContract.Address = addressIndex.Address;
-                    searchContract.Name = addressIndex.Name;
-                    contracts.Add(searchContract);
-                }
-            });
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "set search address err");
-        }
-    }
-
-
+    
     public async Task<FilterTypeResponseDto> GetFilterType()
     {
         var filterTypeResp = new FilterTypeResponseDto();
@@ -264,7 +190,11 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     }
 
 
-    public async Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetLatestBlocksAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
+    public virtual async Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto)
     {
         var result = new BlocksResponseDto() { };
         if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == requestDto.ChainId) ||
@@ -273,10 +203,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         {
             return result;
         }
-
-
-        try
-        {
+        
             var aElfClient = new AElfClient(_globalOptions.CurrentValue.ChainNodeHosts[requestDto.ChainId]);
             var blockHeightAsync = await aElfClient.GetBlockHeightAsync();
 
@@ -305,38 +232,13 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
                     ? DateTimeHelper.GetTotalMilliseconds(indexerBlockDto.BlockTime) -
                       DateTimeHelper.GetTotalMilliseconds(blockList[i - 1].BlockTime)
                     : 0) / 1000).ToString("0.0");
-                //todo
+               
                 latestBlockDto.Reward = "";
                 result.Blocks.Add(latestBlockDto);
             }
 
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestBlocksAsync error");
-        }
-
-        return result;
     }
 
 
-    public async Task<LatestTransactionsResponseSto> GetLatestTransactionsAsync(LatestTransactionsReq req)
-    {
-        var result = new LatestTransactionsResponseSto();
-
-
-        result.Transactions = new List<TransactionResponseDto>();
-        try
-        {
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestTransactionsAsync error");
-        }
-
-        return result;
-    }
-
-    private CommonAddressDto ConvertAddress(string address) => new() { Address = address };
 }

@@ -13,18 +13,7 @@ namespace AElfScanServer.Common.Helper;
 
 public class CommomHelper
 {
-    public static bool IsValidAddress(string address)
-    {
-        try
-        {
-            AElf.Types.Address.FromBase58(address);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
+   
 
     public static string GetNftImageKey()
     {
@@ -67,45 +56,7 @@ public static class LogEventHelper
         return logEvent;
     }
 
-    public static long ParseTransactionFees(Dictionary<string, string> extraProperties)
-    {
-        var result = 0l;
-        try
-        {
-            var feeMap = new Dictionary<string, long>();
-            if (extraProperties == null)
-            {
-                return 0;
-            }
-
-            if (extraProperties.TryGetValue("TransactionFee", out var transactionFee))
-            {
-                feeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(transactionFee) ??
-                         new Dictionary<string, long>();
-                if (feeMap.TryGetValue("ELF", out var fee))
-                {
-                    result += fee;
-                }
-            }
-
-            if (extraProperties.TryGetValue("ResourceFee", out var resourceFee))
-            {
-                var resourceFeeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(resourceFee) ??
-                                     new Dictionary<string, long>();
-                if (resourceFeeMap.TryGetValue("ELF", out var fee))
-                {
-                    result += fee;
-                }
-            }
-        }
-        catch (JsonSerializationException e)
-        {
-            // ignore test data
-            Log.Error(e, $"ParseTransactionFees error");
-        }
-
-        return result;
-    }
+   
 
     public static long ParseBurnt(long amount, string address, string symbol, string chainId)
     {

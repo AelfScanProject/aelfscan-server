@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos.address;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using GraphQL;
 using Microsoft.Extensions.Logging;
@@ -30,12 +33,14 @@ public class DailyHolderProvider : IDailyHolderProvider, ISingletonDependency
         _logger = logger;
     }
 
-
-    public async Task<IndexerDailyHolderDto> GetDailyHolderListAsync(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetDailyHolderListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task<IndexerDailyHolderDto> GetDailyHolderListAsync(string chainId)
     {
         var indexerDailyHolderDto = new IndexerDailyHolderDto();
-        try
-        {
+     
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerDailyHolderDto>(
                 new GraphQLRequest
                 {
@@ -52,11 +57,6 @@ public class DailyHolderProvider : IDailyHolderProvider, ISingletonDependency
                     }
                 });
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query daily hodler failed.");
-            return indexerDailyHolderDto;
-        }
+    
     }
 }

@@ -1,10 +1,13 @@
 using 
     System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Redis;
 using AElfScanServer.Common.ThirdPart.Exchange;
@@ -114,36 +117,32 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
         }
     }
     
-    private async Task<KeyValuePair<string, TokenExchangeDto>> GetExchangeAsync(
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetExchangeAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["provider","baseCoin","quoteCoin","providerName"])]
+    public virtual async Task<KeyValuePair<string, TokenExchangeDto>> GetExchangeAsync(
         IExchangeProvider provider, string baseCoin, string quoteCoin, string providerName)
     {
-        try
-        {
+       
             var result = await provider.LatestAsync(MappingSymbol(baseCoin.ToUpper()), 
                 MappingSymbol(quoteCoin.ToUpper()));
             return new KeyValuePair<string, TokenExchangeDto>(providerName, result);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query exchange failed, providerName={ProviderName}", providerName);
-            return new KeyValuePair<string, TokenExchangeDto>(providerName, null);
-        }
+       
     }
     
-    private async Task<KeyValuePair<string, TokenExchangeDto>> GetHistoryExchangeAsync(
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetHistoryExchangeAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["provider","baseCoin","quoteCoin","timestamp","providerName"])]
+    public virtual async Task<KeyValuePair<string, TokenExchangeDto>> GetHistoryExchangeAsync(
         IExchangeProvider provider, string baseCoin, string quoteCoin, long timestamp, string providerName)
     {
-        try
-        {
+        
             var result = await provider.HistoryAsync(MappingSymbol(baseCoin.ToUpper()), 
                 MappingSymbol(quoteCoin.ToUpper()), timestamp);
             return new KeyValuePair<string, TokenExchangeDto>(providerName, result);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query history exchange failed, providerName={ProviderName}", providerName);
-            return new KeyValuePair<string, TokenExchangeDto>(providerName, null);
-        }
+       
     }
 
     private string MappingSymbol(string sourceSymbol)

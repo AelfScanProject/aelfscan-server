@@ -1,5 +1,8 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
+using AElfScanServer.Common.ExceptionHandling;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,25 +29,26 @@ public class StorageProvider : AbpRedisCache, IStorageProvider, ITransientDepend
         _logger = logger;
         _serializer = serializer;
     }
-
-    public async Task SetAsync<T>(string key, T data) where T : class
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "SetAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["key"])]
+    public virtual async Task SetAsync<T>(string key, T data) where T : class
     {
-        try
-        {
+        
             await ConnectAsync();
 
             await RedisDatabase.StringSetAsync(key, _serializer.Serialize(data));
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Set {key} to redis error.", key);
-        }
+       
     }
 
-    public async Task<T> GetAsync<T>(string key) where T : class, new()
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["key"])]
+    public virtual async Task<T> GetAsync<T>(string key) where T : class, new()
     {
-        try
-        {
+       
             await ConnectAsync();
 
             var redisValue = await RedisDatabase.StringGetAsync(key);
@@ -52,11 +56,6 @@ public class StorageProvider : AbpRedisCache, IStorageProvider, ITransientDepend
             _logger.LogDebug("[StorageProvider] {key} spec: {spec}", key, redisValue);
 
             return redisValue.HasValue ? _serializer.Deserialize<T>(redisValue) : null;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Get {key} error.", key);
-            return null;
-        }
+      
     }
 }

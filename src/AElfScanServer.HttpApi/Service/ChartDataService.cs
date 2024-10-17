@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
@@ -8,10 +9,12 @@ using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.Contracts.Consensus.AEDPoS;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
 using AElfScanServer.DataStrategy;
@@ -2066,10 +2069,13 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return round;
     }
 
-    public async Task<double> GetElfPrice(string date)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetElfPrice err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["date"])]
+    public virtual async Task<double> GetElfPrice(string date)
     {
-        try
-        {
+       
             var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
             {
                 TokenPair = "elf-usdt",
@@ -2085,11 +2091,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
             _logger.LogInformation("GetElfPrice date:{dateStr},price{elfPrice}", date, s);
             return (double)res.Data.Price / 1e8;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("GetElfPrice err:{e},date:{dateStr}", e, date.Replace("-", ""));
-            return 0;
-        }
+       
     }
 }

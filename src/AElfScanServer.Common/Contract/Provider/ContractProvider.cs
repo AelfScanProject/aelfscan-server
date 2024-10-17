@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using GraphQL;
 using Microsoft.Extensions.Logging;
@@ -36,10 +39,12 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
         _contractAddressCache = contractAddressCache;
     }
 
-    public async Task<bool> IsContractAddressAsync(string chainId, string address)
+    [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "IsContractAddressAsync",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["chainId","address"])]
+    public virtual async Task<bool> IsContractAddressAsync(string chainId, string address)
     {
-        try
-        {
+     
             var addr = await _contractAddressCache.GetAsync(chainId + address);
             if (!addr.IsNullOrEmpty())
             {
@@ -56,19 +61,16 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
 
 
             return false;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Determine whether it is a contract address failed.address:{address}", address);
-            return false;
-        }
+      
     }
 
-    public async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
+    [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetContractListAsync",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["chainId","addressList"])]
+    public virtual async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
         List<string> addressList)
     {
-        try
-        {
+      
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListDto>(
                 new GraphQLRequest
                 {
@@ -107,15 +109,13 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
             }
 
             return result.Items.ToDictionary(s => s.Address, s => s);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query Contract failed.");
-            return new Dictionary<string, ContractInfoDto>();
-        }
+       
     }
 
-    public async Task<IndexerContractListResultDto> GetContractAddressAsync(string chainId, string address)
+    [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetContractAddressAsync",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["chainId","address"])]
+    public virtual async Task<IndexerContractListResultDto> GetContractAddressAsync(string chainId, string address)
     {
         var indexerContractListResultDto = new IndexerContractListResultDto()
         {
@@ -124,8 +124,7 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                 Items = new List<ContractInfoDto>()
             }
         };
-        try
-        {
+      
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
                 new GraphQLRequest
                 {
@@ -158,11 +157,6 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                     }
                 });
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query ContractList failed.");
-            return indexerContractListResultDto;
-        }
+     
     }
 }

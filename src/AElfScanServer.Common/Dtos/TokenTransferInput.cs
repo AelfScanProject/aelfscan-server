@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using AElf;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.Helper;
@@ -23,7 +24,7 @@ public class TokenTransferInput : BaseInput
 
     public bool IsSearchAddress()
     {
-        return !Search.IsNullOrWhiteSpace() && CommomHelper.IsValidAddress(Search);
+        return !Search.IsNullOrWhiteSpace() && Base58CheckEncoding.Verify(Search);
     }
 
     public void SetDefaultSort()

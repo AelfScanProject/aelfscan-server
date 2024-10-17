@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Address.Provider;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Core;
@@ -11,6 +13,7 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -60,12 +63,15 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         _distributedLock = distributedLock;
     }
 
-    public async Task HandleDailyTokenValuesAsync(string chainId = "")
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "HandleDailyTokenValuesAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task HandleDailyTokenValuesAsync(string chainId = "")
     {
         _logger.LogInformation("Handle daily token values chainId: {chainId}",
             chainId.IsNullOrEmpty() ? "merge" : chainId);
-        try
-        {
+       
             await using var handle = await _distributedLock.TryAcquireAsync(LockKey);
 
             var bizDate = DateTime.Now.ToString("yyyyMMdd");
@@ -85,20 +91,16 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
             await HandleTokenValuesAsync(AddressAssetType.Daily, chainId);
 
             await RedisDatabase.StringSetAsync(key, 1);
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation(e, "Handle daily token values error.");
-        }
-
-        _logger.LogInformation("Handle daily token values chainId: {chainId} end.", chainId);
+       
     }
 
-
-    public async Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTokenValuesAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","address"])]
+    public virtual async Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address)
     {
-        try
-        {
+       
             var addressAsset =
                 await _addressInfoProvider.GetAddressAssetAsync(AddressAssetType.Current, chainId, address);
 
@@ -110,13 +112,7 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
             await using var handle = await _distributedLock.TryAcquireAsync($"GetTokenValues-{address}");
 
             return await HandleTokenValuesAsync(AddressAssetType.Current, chainId, address);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTokenValues error, chainId {chainId}, address: {address}", chainId, address);
-        }
-
-        return new AddressAssetDto();
+       
     }
 
     /**

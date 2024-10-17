@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.HttpClient;
 using AElfScanServer.Common.Options;
@@ -110,28 +113,25 @@ public class BinanceProvider : IExchangeProvider
         AssertHelper.IsTrue(CollectionUtilities.IsNullOrEmpty((await _blockedCache.GetAsync(blockCacheKey))),
             "Binance api 429 blocked");
 
-        try
+        var result = await ExecuteBlockDetectAsync(func);
+        if (!result.Item1)
         {
-            return await func();
-        }
-        catch (HttpRequestException e)
-        {
-            if (e.StatusCode != HttpStatusCode.TooManyRequests)
-            {
-                _logger.LogError(e, "Query Binance Exchange price error");
-                throw;
-            }
-
-            // After receiving the 429, you continue to violate the access restriction,
-            // and the IP will be banned and you will receive the 418 error code.
-            _logger.LogWarning(e, "Binance got 429 TooManyRequests, blocked");
             await _blockedCache.SetAsync(blockCacheKey, "1", new DistributedCacheEntryOptions()
             {
                 AbsoluteExpiration = DateTime.Now.AddSeconds(BinanceOptions().Block429Seconds)
             });
-
-            throw;
         }
+
+        return result.Item2;
+    }
+
+    [ExceptionHandler(typeof(HttpRequestException), typeof(TimeoutException), typeof(Exception),
+        Message = "ExecuteBlockDetectAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task<(bool, T)> ExecuteBlockDetectAsync<T>(Func<Task<T>> func)
+    {
+        return (true, await func());
     }
 }
 

@@ -1,17 +1,20 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.Contracts.MultiToken;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
@@ -347,11 +350,13 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         return indexerResult == null ? new IndexerTokenHolderInfoListDto() : indexerResult.AccountCollection;
     }
 
-    public async Task<string> GetTokenImageAsync(string symbol, string chainId,
+    [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetTokenImageAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["symbol","chainId"])]
+    public virtual async Task<string> GetTokenImageAsync(string symbol, string chainId,
         List<ExternalInfoDto> externalInfo = null)
     {
-        try
-        {
+       
             var imageUrl = "";
             if (_tokenImageUrlCache.TryGetValue(symbol, out imageUrl))
             {
@@ -395,14 +400,9 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 _tokenImageUrlCache.Add(symbol, imageUrl);
                 return imageUrl;
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "get token:{symbol} image", symbol);
-        }
 
 
-        return "";
+            return "";
     }
 
     private IGraphQlHelper GetGraphQlHelper()

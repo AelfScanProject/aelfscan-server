@@ -101,6 +101,17 @@ public static class DateTimeHelper
         return 0;
     }
 
+
+    public static long GetDateIntervalDay(string date1String, string date2String)
+    {
+        DateTime date1 = DateTime.Parse(date1String);
+        DateTime date2 = DateTime.Parse(date2String);
+
+        TimeSpan difference = date2 - date1;
+
+        return difference.Days;
+    }
+
     public static int GetNowMonth()
     {
         DateTime now = DateTime.Now;

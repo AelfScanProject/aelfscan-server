@@ -23,6 +23,7 @@
 
   <ItemGroup>    
     <PackageReference Include="AElf.EntityMapping" Version="1.1.0" />    
+    <PackageReference Include="AElf.ExceptionHandler.ABP" Version="1.0.0" />    
     <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />    
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
