@@ -93,6 +93,10 @@ public class CoinMarketCapProvider
             await _httpProvider.InvokeAsync<CoinInfo>(CurrencyPriceDomain,
                 new ApiInfo(HttpMethod.Get, CurrencyPriceUrl));
 
+        if (response == null)
+        {
+            _logger.LogError("wuhaoxuan------");
+        }
         if (response != null)
         {
             await _coinInfoCache.SetAsync("coinInfo", response, new DistributedCacheEntryOptions()
