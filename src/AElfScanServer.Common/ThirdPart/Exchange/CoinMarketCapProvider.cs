@@ -68,10 +68,13 @@ public class CoinMarketCapProvider
 
         symbolInfo = response.Data.Where(c => c.Symbol == symbol).ToList().First();
 
-        await _symbolInfoCache.SetAsync("symbolInfo", symbolInfo, new DistributedCacheEntryOptions()
+        if (symbolInfo == null)
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
-        });
+            await _symbolInfoCache.SetAsync("symbolInfo", symbolInfo, new DistributedCacheEntryOptions()
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+            });
+        }
 
         return symbolInfo;
     }
@@ -90,10 +93,14 @@ public class CoinMarketCapProvider
             await _httpProvider.InvokeAsync<CoinInfo>(CurrencyPriceDomain,
                 new ApiInfo(HttpMethod.Get, CurrencyPriceUrl));
 
-        await _coinInfoCache.SetAsync("coinInfo", response, new DistributedCacheEntryOptions()
+        if (response != null)
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
-        });
+            await _coinInfoCache.SetAsync("coinInfo", response, new DistributedCacheEntryOptions()
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+            });
+        }
+
 
         return response;
     }
