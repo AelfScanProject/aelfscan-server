@@ -99,6 +99,7 @@ public class HttpApiModule : AbpModule
         context.Services.AddTransient<IUserAppService, UserAppService>();
         context.Services.AddTransient<IAddressTypeService, AddressTypeService>();
         context.Services.AddSingleton<IDynamicTransactionService, DynamicTransactionService>();
+        context.Services.AddSingleton<IOpenApiService, OpenApiService>();
 
         var configuration = context.Services.GetConfiguration();
         Configure<BlockChainOption>(configuration.GetSection("BlockChainServer"));
@@ -129,7 +130,6 @@ public class HttpApiModule : AbpModule
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-       
     }
 
     private void ConfigureLocalization()

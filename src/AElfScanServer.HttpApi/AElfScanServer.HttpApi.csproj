@@ -46,4 +46,8 @@
         <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Options\SecretOptions.cs" />
+    </ItemGroup>
+
 </Project>
