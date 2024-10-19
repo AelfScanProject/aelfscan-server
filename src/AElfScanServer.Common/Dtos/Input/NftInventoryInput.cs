@@ -1,3 +1,4 @@
+using AElf;
 using AElfScanServer.Common.Helper;
 using NUglify.Helpers;
 
