@@ -190,7 +190,7 @@ public class OpenApiService : IOpenApiService
 
 
         var elfPriceUsdPrice = volume24HFromCmc.Quote["USD"].Price;
-        var volume24H = volume24HFromCmc.Quote["USD"].Volume_24h
+        var volume24H = volume24HFromCmc.Quote["USD"].Volume_24h;
         foreach (var keyValuePair in currencyPrice.Market_Data.Current_Price)
         {
             if (CurrencyList.Contains(keyValuePair.Key))

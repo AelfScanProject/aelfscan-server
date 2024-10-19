@@ -436,6 +436,7 @@ public class TokenService : ITokenService, ISingletonDependency
 
             tokenHolderInfoDto.Value =
                 Math.Round(tokenHolderInfoDto.Quantity * priceDto.Price, CommonConstant.UsdValueDecimals);
+            tokenHolderInfoDto.ChainIds = new List<string>() { indexerTokenHolderInfoDto.Metadata.ChainId };
             list.Add(tokenHolderInfoDto);
         }
 
