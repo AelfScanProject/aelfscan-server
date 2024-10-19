@@ -33,10 +33,15 @@ public class TransactionInfo
     public decimal TransactionAvgByExcludeSystem { get; set; }
 }
 
-
-
 public class CurrencyPrice
 {
-    public string Symbol { get; set; }
+    public string Symbol { get; set; } = "ELF";
     public string CurrencyCode { get; set; }
+    public decimal Price { get; set; }
+    public decimal MarketCap { get; set; }
+    public decimal AccTradePrice24h { get; set; }
+    public decimal CirculatingSupply { get; set; }
+    public decimal MaxSupply { get; set; }
+    public string Provider { get; set; } = "AELF";
+    public long LastUpdatedTimestamp { get; set; }
 }

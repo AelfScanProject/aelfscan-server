@@ -85,6 +85,8 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     private readonly ILogger<HomePageService> _logger;
     private readonly IElasticClient _elasticClient;
     private readonly IObjectMapper _objectMapper;
+    public const long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
+    public const long InitialMiningRewardPerBlock = 12500000;
 
     public BlockChainService(
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
@@ -728,7 +730,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             return result;
       
     }
-
+    
 
     public async Task<string> GetBpNameAsync(string chainId, string address)
     {

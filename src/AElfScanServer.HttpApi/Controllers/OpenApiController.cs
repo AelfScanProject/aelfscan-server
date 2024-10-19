@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos.ChartData;
@@ -19,7 +20,7 @@ public class OpenApiController : AbpController
 {
     private readonly IOpenApiService _openApiService;
 
-    public OpenApiController( IOpenApiService openApiService)
+    public OpenApiController(IOpenApiService openApiService)
     {
         _openApiService = openApiService;
     }
@@ -41,5 +42,11 @@ public class OpenApiController : AbpController
     public async Task<DailyActivityAddressApiResp> GetDailyActivityAddressAsync(string startDate, string endDate)
     {
         return await _openApiService.GetDailyActivityAddressAsync(startDate, endDate);
+    }
+
+    [HttpGet("currencyPrice")]
+    public async Task<List<CurrencyPrice>> GetCurrencyPriceAsync()
+    {
+        return await _openApiService.GetCurrencyPriceAsync();
     }
 }
