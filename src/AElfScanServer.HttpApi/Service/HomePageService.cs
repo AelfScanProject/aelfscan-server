@@ -211,11 +211,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
             var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
                 blockHeightAsync - requestDto.MaxResultCount,
                 blockHeightAsync);
-
-
-            // var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
-            //     100,
-            //     300);
+            
             result.Blocks = new List<BlockRespDto>();
             result.Total = blockList.Count;
 

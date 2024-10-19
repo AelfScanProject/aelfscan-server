@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.ThirdPart.Exchange;
 using AElfScanServer.HttpApi.Dtos.ChartData;
 using AElfScanServer.HttpApi.Dtos.OpenApi;
 using AElfScanServer.HttpApi.Provider;
@@ -19,6 +22,8 @@ public interface IOpenApiService
     public Task<DailyActivityAddressApiResp> GetDailyActivityAddressAsync(string startDate, string endDate);
 
     public Task<DailyTransactionCountApiResp> GetDailyTransactionCountAsync(string startDate, string endDate);
+
+    public Task<List<CurrencyPrice>> GetCurrencyPriceAsync();
 }
 
 public class OpenApiService : IOpenApiService
@@ -28,15 +33,18 @@ public class OpenApiService : IOpenApiService
     private readonly decimal MaxSupply = 1000000000;
     private readonly IndexerTokenProvider _indexerTokenProvider;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
+    private readonly CoinMarketCapProvider _coinMarketCapProvider;
+    private readonly List<string> CurrencyList = new List<string>() { "krw", "usd", "idr", "sgd", "thb" };
 
     public OpenApiService(IChartDataService chartDataService, ILogger<OpenApiService> logger,
         IndexerTokenProvider indexerTokenProvider,
-        IOptionsMonitor<GlobalOptions> globalOptions)
+        IOptionsMonitor<GlobalOptions> globalOptions, CoinMarketCapProvider coinMarketCapProvider)
     {
         _chartDataService = chartDataService;
         _logger = logger;
         _indexerTokenProvider = indexerTokenProvider;
         _globalOptions = globalOptions;
+        _coinMarketCapProvider = coinMarketCapProvider;
     }
 
     public async Task<SupplyApiResp> GetSupplyAsync()
@@ -158,5 +166,49 @@ public class OpenApiService : IOpenApiService
              sideDailyTransactionAddressCounts.Sum(c => c.BlockCount) * 2) / days;
 
         return dailyTransactionCountApiResp;
+    }
+
+
+    public async Task<List<CurrencyPrice>> GetCurrencyPriceAsync()
+    {
+        var result = new List<CurrencyPrice>();
+        var tasks = new List<Task>();
+
+        var volume24HFromCmc = new SymbolInfo();
+        var currencyPrice = new CoinInfo();
+
+        var supplyApiResp = new SupplyApiResp();
+        tasks.Add(_coinMarketCapProvider.GetVolume24hFromCMC("ELF").ContinueWith(task =>
+        {
+            volume24HFromCmc = task.Result;
+        }));
+
+        tasks.Add(_coinMarketCapProvider.GetCurrencyPrice().ContinueWith(task => { currencyPrice = task.Result; }));
+
+        tasks.Add(GetSupplyAsync().ContinueWith(task => { supplyApiResp = task.Result; }));
+        await tasks.WhenAll();
+
+
+        var elfPriceUsdPrice = volume24HFromCmc.Quote["USD"].Price;
+        var volume24H = volume24HFromCmc.Quote["USD"].Volume_24h;
+
+        foreach (var keyValuePair in currencyPrice.Market_Data.Current_Price)
+        {
+            if (CurrencyList.Contains(keyValuePair.Key))
+            {
+                result.Add(new CurrencyPrice()
+                {
+                    CurrencyCode = keyValuePair.Key,
+                    Price = keyValuePair.Value,
+                    MarketCap = keyValuePair.Value * supplyApiResp.TotalSupply,
+                    AccTradePrice24h = elfPriceUsdPrice / keyValuePair.Value * volume24H,
+                    CirculatingSupply = supplyApiResp.CirculatingSupply,
+                    MaxSupply = MaxSupply,
+                    LastUpdatedTimestamp = DateTime.Now.Date.ToUtcMilliSeconds()
+                });
+            }
+        }
+
+        return result;
     }
 }

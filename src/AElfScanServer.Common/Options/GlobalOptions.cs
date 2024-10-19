@@ -14,9 +14,9 @@ public class GlobalOptions
     public bool SwitchMergeAddress { get; set; }
     public string AddressStartDate { get; set; }
 
-
     public List<string> SpecialSymbols { get; set; } = new();
 
+    public string CMCApiKey { get; set; }
 
     public Dictionary<string, List<string>> FixDailyData { get; set; }
 
