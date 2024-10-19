@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos.address;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using GraphQL;
 using Microsoft.Extensions.Logging;
@@ -41,12 +44,16 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
         _logger = logger;
     }
 
-    public async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetContractListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","addressList"])]
+    public virtual async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
         List<string> addressList)
     {
         var indexerContractListResultDto = new IndexerContractListResultDto();
-        try
-        {
+       
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
                 new GraphQLRequest
                 {
@@ -81,21 +88,19 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                 });
 
             return result.ContractList.Items.ToDictionary(c => c.Address + c.Metadata.ChainId, c => c);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query ContractList failed.");
-            return new Dictionary<string, ContractInfoDto>();
-        }
+       
     }
 
-    public async Task<IndexerContractListResultDto> GetContractListAsync(string chainId,
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetContractListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount","orderBy","address"])]
+    public virtual async Task<IndexerContractListResultDto> GetContractListAsync(string chainId,
         int skipCount,
         int maxResultCount, string orderBy = "", string sort = "", string address = "", long blockHeight = 0)
     {
         var indexerContractListResultDto = new IndexerContractListResultDto();
-        try
-        {
+      
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
                 new GraphQLRequest
                 {
@@ -129,20 +134,18 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                     }
                 });
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query ContractList failed.");
-            return indexerContractListResultDto;
-        }
+      
     }
 
 
-    public async Task<List<ContractRecordDto>> GetContractRecordAsync(string chainId, string address, int skipCount = 0,
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetContractRecordAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount","address"])]
+    public virtual async Task<List<ContractRecordDto>> GetContractRecordAsync(string chainId, string address, int skipCount = 0,
         int maxResultCount = 10)
     {
-        try
-        {
+       
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractRecordListDto>(
                 new GraphQLRequest
                 {
@@ -179,19 +182,17 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                     }
                 });
             return result.ContractRecord;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query Contract failed.");
-            return new List<ContractRecordDto>();
-        }
+      
     }
 
-    public async Task<List<ContractRegistrationDto>> GetContractRegistrationAsync(string chainId, string codeHash,
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetContractRegistrationAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount","codeHash"])]
+    public virtual async Task<List<ContractRegistrationDto>> GetContractRegistrationAsync(string chainId, string codeHash,
         int skipCount, int maxResultCount)
     {
-        try
-        {
+      
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType)
                 .QueryAsync<IndexerContractRegistrationListDto>(new GraphQLRequest
                 {
@@ -208,11 +209,6 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
                     }
                 });
             return result.ContractRegistration;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query Contract Registration failed.");
-            return new List<ContractRegistrationDto>();
-        }
+       
     }
 }

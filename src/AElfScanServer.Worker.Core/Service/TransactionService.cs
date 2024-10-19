@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
@@ -15,6 +16,7 @@ using AElf.Contracts.MultiToken;
 using AElf.Contracts.Vote;
 using AElf.CSharp.Core.Extension;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
 using AElf.Standards.ACS0;
 using AElf.Types;
 using AElfScanServer.Common.Dtos;
@@ -23,6 +25,7 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Worker.Core.Provider;
 using Elasticsearch.Net;
 using AElfScanServer.Common.Helper;
@@ -278,54 +281,52 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    public async Task MergeAddress()
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "MergeAddress err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task MergeAddress()
     {
         var key = "address_date";
 
         await ConnectAsync();
-        try
+
+        while (true)
         {
-            while (true)
+            await Task.Delay(3000);
+            var mergeUniqueAddressInsertList = new List<DailyMergeUniqueAddressCountIndex>();
+            var updateDate = await _cache.GetAsync(key);
+            if (updateDate.IsNullOrEmpty())
             {
-                await Task.Delay(3000);
-                var mergeUniqueAddressInsertList = new List<DailyMergeUniqueAddressCountIndex>();
-                var updateDate = await _cache.GetAsync(key);
-                if (updateDate.IsNullOrEmpty())
-                {
-                    updateDate = _globalOptions.CurrentValue.AddressStartDate;
-                }
-
-                var nowDay = DateTime.Now.ToString("yyyy-MM-dd");
-                if (nowDay == updateDate) break;
-
-                var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
-                var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
-                var queryable = await _addressRepository.GetQueryableAsync();
-                var nowAddressIndexList = queryable.Where(c => c.Date == updateDate)
-                    .Take(10000).ToList();
-
-                var beforeMergeAddressCountList = await GetBeforeMergeAddressCount(queryableAsync, updateDate);
-
-                if (nowAddressIndexList.IsNullOrEmpty())
-                {
-                    ProcessNoNewAddress(beforeMergeAddressCountList, mergeUniqueAddressInsertList, updateDateLong,
-                        updateDate);
-                    await SaveResults(mergeUniqueAddressInsertList, null, updateDate, key);
-                    continue;
-                }
-
-                var (mainChainUniqueAddressCount, sideChainUniqueAddressCount, mergeAddressIndices) =
-                    ProcessNewAddresses(nowAddressIndexList, updateDateLong);
-
-                mergeUniqueAddressInsertList.AddRange(await GetMergeAddressCounts(mainChainUniqueAddressCount,
-                    sideChainUniqueAddressCount, updateDateLong, updateDate, beforeMergeAddressCountList));
-
-                await SaveResults(mergeUniqueAddressInsertList, mergeAddressIndices, updateDate, key);
+                updateDate = _globalOptions.CurrentValue.AddressStartDate;
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError($"MergeAddress error: {e}");
+
+            var nowDay = DateTime.Now.ToString("yyyy-MM-dd");
+            if (nowDay == updateDate) break;
+
+            var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
+            var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
+            var queryable = await _addressRepository.GetQueryableAsync();
+            var nowAddressIndexList = queryable.Where(c => c.Date == updateDate)
+                .Take(10000).ToList();
+
+            var beforeMergeAddressCountList = await GetBeforeMergeAddressCount(queryableAsync, updateDate);
+
+            if (nowAddressIndexList.IsNullOrEmpty())
+            {
+                ProcessNoNewAddress(beforeMergeAddressCountList, mergeUniqueAddressInsertList, updateDateLong,
+                    updateDate);
+                await SaveResults(mergeUniqueAddressInsertList, null, updateDate, key);
+                continue;
+            }
+
+            var (mainChainUniqueAddressCount, sideChainUniqueAddressCount, mergeAddressIndices) =
+                ProcessNewAddresses(nowAddressIndexList, updateDateLong);
+
+            mergeUniqueAddressInsertList.AddRange(await GetMergeAddressCounts(mainChainUniqueAddressCount,
+                sideChainUniqueAddressCount, updateDateLong, updateDate, beforeMergeAddressCountList));
+
+            await SaveResults(mergeUniqueAddressInsertList, mergeAddressIndices, updateDate, key);
         }
     }
 
@@ -449,172 +450,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         await _cache.SetAsync(key, DateTimeHelper.GetAfterDayDate(updateDate), new DistributedCacheEntryOptions
             { SlidingExpiration = null, AbsoluteExpiration = DateTimeOffset.MaxValue });
     }
-
-
-    // public async Task MergeAddress()
-    // {
-    //     var key = "address_date";
-    //
-    //     await ConnectAsync();
-    //     try
-    //     {
-    //         while (true)
-    //         {
-    //             await Task.Delay(3 * 1000);
-    //             var mergeUniqueAddressInsertList = new List<DailyMergeUniqueAddressCountIndex>();
-    //             var updateDate = RedisDatabase.StringGet(key);
-    //
-    //             if (updateDate.IsNullOrEmpty)
-    //             {
-    //                 updateDate = _globalOptions.CurrentValue.AddressStartDate;
-    //             }
-    //
-    //             var nowDay = DateTime.Now.ToString("yyyy-MM-dd");
-    //             if (nowDay == updateDate)
-    //             {
-    //                 break;
-    //             }
-    //
-    //             var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
-    //             var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
-    //             var beforeMergeAddressCountList =
-    //                 queryableAsync.Where(c => c.DateStr == DateTimeHelper.GetBeforeDayDate(updateDate)).Take(2)
-    //                     .ToList();
-    //
-    //             var queryable = await _addressRepository.GetQueryableAsync();
-    //             var nowAddressIndexList = queryable.Where(c => c.Date == updateDate.ToString()).Take(10000).ToList();
-    //             if (nowAddressIndexList.IsNullOrEmpty())
-    //             {
-    //                 if (beforeMergeAddressCountList.IsNullOrEmpty())
-    //                 {
-    //                     beforeMergeAddressCountList =
-    //                         queryableAsync.Where(c => c.DateStr == updateDate).Take(2).ToList();
-    //                     foreach (var addressInfo in beforeMergeAddressCountList)
-    //                     {
-    //                         mergeUniqueAddressInsertList.Add(
-    //                             new DailyMergeUniqueAddressCountIndex()
-    //                             {
-    //                                 Date = updateDateLong,
-    //                                 ChainId = addressInfo.ChainId,
-    //                                 DateStr = updateDate,
-    //                                 AddressCount = addressInfo.TotalUniqueAddressees,
-    //                                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
-    //                             });
-    //                     }
-    //                 }
-    //                 else
-    //                 {
-    //                     foreach (var addressInfo in beforeMergeAddressCountList)
-    //                     {
-    //                         mergeUniqueAddressInsertList.Add(
-    //                             new DailyMergeUniqueAddressCountIndex()
-    //                             {
-    //                                 Date = updateDateLong,
-    //                                 ChainId = addressInfo.ChainId,
-    //                                 DateStr = updateDate,
-    //                                 AddressCount = 0,
-    //                                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
-    //                             });
-    //                     }
-    //                 }
-    //
-    //
-    //                 if (!mergeUniqueAddressInsertList.IsNullOrEmpty())
-    //                 {
-    //                     await _dailyMergeUniqueAddressCountRepository
-    //                         .AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
-    //                 }
-    //
-    //                 _logger.LogInformation($"MergeAddress date{updateDate} no new address");
-    //                 var afterDayDate = DateTimeHelper.GetAfterDayDate(updateDate);
-    //                 RedisDatabase.StringSet(key, afterDayDate);
-    //                 continue;
-    //             }
-    //
-    //
-    //             var nowAddressList = nowAddressIndexList.Select(c => c.Address).Distinct().ToList();
-    //             var mergeAddressIndexList = await GetMergeAddressIndexList(nowAddressList, updateDateLong);
-    //
-    //             var dictionary = new Dictionary<string, MergeAddressIndex>();
-    //             var mergeAddressIndexDic =
-    //                 mergeAddressIndexList.Select(c => c.Address).Distinct().ToDictionary(c => c, c => c);
-    //
-    //             var filterAddressList = new List<AddressIndex>();
-    //             foreach (var index in nowAddressIndexList)
-    //             {
-    //                 if (!mergeAddressIndexDic.ContainsKey(index.Address))
-    //                 {
-    //                     filterAddressList.Add(index);
-    //                 }
-    //             }
-    //
-    //
-    //             var mainChainUniqueAddressCount = 0;
-    //             var sideChainUniqueAddressCount = 0;
-    //             if (!filterAddressList.IsNullOrEmpty())
-    //             {
-    //                 // all address is new 
-    //                 foreach (var index in filterAddressList)
-    //                 {
-    //                     if (index.ChainId == "AELF")
-    //                     {
-    //                         mainChainUniqueAddressCount++;
-    //                     }
-    //                     else
-    //                     {
-    //                         sideChainUniqueAddressCount++;
-    //                     }
-    //
-    //                     dictionary[index.Address + index.ChainId] = new MergeAddressIndex()
-    //                     {
-    //                         Address = index.Address,
-    //                         Date = updateDateLong,
-    //                         ChainId = index.ChainId
-    //                     };
-    //
-    //                     if (index.ChainId == _globalOptions.CurrentValue.SideChainId)
-    //                     {
-    //                         if (!dictionary.ContainsKey(index.Address + "AELF"))
-    //                         {
-    //                             mainChainUniqueAddressCount++;
-    //                         }
-    //
-    //                         dictionary[index.Address + "AELF"] = new MergeAddressIndex()
-    //                         {
-    //                             Address = index.Address,
-    //                             Date = updateDateLong,
-    //                             ChainId = "AELF"
-    //                         };
-    //                     }
-    //                 }
-    //             }
-    //
-    //
-    //             mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(mainChainUniqueAddressCount, "AELF",
-    //                 updateDateLong, updateDate,
-    //                 beforeMergeAddressCountList));
-    //             mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(sideChainUniqueAddressCount,
-    //                 _globalOptions.CurrentValue.SideChainId,
-    //                 updateDateLong, updateDate,
-    //                 beforeMergeAddressCountList));
-    //
-    //             await _dailyMergeUniqueAddressCountRepository.AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
-    //             var newAddressInsertList = dictionary.Values.ToList();
-    //             if (!newAddressInsertList.IsNullOrEmpty())
-    //             {
-    //                 await _mergeAddressRepository.AddOrUpdateManyAsync(newAddressInsertList);
-    //             }
-    //
-    //             RedisDatabase.StringSet(key, DateTimeHelper.GetAfterDayDate(updateDate));
-    //             _logger.LogInformation($"MergeAddress date{updateDate}  new address:{newAddressInsertList.Count}");
-    //         }
-    //     }
-    //     catch (Exception e)
-    //     {
-    //         _logger.LogError($"MergeAddress err:{e}");
-    //     }
-    // }
-
+    
 
     public async Task<DailyMergeUniqueAddressCountIndex> GetMergeAddressIndex(int count, string chainId, long date,
         string dateSting,
@@ -747,10 +583,14 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         }
     }
 
-    public async Task UpdateMonthlyActiveAddress()
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "UpdateMonthlyActiveAddress err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task UpdateMonthlyActiveAddress()
     {
-        try
-        {
+        
             foreach (var chainId in _globalOptions.CurrentValue.ChainIds)
             {
                 var needFindDateMonth = await GetNeedFindDateMonth(chainId);
@@ -761,11 +601,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                     await _monthlyActiveAddressRepository.AddOrUpdateManyAsync(batchUpdate);
                 }
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("UpdateMonthlyActiveAddress:{e}", e.ToString());
-        }
+      
     }
 
 
@@ -847,10 +683,14 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         return list;
     }
 
-    public async Task<long> GetMonthlyActiveAddressCount(int month, string chainId)
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetMonthlyActiveAddressCount err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","month"])]
+    public virtual async Task<long> GetMonthlyActiveAddressCount(int month, string chainId)
     {
-        try
-        {
+      
             var searchResponse = _elasticClient.Search<MonthlyActiveAddressInfoIndex>(s => s
                 .Index("monthlyactiveaddressinfoindex").Query(q => q
                     .Bool(b => b
@@ -867,16 +707,16 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
             var uniqueAddressesCount = searchResponse.Aggregations.Cardinality("unique_addresses").Value;
             return (int)uniqueAddressesCount;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("GetMonthlyActiveAddressCount {e}", e.ToString());
-        }
-
-        return 0;
+      
+        
     }
 
-    public async Task BatchPullBlockSize(string chainId)
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "BatchPullBlockSize err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task BatchPullBlockSize(string chainId)
     {
         var dic = new Dictionary<string, DailyAvgBlockSizeIndex>();
         await ConnectAsync();
@@ -889,8 +729,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             var blockSizeIndices = new List<BlockSizeDto>();
             var _lock = new object();
             var startNew = Stopwatch.StartNew();
-            try
-            {
+         
                 for (int i = 0; i < BlockSizeInterval; i++)
                 {
                     lastBlockHeight++;
@@ -905,15 +744,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                         }
                     }));
                 }
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(
-                    "BatchPullBlockSize err:{c},err msg:{e},startBlockHeight:{s1},endBlockHeight:{s2}",
-                    chainId, e, lastBlockHeight - BlockSizeInterval,
-                    lastBlockHeight);
-                break;
-            }
+         
 
             await tasks.WhenAll();
             foreach (var blockSize in blockSizeIndices)
@@ -995,10 +826,13 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    public async Task UpdateElfPrice()
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "UpdateElfPrice err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task UpdateElfPrice()
     {
-        try
-        {
+       
             var market = new Market();
             var data1 =
                 await market.KlineCandlestickData("ELFUSDT", Interval.ONE_DAY, 1631030400000, 1662566400000);
@@ -1036,11 +870,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
 
             await _priceRepository.AddOrUpdateManyAsync(batch);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("UpdateElfPrice err:{e}", e);
-        }
+       
     }
 
 
@@ -1106,13 +936,16 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    public async Task FixDailyDataByStartBlockHeight(string chainId, long startBlockHeight)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "FixDailyDataByStartBlockHeight err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","startBlockHeight"])]
+    public virtual async Task FixDailyDataByStartBlockHeight(string chainId, long startBlockHeight)
     {
         var dic = new Dictionary<string, DailyTransactionsChartSet>();
         while (true)
         {
-            try
-            {
+            
                 var batchTransactionList =
                     await GetBatchTransactionList(chainId, startBlockHeight,
                         startBlockHeight + PullTransactioninterval);
@@ -1150,16 +983,15 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 }
 
                 startBlockHeight += PullTransactioninterval + 1;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Fix daily data err:{chainId}", chainId);
-                break;
-            }
+           
         }
     }
 
-    public async Task BatchParseLogEventJob(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "BatchParseLogEventJob err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task BatchParseLogEventJob(string chainId)
     {
         var lastBlockHeight = 0l;
         await ConnectAsync();
@@ -1170,8 +1002,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             chainId, lastBlockHeight, PullLogEventTransactionInterval);
         while (true)
         {
-            try
-            {
+            
                 if (PullLogEventTransactionInterval != 0)
                 {
                     var latestBlocksAsync = await _aelfIndexerProvider.GetLatestSummariesAsync(chainId);
@@ -1203,23 +1034,11 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 RedisDatabase.StringSet(RedisKeyHelper.LogEventTransactionLastBlockHeight(chainId),
                     lastBlockHeight + PullLogEventTransactionInterval);
                 await Task.Delay(1000 * 1);
-            }
-
-            catch (Exception e)
-            {
-                _logger.LogError(
-                    "BatchParseLogEventJob err:{chainId},err msg:{msg},startBlockHeight:{startBlockHeight},endBlockHeight:{endBlockHeight}",
-                    chainId,
-                    e, lastBlockHeight,
-                    lastBlockHeight + PullLogEventTransactionInterval);
-
-                await Task.Delay(1000 * 2);
-            }
         }
     }
 
-
-    public async Task BatchPullTransactionJob(string chainId)
+    
+    public  async Task BatchPullTransactionJob(string chainId)
     {
         var dic = new Dictionary<string, DailyTransactionsChartSet>();
 
@@ -1230,18 +1049,47 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
         while (true)
         {
-            try
+
+            var date = await BatchPullTransaction(chainId, lastBlockHeight,dic);
+            if (date.IsNullOrEmpty())
             {
+
+                dic = new Dictionary<string, DailyTransactionsChartSet>();
+
+                await ConnectAsync();
+                redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionLastBlockHeight(chainId));
+                lastBlockHeight = redisValue.IsNullOrEmpty ? 1 : long.Parse(redisValue) + 1;
+                continue;
+            }
+
+            if (date == DateTimeHelper.GetDateStr(DateTime.UtcNow))
+            {
+                break;
+            }
+
+            lastBlockHeight += PullTransactioninterval + 1;
+
+        }
+
+    }
+
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "BatchPullTransaction err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","lastBlockHeight"])]
+     public virtual async Task<string> BatchPullTransaction(string chainId,long lastBlockHeight,Dictionary<string, DailyTransactionsChartSet> dic)
+    {
+        
                 Stopwatch stopwatch = Stopwatch.StartNew();
 
                 _logger.LogInformation($"BatchPullTransactionTask: lastBlockHeight:{lastBlockHeight}");
                 var batchTransactionList =
                     await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight + PullTransactioninterval);
-        
+
 
                 if (batchTransactionList.IsNullOrEmpty())
                 {
-                    continue;
+                  return "-";
                 }
 
                 var dateSet = new HashSet<string>();
@@ -1265,9 +1113,8 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
                 if (dateSet.Min(c => c) == DateTimeHelper.GetDateStr(DateTime.UtcNow))
                 {
-                    break;
+                   return dateSet.Min(c => c);
                 }
-
 
                 stopwatch.Stop();
                 _logger.LogInformation(
@@ -1299,28 +1146,13 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                     await _recordIndexRepository.AddOrUpdateAsync(dailyTransactionRecordIndex);
                 }
 
-                lastBlockHeight += PullTransactioninterval + 1;
+               
                 await Task.Delay(1000);
-            }
+                return "-";
 
-            catch (Exception e)
-            {
-                _logger.LogError(
-                    "BatchPullTransactionTask err:{chainId},err msg:{msg},startBlockHeight:{startBlockHeight},endBlockHeight:{endBlockHeight}",
-                    chainId,
-                    e, lastBlockHeight,
-                    lastBlockHeight + PullTransactioninterval);
-
-
-                dic = new Dictionary<string, DailyTransactionsChartSet>();
-
-                await ConnectAsync();
-                redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionLastBlockHeight(chainId));
-                lastBlockHeight = redisValue.IsNullOrEmpty ? 1 : long.Parse(redisValue) + 1;
-            }
-        }
     }
 
+   
     public async Task ParseLogEventList(List<TransactionData> transactionList, string chainId)
     {
         var logEventIndices = new List<LogEventIndex>();
@@ -1407,7 +1239,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
             var dailyData = dic[date];
 
-            var transactionFees = LogEventHelper.ParseTransactionFees(transaction.ExtraProperties);
+            var transactionFees = await ParseTransactionFees(transaction.ExtraProperties);
 
 
             if (transactionFees > 0)
@@ -1818,6 +1650,44 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         }
     }
 
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "ParseTransactionFees err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["extraProperties"])]
+    public virtual async Task<long> ParseTransactionFees(Dictionary<string, string> extraProperties)
+    {
+        var result = 0l;
+       
+            var feeMap = new Dictionary<string, long>();
+            if (extraProperties == null)
+            {
+                return 0;
+            }
+
+            if (extraProperties.TryGetValue("TransactionFee", out var transactionFee))
+            {
+                feeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(transactionFee) ??
+                         new Dictionary<string, long>();
+                if (feeMap.TryGetValue("ELF", out var fee))
+                {
+                    result += fee;
+                }
+            }
+
+            if (extraProperties.TryGetValue("ResourceFee", out var resourceFee))
+            {
+                var resourceFeeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(resourceFee) ??
+                                     new Dictionary<string, long>();
+                if (resourceFeeMap.TryGetValue("ELF", out var fee))
+                {
+                    result += fee;
+                }
+            }
+       
+
+        return result;
+    }
+
     public async Task HandleSupplyChart(DailyTransactionsChartSet dailyData)
     {
         dailyData.DailyConsensusBalance /= 1e8;
@@ -2009,10 +1879,14 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         return addressIndices;
     }
 
-    public async Task<double> GetWithDrawVotedAmount(string chainId, List<string> voteIds)
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetWithDrawVotedAmount err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","voteIds"])]
+    public virtual async Task<double> GetWithDrawVotedAmount(string chainId, List<string> voteIds)
     {
-        try
-        {
+        
             if (voteIds.IsNullOrEmpty())
             {
                 return 0;
@@ -2038,21 +1912,18 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             var sum = list.Sum(c => c.VoteAmount);
 
             return sum;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetWithDrawVotedAmount {chainId},{list}", chainId, voteIds);
-            return 0;
-        }
+       
     }
 
-
-    public async Task UpdateDailyNetwork()
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "UpdateDailyNetwork err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task UpdateDailyNetwork()
     {
         foreach (var chainId in _globalOptions.CurrentValue.ChainIds)
         {
-            try
-            {
+           
                 var queryable = await _roundIndexRepository.GetQueryableAsync();
 
 
@@ -2159,11 +2030,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 _logger.LogInformation("Insert daily network statistic count index chainId:{chainId},date:{dateStr}",
                     chainId,
                     DateTimeHelper.GetDateTimeString(startTime));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "UpdateDailyNetwork err，UpdateDailyNetwork {chainId}", chainId);
-            }
         }
     }
 
@@ -2192,12 +2058,15 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    public async Task UpdateRound(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "UpdateRound err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task UpdateRound(string chainId)
     {
         while (true)
         {
-            try
-            {
+           
                 var currentRound = await GetCurrentRound(chainId);
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 stopwatch.Start();
@@ -2273,12 +2142,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
                 RedisDatabase.StringSet(RedisKeyHelper.LatestRound(chainId), startRoundNumber + BatchPullRoundCount);
                 await Task.Delay(1000 * 10);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "BatchUpdateNetwork err:{chainId}", chainId);
-                await Task.Delay(1000 * 10);
-            }
+           
         }
     }
 
@@ -2486,14 +2350,17 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    public async Task UpdateTransactionRatePerMinuteTaskAsync()
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "UpdateTransactionRatePerMinuteTaskAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task UpdateTransactionRatePerMinuteTaskAsync()
     {
         await ConnectAsync();
 
         var chainIds = new List<string>();
         var mergeList = new List<List<TransactionCountPerMinuteDto>>();
-        try
-        {
+       
             chainIds = _workerOptions.CurrentValue.ChainIds;
 
 
@@ -2590,15 +2457,15 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
             _logger.LogInformation("Set transaction count per minute to cache success!!,redis key:{mergeKey}",
                 mergeKey);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Update transaction count per minute error");
-        }
+       
     }
 
 
-    public async Task<List<TransactionCountPerMinuteDto>> ParseToTransactionChartDataAsync(
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "ParseToTransactionChartDataAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["key","list"])]
+    public virtual async Task<List<TransactionCountPerMinuteDto>> ParseToTransactionChartDataAsync(
         string key, List<IndexerTransactionInfoDto> list)
     {
         var dictionary = new Dictionary<long, TransactionCountPerMinuteDto>();
@@ -2621,8 +2488,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         }
 
         var newList = dictionary.Values.OrderBy(c => c.Start).ToList();
-        try
-        {
+      
             await ConnectAsync();
             var redisValue = RedisDatabase.StringGet(key);
             if (redisValue.IsNullOrEmpty)
@@ -2652,19 +2518,17 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 oldList.Count, newList.Count);
 
             return subOldList;
-        }
-        catch (Exception e)
-        {
-            _logger.LogInformation(e, "Parse key:{key} data to transaction err", key);
-        }
-
-        return newList;
+       
+      
     }
 
-    public async Task<double> GetElfPrice(string date)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetElfPrice err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["date"])]
+    public virtual async Task<double> GetElfPrice(string date)
     {
-        try
-        {
+       
             var queryableAsync = await _priceRepository.GetQueryableAsync();
             var elfPriceIndices = queryableAsync.Where(c => c.DateStr == date).ToList();
 
@@ -2690,11 +2554,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
             _logger.LogInformation("GetElfPrice date:{dateStr},price{price}", date, s);
             return (double)res.Data.Price / 1e8;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetElfPrice err,date:{dateStr}", date.Replace("-", ""));
-            return 0;
-        }
+       
     }
 }

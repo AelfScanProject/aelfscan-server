@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Constant;
@@ -13,7 +16,7 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
-using AElfScanServer.Common.Helper;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.NodeProvider;
 using AElfScanServer.Common.Options;
@@ -23,6 +26,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using Volo.Abp.DependencyInjection;
+using BlockHelper = AElfScanServer.Common.Helper.BlockHelper;
 
 namespace AElfScanServer.HttpApi.Service;
 
@@ -65,11 +69,14 @@ public class SearchService : ISearchService, ISingletonDependency
         _indexerGenesisProvider = indexerGenesisProvider;
     }
 
-    public async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "SearchAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
+    public virtual async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
     {
         var searchResp = new SearchResponseDto();
-        try
-        {
+      
             //Step 1: check param
             if (!ValidParam(request.ChainId, request.Keyword))
             {
@@ -106,12 +113,7 @@ public class SearchService : ISearchService, ISingletonDependency
             }
 
             return searchResp;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Execute search error.");
-            return searchResp;
-        }
+       
     }
 
     private bool ValidParam(string chainId, string keyword)
@@ -127,18 +129,16 @@ public class SearchService : ISearchService, ISingletonDependency
         }
     }
 
-
-    private async Task AssemblySearchAddressAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
+ 
+    public virtual async Task AssemblySearchAddressAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
     {
-        try
+
+        if (!Base58CheckEncoding.Verify(request.Keyword))
         {
-            AElf.Types.Address.FromBase58(request.Keyword);
-        }
-        catch (Exception e)
-        {
-            _logger.LogWarning(e, "address is invalid,{keyword}", request.Keyword);
+            _logger.LogWarning( "address is invalid,{keyword}", request.Keyword);
             return;
         }
+       
 
 
         var contractAddressList = await FindContractAddress(request.ChainId, request.Keyword);

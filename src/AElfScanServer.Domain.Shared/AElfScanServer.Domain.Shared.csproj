@@ -1,42 +1,43 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\..\common.props" />
+    <Import Project="..\..\common.props" />
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <RootNamespace>AElfScanServer.Domain.Shared</RootNamespace>
-<!--    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>-->
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <RootNamespace>AElfScanServer.Domain.Shared</RootNamespace>
+        <!--    <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>-->
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="AElf.EntityMapping" Version="1.1.0" />
-    <PackageReference Include="AElf.EntityMapping.Elasticsearch" Version="1.1.0" />
-    <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.6" />
-    <PackageReference Include="Volo.Abp.FeatureManagement.Domain.Shared" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.Identity.Application" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.Identity.Application.Contracts" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.Identity.Domain.Shared" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.OpenIddict.Domain.Shared" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.BackgroundJobs.Domain.Shared" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.AuditLogging.Domain.Shared" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.PermissionManagement.Domain.Shared" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.SettingManagement.Domain.Shared" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.TenantManagement.Domain" Version="8.2.0" />
-    <PackageReference Include="Volo.Abp.TenantManagement.Domain.Shared" Version="8.2.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="AElf.EntityMapping" Version="1.1.0" />
+        <PackageReference Include="AElf.EntityMapping.Elasticsearch" Version="1.1.0" />
+        <PackageReference Include="AElf.ExceptionHandler.ABP" Version="1.0.0" />
+        <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
+        <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.6" />
+        <PackageReference Include="Volo.Abp.FeatureManagement.Domain.Shared" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.Identity.Application" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.Identity.Application.Contracts" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.Identity.Domain.Shared" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.OpenIddict.Domain.Shared" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.BackgroundJobs.Domain.Shared" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.AuditLogging.Domain.Shared" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.PermissionManagement.Domain.Shared" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.SettingManagement.Domain.Shared" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.TenantManagement.Domain" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.TenantManagement.Domain.Shared" Version="8.2.0" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Localization\AElfScanServer\*.json" />
-    <Content Remove="Localization\AElfScanServer\*.json" />
-  </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="Localization\AElfScanServer\*.json" />
+        <Content Remove="Localization\AElfScanServer\*.json" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.6" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.6" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Badges" />
-  </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Badges" />
+    </ItemGroup>
 </Project>

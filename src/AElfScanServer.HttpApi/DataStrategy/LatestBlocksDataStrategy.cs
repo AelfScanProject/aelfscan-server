@@ -1,9 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
+using AElf.ExceptionHandler.ABP;
+using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Provider;
@@ -61,7 +66,7 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
 
         Dictionary<long, long> blockBurntFee = new Dictionary<long, long>();
 
-
+        
         blockBurntFee = await ParseBlockBurntAsync(chainId,
             blockHeightAsync - 10,
             blockHeightAsync);
@@ -101,7 +106,7 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
             result.Blocks.Add(latestBlockDto);
             if (chainId == "AELF")
             {
-                latestBlockDto.Reward = _globalOptions.CurrentValue.BlockRewardAmountStr;
+                latestBlockDto.Reward = CommomHelper.GetMiningRewardPerBlock(_globalOptions.CurrentValue.IsMainNet).ToString();
             }
             else
             {
@@ -126,31 +131,35 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
     }
 
 
-    public async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
+    [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "ParseBlockBurntAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["chainId","startBlockHeight","endBlockHeight"])]
+    public virtual async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
         long endBlockHeight)
     {
+
+        List<BlockBurnFeeDto> blockBurntFeeListAsync;
         var result = new Dictionary<long, long>();
-        try
-        {
-            var blockBurntFeeListAsync =
-                await _tokenIndexerProvider.GetBlockBurntFeeListAsync(chainId, startBlockHeight, endBlockHeight);
+
+        blockBurntFeeListAsync =
+            await _tokenIndexerProvider.GetBlockBurntFeeListAsync(chainId, startBlockHeight, endBlockHeight);
 
 
-            foreach (var blockBurnFeeDto in blockBurntFeeListAsync)
-            {
-                result.Add(blockBurnFeeDto.BlockHeight, blockBurnFeeDto.Amount);
-            }
-        }
-        catch (Exception e)
+        foreach (var blockBurnFeeDto in blockBurntFeeListAsync)
         {
-            DataStrategyLogger.LogError($"ParseBlockBurntAsync error:{e}");
+            result.Add(blockBurnFeeDto.BlockHeight, blockBurnFeeDto.Amount);
         }
 
 
         return result;
     }
-
-
+    
+    
+    public async Task Finally1(CommonAddressDto input)
+    {
+       DataStrategyLogger.LogInformation($"test 1   {input.Address}");
+    }
+   
     public override string DisplayKey(string chainId)
     {
         return RedisKeyHelper.LatestBlocks(chainId);

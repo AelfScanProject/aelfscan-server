@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos.Indexer;
 using AElfScanServer.Common.Constant;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using AElfScanServer.HttpApi.Dtos;
 using GraphQL;
@@ -153,10 +156,14 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
     }
 
 
-    public async Task<long> GetTransactionCount(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTransactionCount err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+
+    public virtual async Task<long> GetTransactionCount(string chainId)
     {
-        try
-        {
+      
             var graphQlHelper = _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.BlockChainIndexer);
 
             var indexerResult = await graphQlHelper.QueryAsync<IndexerTransactionCountResultDto>(new GraphQLRequest
@@ -174,12 +181,6 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
                 }
             });
             return indexerResult.TransactionCount.Count;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Get transaction count error from blockchain app plugin:{chainId}", chainId);
-        }
-
-        return 0;
+            
     }
 }

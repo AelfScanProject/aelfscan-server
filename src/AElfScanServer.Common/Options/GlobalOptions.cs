@@ -14,9 +14,9 @@ public class GlobalOptions
     public bool SwitchMergeAddress { get; set; }
     public string AddressStartDate { get; set; }
 
-
     public List<string> SpecialSymbols { get; set; } = new();
 
+    public string CMCApiKey { get; set; }
 
     public Dictionary<string, List<string>> FixDailyData { get; set; }
 
@@ -25,8 +25,7 @@ public class GlobalOptions
     public bool InitRound { get; set; }
 
     public string AdminResetPwd { get; set; }
-
-    public string BlockRewardAmountStr { get; set; } = "12500000";
+    
     public string InitStakedStr { get; set; } = "500000";
 
     public double InitStaked { get; set; } = 500000;

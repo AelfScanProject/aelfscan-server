@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
 using AElfScanServer.DataStrategy;
@@ -35,11 +38,19 @@ public class LatestTransactionDataStrategy : DataStrategyBase<string, Transactio
 
     public override async Task<TransactionsResponseDto> QueryData(string chainId)
     {
+        return await ExecuteQueryData(chainId);
+    }
+
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetLatestTransactionsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task<TransactionsResponseDto> ExecuteQueryData(string chainId)
+    {
         var result = new TransactionsResponseDto();
         result.Transactions = new List<TransactionResponseDto>();
 
-        try
-        {
+       
             var input = new TransactionsRequestDto()
             {
                 ChainId = chainId,
@@ -82,12 +93,7 @@ public class LatestTransactionDataStrategy : DataStrategyBase<string, Transactio
 
                 result.Transactions.Add(transactionRespDto);
             }
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "GetLatestTransactionsAsync error");
-        }
-
+      
         return result;
     }
 

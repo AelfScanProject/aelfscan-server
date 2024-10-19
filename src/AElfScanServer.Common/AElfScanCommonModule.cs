@@ -1,5 +1,6 @@
 using AElf.Client.Service;
 using AElf.EntityMapping.Options;
+using AElf.ExceptionHandler.ABP;
 using AElf.OpenTelemetry;
 using AElfScanServer.Common.Address.Provider;
 using AElfScanServer.Common.Contract.Provider;
@@ -24,7 +25,8 @@ namespace AElfScanServer.Common;
     typeof(AbpAutoMapperModule),
     typeof(AbpAutoMapperModule),
     typeof(AbpCachingStackExchangeRedisModule),
-    typeof(AetherlinkPriceServerModule)
+    typeof(AetherlinkPriceServerModule),
+    typeof(AOPExceptionModule)
 )]
 public class AElfScanCommonModule : AbpModule
 {
@@ -54,6 +56,7 @@ public class AElfScanCommonModule : AbpModule
         context.Services.AddTransient<INftCollectionHolderProvider, NftCollectionHolderProvider>();
         context.Services.AddTransient<INftInfoProvider, NftInfoProvider>();
         context.Services.AddTransient<ITokenInfoProvider, TokenInfoProvider>();
+        context.Services.AddTransient<CoinMarketCapProvider, CoinMarketCapProvider>();
         context.Services.AddSingleton<IBlockchainClientFactory<AElfClient>, AElfClientFactory>();
         context.Services.AddHttpClient();
     }

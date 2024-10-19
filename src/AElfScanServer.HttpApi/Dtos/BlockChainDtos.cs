@@ -465,7 +465,7 @@ public class BlockRespDto
     public string ChainId { get; set; }
     public int TransactionCount { get; set; }
     public string TimeSpan { get; set; }
-    public string Reward { get; set; }
+    public string Reward { get; set; } = "0";
     public string BurntFees { get; set; }
     public string ProducerName { get; set; }
     public string ProducerAddress { get; set; }

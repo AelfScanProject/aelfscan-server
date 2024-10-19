@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
@@ -10,6 +12,7 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -190,7 +193,7 @@ public class AddressService : IAddressService, ISingletonDependency
             };
             tokenTransferInput.SkipCount = 0;
             tokenTransferInput.MaxResultCount = 1000;
-
+            tokenTransferInput.Types = new() { SymbolType.Token, SymbolType.Nft };
             var tokenTransferListDto = await _tokenIndexerProvider.GetTokenTransferInfoAsync(tokenTransferInput);
             if (tokenTransferListDto.Items.Count == 0)
             {
@@ -230,10 +233,13 @@ public class AddressService : IAddressService, ISingletonDependency
         symbolList[symbol] = addressList;
     }
 
-    private async Task AddCreatedTokenList(DateTime beginBlockTime)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "AddCreatedTokenList err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["beginBlockTime"])]
+    public virtual async Task AddCreatedTokenList(DateTime beginBlockTime)
     {
-        try
-        {
+      
             if (beginBlockTime == default)
             {
                 return;
@@ -272,17 +278,17 @@ public class AddressService : IAddressService, ISingletonDependency
                 _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
                 skip += maxResultCount;
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "PullTokenInfo error");
-        }
+       
     }
 
-    private async Task SaveMergeTokenList(List<string> symbolList)
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "SaveMergeTokenList err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["symbolList"])]
+    public virtual async Task SaveMergeTokenList(List<string> symbolList)
     {
-        try
-        {
+      
             var skip = 0;
             var maxResultCount = 1000;
             TokenInfoIndex lastTokenIndex = null;
@@ -342,14 +348,11 @@ public class AddressService : IAddressService, ISingletonDependency
                 _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
                 skip += maxResultCount;
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "PullTokenInfo error");
-        }
+     
     }
 
-    private async Task SaveHolderList(DateTime beginTime, Dictionary<string, List<string>> symbolMap)
+
+    public virtual async Task SaveHolderList(DateTime beginTime, Dictionary<string, List<string>> symbolMap)
     {
         if (beginTime == default)
         {
@@ -373,15 +376,9 @@ public class AddressService : IAddressService, ISingletonDependency
                 var tokenList = searchResponse.Documents.ToList();
                 foreach (var item in tokenList)
                 {
-                    try
-                    {
+                   
                         await SaveTokenHolderAsync(item.Symbol, new List<string>());
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogError(e,"SaveTokenHolderAsync Symbol:{Symbol}", item.Symbol
-                            );
-                    }
+                   
                 }
 
                 queryCount = tokenList.Count;
@@ -397,10 +394,13 @@ public class AddressService : IAddressService, ISingletonDependency
         }
     }
 
-    private async Task SaveTokenHolderAsync(string symbol, List<string> addressList)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "SaveTokenHolderAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["symbol","addressList"])]
+    public virtual async Task SaveTokenHolderAsync(string symbol, List<string> addressList)
     {
-        try
-        {
+       
             var skip = 0;
             var maxResultCount = 1000;
             var queryCount = 0;
@@ -474,11 +474,7 @@ public class AddressService : IAddressService, ISingletonDependency
                     tokenInfoList.Count(),dic.Values.Count);
                 skip += maxResultCount;
             } while (queryCount == maxResultCount);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "PullTokenInfo error");
-        }
+       
     }
 
     private async Task<DateTime> GetBeginTime(string key)
