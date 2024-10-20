@@ -190,7 +190,7 @@ public class AddressService : IAddressService, ISingletonDependency
             };
             tokenTransferInput.SkipCount = 0;
             tokenTransferInput.MaxResultCount = 1000;
-
+            tokenTransferInput.Types = new() { SymbolType.Token, SymbolType.Nft };
             var tokenTransferListDto = await _tokenIndexerProvider.GetTokenTransferInfoAsync(tokenTransferInput);
             if (tokenTransferListDto.Items.Count == 0)
             {
