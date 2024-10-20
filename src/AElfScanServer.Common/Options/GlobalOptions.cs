@@ -15,6 +15,7 @@ public class GlobalOptions
     public string AddressStartDate { get; set; }
 
 
+    public long BlockchainStartTimestamp { get; set; }
     public List<string> SpecialSymbols { get; set; } = new();
 
 
@@ -26,7 +27,6 @@ public class GlobalOptions
 
     public string AdminResetPwd { get; set; }
 
-    public string BlockRewardAmountStr { get; set; } = "12500000";
     public string InitStakedStr { get; set; } = "500000";
 
     public double InitStaked { get; set; } = 500000;

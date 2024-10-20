@@ -64,7 +64,7 @@ public class OpenApiService : IOpenApiService
                 task => { organizationAddressBalance = task.Result; }));
 
         tasks.Add(_indexerTokenProvider
-            .GetAddressElfBalanceAsync("AELF", _globalOptions.CurrentValue.ConsensusContractAddress).ContinueWith(
+            .GetAddressElfBalanceAsync("AELF", _globalOptions.CurrentValue.ContractAddressConsensus["AELF"]).ContinueWith(
                 task => { consensusContractAddressBalance = task.Result; }));
 
         await tasks.WhenAll();

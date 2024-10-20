@@ -14,11 +14,9 @@ namespace AElfScanServer.Common.Helper;
 
 public class CommomHelper
 {
-    
     public static long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
     public const long InitialMiningRewardPerBlock = 12500000;
-    public static long MainChainBlockchainStartTimestamp = 1607556204;
-    public static long SideChainBlockchainStartTimestamp = 1602905482;
+ 
 
     public static bool IsValidAddress(string address)
     {
@@ -51,10 +49,10 @@ public class CommomHelper
     }
 
 
-    public static long GetMiningRewardPerBlock(bool isMainNet)
+    public static long GetMiningRewardPerBlock(long blockChainStartTimestamp)
     {
         var miningReward = InitialMiningRewardPerBlock;
-        var blockAge = GetBlockchainAge(isMainNet);
+        var blockAge = GetBlockchainAge(blockChainStartTimestamp);
         var denominator = blockAge.Div(TimeToReduceMiningRewardByHalf);
         for (var i = 0; i < denominator; i++) miningReward = miningReward.Div(2);
 
@@ -62,14 +60,9 @@ public class CommomHelper
     }
 
 
-    private static long GetBlockchainAge(bool isMainNet)
+    private static long GetBlockchainAge(long blockChainStartTimestamp)
     {
-        if (isMainNet)
-        {
-            return DateTime.UtcNow.ToUtcSeconds() - MainChainBlockchainStartTimestamp;
-        }
-
-        return DateTime.UtcNow.ToUtcSeconds() - SideChainBlockchainStartTimestamp;
+        return DateTime.UtcNow.ToUtcSeconds() - blockChainStartTimestamp;
     }
 }
 

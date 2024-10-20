@@ -26,7 +26,7 @@ public class OpenApiController : AbpController
     }
 
 
-    [HttpGet("supply")]
+    [HttpGet("elfSupply")]
     public async Task<SupplyApiResp> GetSupplyAsync()
     {
         return await _openApiService.GetSupplyAsync();
