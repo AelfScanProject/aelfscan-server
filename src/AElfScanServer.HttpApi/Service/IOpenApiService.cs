@@ -192,20 +192,7 @@ public class OpenApiService : IOpenApiService
 
         var elfPriceUsdPrice = volume24HFromCmc.Quote["USD"].Price;
         var volume24H = volume24HFromCmc.Quote["USD"].Volume_24h;
-        if (currencyPrice == null)
-        {
-            _logger.LogInformation("testtesttest---currencyPrice");
-        }
-
-        if (currencyPrice.Market_Data == null)
-        {
-            _logger.LogInformation("testtesttest---market_data");
-        }
-        if (currencyPrice.Market_Data.Current_Price== null)
-        {
-            _logger.LogInformation("testtesttest---Current_Price");
-        }
-        
+       
         foreach (var keyValuePair in currencyPrice.Market_Data.Current_Price)
         {
             if (CurrencyList.Contains(keyValuePair.Key))
