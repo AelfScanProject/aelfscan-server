@@ -266,7 +266,10 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
         blockResponseDto.Reward = new RewardDto()
         {
-            ElfReward = _globalOptions.CurrentValue.BlockRewardAmountStr,
+            ElfReward = requestDto.ChainId == "AELF"
+                ? CommomHelper
+                    .GetMiningRewardPerBlock(_globalOptions.CurrentValue.BlockchainStartTimestamp).ToString()
+                : "0",
             UsdReward = (double.Parse(await _blockChainProvider.GetTokenUsdPriceAsync("ELF")) * 0.125)
                 .ToString()
         };
@@ -716,7 +719,12 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
 
                 result.Blocks.Add(latestBlockDto);
-                latestBlockDto.Reward = _globalOptions.CurrentValue.BlockRewardAmountStr;
+                if (indexerBlockDto.ChainId == "AELF")
+                {
+                    latestBlockDto.Reward = CommomHelper
+                        .GetMiningRewardPerBlock(_globalOptions.CurrentValue.BlockchainStartTimestamp).ToString();
+                }
+
                 latestBlockDto.ChainIds.Add(requestDto.ChainId);
             }
 

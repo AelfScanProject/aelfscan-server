@@ -177,6 +177,17 @@ public class ContractAppService : IContractAppService
             .GetGrain<IContractFileGrain>(GrainIdHelper.GenerateContractFileKey(input.ChainId, input.Address))
             .GetAsync();
         contractFileResultDto.ContractName = GetContractName(input.ChainId, input.Address);
+        if (!contractFileResultDto.ContractSourceCode.IsNullOrEmpty())
+        {
+            foreach (var decompilerContractDto in  contractFileResultDto.ContractSourceCode)
+            {
+                if (!decompilerContractDto.Files.IsNullOrEmpty())
+                {
+                    decompilerContractDto.Files = decompilerContractDto.Files.OrderBy(o => o.Name).ToList();
+                }
+            }
+            contractFileResultDto.ContractSourceCode = contractFileResultDto.ContractSourceCode.OrderBy(o => o.Name).ToList();
+        }
         return contractFileResultDto;
     }
 

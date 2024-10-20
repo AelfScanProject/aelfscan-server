@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using AElf.Contracts.MultiToken;
+using AElf.CSharp.Core;
 using AElf.Types;
 using AElfScanServer.Common.Dtos;
 using Google.Protobuf;
@@ -13,6 +14,10 @@ namespace AElfScanServer.Common.Helper;
 
 public class CommomHelper
 {
+    public static long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
+    public const long InitialMiningRewardPerBlock = 12500000;
+ 
+
     public static bool IsValidAddress(string address)
     {
         try
@@ -41,6 +46,23 @@ public class CommomHelper
     public static DateTime ConvertStringToDate(string s)
     {
         return DateTimeOffset.FromUnixTimeSeconds(Convert.ToInt64(s)).DateTime;
+    }
+
+
+    public static long GetMiningRewardPerBlock(long blockChainStartTimestamp)
+    {
+        var miningReward = InitialMiningRewardPerBlock;
+        var blockAge = GetBlockchainAge(blockChainStartTimestamp);
+        var denominator = blockAge.Div(TimeToReduceMiningRewardByHalf);
+        for (var i = 0; i < denominator; i++) miningReward = miningReward.Div(2);
+
+        return miningReward;
+    }
+
+
+    private static long GetBlockchainAge(long blockChainStartTimestamp)
+    {
+        return DateTime.UtcNow.ToUtcSeconds() - blockChainStartTimestamp;
     }
 }
 

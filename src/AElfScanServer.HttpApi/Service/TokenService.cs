@@ -122,7 +122,7 @@ public class TokenService : ITokenService, ISingletonDependency
     {
         var result = await EsIndex.SearchMergeTokenList(
             (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
-            null,_globalOptions.CurrentValue.SpecialSymbols);
+            null, _globalOptions.CurrentValue.SpecialSymbols);
 
         _logger.LogInformation("GetMergeTokenListAsync:{count}", result.list.Count);
         if (result.list.IsNullOrEmpty())
@@ -443,6 +443,7 @@ public class TokenService : ITokenService, ISingletonDependency
 
             tokenHolderInfoDto.Value =
                 Math.Round(tokenHolderInfoDto.Quantity * priceDto.Price, CommonConstant.UsdValueDecimals);
+            tokenHolderInfoDto.ChainIds = new List<string>() { indexerTokenHolderInfoDto.Metadata.ChainId };
             list.Add(tokenHolderInfoDto);
         }
 
