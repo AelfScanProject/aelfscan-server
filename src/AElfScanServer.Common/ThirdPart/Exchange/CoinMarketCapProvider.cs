@@ -84,7 +84,7 @@ public class CoinMarketCapProvider
     {
         var coinInfo = await _coinInfoCache.GetAsync("coinInfo");
 
-        if (coinInfo == null)
+        if (coinInfo != null)
         {
             return coinInfo;
         }
