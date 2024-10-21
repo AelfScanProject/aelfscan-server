@@ -885,6 +885,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         int failCount = 0;
         while (true)
         {
+            _logger.LogInformation($"BatchPullBlockSize {lastBlockHeight}");
             var tasks = new List<Task>();
             var blockSizeIndices = new List<BlockSizeDto>();
             var _lock = new object();
