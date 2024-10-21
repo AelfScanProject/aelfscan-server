@@ -878,6 +878,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
     public async Task BatchPullBlockSize(string chainId)
     {
+        _logger.LogInformation($"BatchPullBlockSize start");
         var dic = new Dictionary<string, DailyAvgBlockSizeIndex>();
         await ConnectAsync();
         var redisValue = RedisDatabase.StringGet(RedisKeyHelper.BlockSizeLastBlockHeight(chainId));
