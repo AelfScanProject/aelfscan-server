@@ -189,8 +189,22 @@ public class TokenService : ITokenService, ISingletonDependency
             var tokenInfo = list[0];
 
             var tokenDetailDto = _objectMapper.Map<TokenCommonDto, TokenDetailDto>(tokenInfo);
+            tokenDetailDto.ContractAddressDto = new CommonAddressDto()
+            {
+                Address = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress,
+                AddressType = AddressType.ContractAddress
+            };
             tokenDetailDto.TokenContractAddress =
                 _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
+
+            if (_globalOptions.CurrentValue.ContractNames.TryGetValue(chainId, out var contractNames))
+            {
+                if (contractNames.TryGetValue(tokenDetailDto.TokenContractAddress, out var contractName))
+                {
+                    tokenDetailDto.ContractAddressDto.Name = contractName;
+                }
+            }
+
             if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
             {
                 //set others
