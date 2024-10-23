@@ -196,25 +196,32 @@ public class SearchService : ISearchService, ISingletonDependency
         holderInput.SetDefaultSort();
 
         var tokenHolderInfos = await _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
-        var dic = new Dictionary<string, SearchAccount>();
+
+        var dic = new Dictionary<string, HashSet<string>>();
 
         foreach (var indexerTokenHolderInfoDto in tokenHolderInfos.Items)
         {
             if (dic.TryGetValue(indexerTokenHolderInfoDto.Address, out var v))
             {
-                v.ChainIds.Add(indexerTokenHolderInfoDto.Metadata.ChainId);
+                v.Add(indexerTokenHolderInfoDto.Metadata.ChainId);
             }
             else
             {
-                dic.Add(indexerTokenHolderInfoDto.Address, new SearchAccount()
-                {
-                    Address = indexerTokenHolderInfoDto.Address,
-                    ChainIds = new List<string>() { indexerTokenHolderInfoDto.Metadata.ChainId }
-                });
+                dic.Add(indexerTokenHolderInfoDto.Address,
+                    new HashSet<string>() { indexerTokenHolderInfoDto.Metadata.ChainId });
             }
         }
 
-        result.AddRange(dic.Values);
+        foreach (var keyValuePair in dic)
+        {
+            result.Add(new SearchAccount()
+            {
+                Address = keyValuePair.Key,
+                ChainIds = keyValuePair.Value.ToList()
+            });
+        }
+
+
         return result;
     }
 
@@ -321,7 +328,7 @@ public class SearchService : ISearchService, ISingletonDependency
 
         searchResponseDto.Tokens.AddRange(searchTokensDic.Values);
         searchResponseDto.Nfts.AddRange(searchTNftsDic.Values);
-        searchResponseDto.Nfts = searchResponseDto.Nfts.GroupBy(p => p.Symbol) 
+        searchResponseDto.Nfts = searchResponseDto.Nfts.GroupBy(p => p.Symbol)
             .Select(g => g.First()).ToList();
     }
 
