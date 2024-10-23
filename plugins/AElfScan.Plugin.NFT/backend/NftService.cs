@@ -147,7 +147,6 @@ public class NftService : INftService, ISingletonDependency
         {
             var nftInfoDto = _objectMapper.Map<TokenInfoIndex, NftInfoDto>(item);
 
-            _logger.LogInformation("======={c}", item.ChainIds);
             nftInfoDto.ChainIds = item.ChainIds;
             nftInfoDto.Items = item.ItemCount.ToString(CultureInfo.InvariantCulture);
 
