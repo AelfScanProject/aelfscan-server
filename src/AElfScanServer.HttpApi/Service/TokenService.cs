@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElfScanServer.Common;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Core;
@@ -378,9 +379,11 @@ public class TokenService : ITokenService, ISingletonDependency
         {
             var tokenHolderInfoDto = new TokenHolderInfoDto();
             tokenHolderInfoDto.Quantity = indexerTokenHolderInfoDto.FormatAmount;
-            tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, indexerTokenHolderInfoDto.ChainId,
-                    contractInfoDict);
+
+
+            tokenHolderInfoDto.Address = CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                indexerTokenHolderInfoDto.ChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
+
             if (tokenSupply != 0)
             {
                 tokenHolderInfoDto.Percentage =

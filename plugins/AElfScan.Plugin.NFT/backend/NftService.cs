@@ -1,5 +1,6 @@
 using System.Globalization;
 using AElfScanServer.Common;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
@@ -193,7 +194,7 @@ public class NftService : INftService, ISingletonDependency
                 Name = collectionInfo.Symbol,
                 AddressType = AddressType.ContractAddress
             };
-            
+
             if (_globalOptions.CurrentValue.ContractNames.TryGetValue(chainId, out var contractNames))
             {
                 if (contractNames.TryGetValue(nftDetailDto.TokenContractAddress, out var contractName))
@@ -391,9 +392,11 @@ public class NftService : INftService, ISingletonDependency
         {
             var tokenHolderInfoDto = new TokenHolderInfoDto();
             tokenHolderInfoDto.Quantity = indexerTokenHolderInfoDto.FormatAmount;
-            tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, indexerTokenHolderInfoDto.ChainId,
-                    contractInfoDict);
+
+            tokenHolderInfoDto.Address = CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                indexerTokenHolderInfoDto.ChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
+
+
             if (tokenSupply != 0)
             {
                 tokenHolderInfoDto.Percentage =
@@ -676,8 +679,8 @@ public class NftService : INftService, ISingletonDependency
 
             foreach (var chainId in tokenInfo.ChainIds)
             {
-                nftItemHolderInfoDto.Address =
-                    BaseConverter.OfCommonAddress(tokenInfo.Address, chainId, contractInfoDict);
+                nftItemHolderInfoDto.Address = CommonAddressHelper.GetCommonAddress(tokenInfo.Address,
+                    chainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
             }
 
             if (supply > 0)

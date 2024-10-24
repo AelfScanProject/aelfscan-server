@@ -7,6 +7,7 @@ using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.Contracts.MultiToken;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
@@ -560,12 +561,19 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                     await GetTokenImageAsync(tokenInfo.Symbol, tokenInfo.IssueChainId, tokenInfo.ExternalInfo);
             }
 
+            if (indexerTransferInfoDto.From == "JRmBduh4nXWi1aXgdUsj5gJrzeZb2LxmrAbf7W99faZSvoAaE")
+            {
+                _logger.LogError("aa");
+            }
+
             tokenTransferDto.TransactionFeeList =
                 await _tokenInfoProvider.ConvertTransactionFeeAsync(priceDict, indexerTransferInfoDto.ExtraProperties);
-            tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From,
-                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
-            tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To,
-                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
+
+            tokenTransferDto.From = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.From,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
+            tokenTransferDto.To = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.To,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
+          
             tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }
