@@ -98,14 +98,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             }));
 
 
-            tasks.Add(_uniqueAddressRepository.GetQueryableAsync().ContinueWith(
-                task =>
-                {
-                    overviewResp.MergeAccounts.Total =
-                        task.Result.Where(c => c.ChainId == chainId).OrderByDescending(c => c.Date).Take(1).ToList()
-                            .First().TotalUniqueAddressees;
-                }));
-
+            tasks.Add(GetTotalAccount(chainId).ContinueWith(task =>
+            {
+                overviewResp.MergeAccounts.Total = task.Result;
+            }));
 
             tasks.Add(_homePageProvider.GetRewardAsync(chainId).ContinueWith(
                 task =>
