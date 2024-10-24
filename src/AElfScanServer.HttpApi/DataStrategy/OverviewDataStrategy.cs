@@ -266,7 +266,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                 totalCount = queryableAsync.Count();
                 await _cache.SetAsync(key, totalCount.ToString(), new DistributedCacheEntryOptions()
                 {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1)
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
                 });
                 DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
                     chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);

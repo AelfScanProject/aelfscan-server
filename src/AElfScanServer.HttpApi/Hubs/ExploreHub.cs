@@ -202,7 +202,7 @@ public class ExploreHub : AbpHub
 
             await _cache.SetAsync("topTokens", topTokenDtos, new DistributedCacheEntryOptions()
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
             });
             return topTokenDtos;
         }
