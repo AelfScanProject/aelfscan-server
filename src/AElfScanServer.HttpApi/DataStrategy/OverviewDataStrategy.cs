@@ -98,7 +98,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             }));
 
 
-            tasks.Add(GetTotalAccount(chainId).ContinueWith(task =>
+            tasks.Add(GetMergeTotalAccount(chainId).ContinueWith(task =>
             {
                 overviewResp.MergeAccounts.Total = task.Result;
             }));
@@ -226,7 +226,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             if (count.IsNullOrEmpty())
             {
                 totalCount = queryableAsync.Count();
-                await _cache.SetAsync(key, totalCount.ToString());
+                await _cache.SetAsync(key, totalCount.ToString(), new DistributedCacheEntryOptions()
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1)
+                });
                 DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
                     chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
                 return totalCount;
@@ -261,7 +264,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             if (count.IsNullOrEmpty())
             {
                 totalCount = queryableAsync.Count();
-                await _cache.SetAsync(key, totalCount.ToString());
+                await _cache.SetAsync(key, totalCount.ToString(), new DistributedCacheEntryOptions()
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1)
+                });
                 DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
                     chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
                 return totalCount;
@@ -317,12 +323,12 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
             tasks.Add(GetMarketCap().ContinueWith(task => { overviewResp.MarketCap = task.Result; }));
 
-            tasks.Add(GetTotalAccount("AELF").ContinueWith(task =>
+            tasks.Add(GetMergeTotalAccount("AELF").ContinueWith(task =>
             {
                 overviewResp.MergeAccounts.MainChain = task.Result;
             }));
 
-            tasks.Add(GetTotalAccount(_globalOptions.CurrentValue.SideChainId).ContinueWith(task =>
+            tasks.Add(GetMergeTotalAccount(_globalOptions.CurrentValue.SideChainId).ContinueWith(task =>
             {
                 overviewResp.MergeAccounts.SideChain = task.Result;
             }));
