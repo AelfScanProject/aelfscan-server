@@ -561,11 +561,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                     await GetTokenImageAsync(tokenInfo.Symbol, tokenInfo.IssueChainId, tokenInfo.ExternalInfo);
             }
 
-            if (indexerTransferInfoDto.From == "JRmBduh4nXWi1aXgdUsj5gJrzeZb2LxmrAbf7W99faZSvoAaE")
-            {
-                _logger.LogError("aa");
-            }
-
+         
             tokenTransferDto.TransactionFeeList =
                 await _tokenInfoProvider.ConvertTransactionFeeAsync(priceDict, indexerTransferInfoDto.ExtraProperties);
 

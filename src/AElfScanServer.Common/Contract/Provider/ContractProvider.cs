@@ -101,12 +101,9 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                         skipCount = 0, maxResultCount = addressList.Count * 2, addressList = addressList
                     }
                 });
-            if (chainId.IsNullOrEmpty())
-            {
+           
                 return result.ContractList.Items.ToDictionary(s => s.Address + s.Metadata.ChainId, s => s);
-            }
 
-            return result.ContractList.Items.ToDictionary(s => s.Address, s => s);
         }
         catch (Exception e)
         {

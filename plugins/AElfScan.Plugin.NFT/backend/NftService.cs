@@ -714,6 +714,10 @@ public class NftService : INftService, ISingletonDependency
         {
             var activityDto = _objectMapper.Map<NftActivityItem, NftItemActivityDto>(item);
             activityDto.From = BaseConverter.OfCommonAddress(item.From, contractInfoDict);
+
+            activityDto.From = CommonAddressHelper.GetCommonAddress(item.From,
+                item.PriceTokenInfo.ChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
+
             activityDto.To = BaseConverter.OfCommonAddress(item.To, contractInfoDict);
             activityDto.Status = TransactionStatus.Mined;
             var priceSymbol = activityDto.PriceSymbol;
@@ -901,7 +905,9 @@ public class NftService : INftService, ISingletonDependency
                 _objectMapper.Map<IndexerTokenHolderInfoDto, TokenHolderInfoDto>(indexerTokenHolderInfoDto);
 
             tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, contractInfoDict);
+                CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                    indexerTokenHolderInfoDto.Metadata.ChainId, contractInfoDict,
+                    _globalOptions.CurrentValue.ContractNames);
 
             if (tokenSupply != 0)
             {

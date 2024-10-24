@@ -450,7 +450,9 @@ public class TokenService : ITokenService, ISingletonDependency
             var tokenHolderInfoDto =
                 _objectMapper.Map<IndexerTokenHolderInfoDto, TokenHolderInfoDto>(indexerTokenHolderInfoDto);
             tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, contractInfoDict);
+                CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                    indexerTokenHolderInfoDto.Metadata.ChainId, contractInfoDict,
+                    _globalOptions.CurrentValue.ContractNames);
             if (tokenSupply != 0)
             {
                 tokenHolderInfoDto.Percentage =
