@@ -182,7 +182,7 @@ public class ExploreHub : AbpHub
             }
 
             var searchMergeTokenList =
-                await EsIndex.SearchMergeTokenList(0, 6, "desc", null,_globalOptions.CurrentValue.SpecialSymbols);
+                await EsIndex.SearchMergeTokenList(0, 6, "desc", null, _globalOptions.CurrentValue.SpecialSymbols);
 
             var topTokenDtos = new List<TopTokenDto>();
             foreach (var tokenInfoIndex in searchMergeTokenList.list)
@@ -200,7 +200,10 @@ public class ExploreHub : AbpHub
                 });
             }
 
-            await _cache.SetAsync("topTokens", topTokenDtos);
+            await _cache.SetAsync("topTokens", topTokenDtos, new DistributedCacheEntryOptions()
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1)
+            });
             return topTokenDtos;
         }
         catch (Exception e)
@@ -219,6 +222,7 @@ public class ExploreHub : AbpHub
         {
             return;
         }
+
         try
         {
             while (true)
