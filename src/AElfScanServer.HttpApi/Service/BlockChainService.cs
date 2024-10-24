@@ -231,6 +231,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         var transactionList = new List<TransactionIndex>();
 
         var blockList = new List<IndexerBlockDto>();
+        Dictionary<long, long> blockBurntFee = new Dictionary<long, long>();
 
         var blockDtoTask =
             _blockChainProvider.GetBlockDetailAsync(requestDto.ChainId, requestDto.BlockHeight).ContinueWith(task =>
@@ -247,22 +248,31 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             requestDto.BlockHeight + 1).ContinueWith(task => { blockList = task.Result; });
 
 
+        var blockBurntFeeTask = ParseBlockBurntAsync(requestDto.ChainId,
+            requestDto.BlockHeight,
+            requestDto.BlockHeight).ContinueWith(task => { blockBurntFee = task.Result; });
+
         blockDetailsTasks.Add(blockDtoTask);
         blockDetailsTasks.Add(transactionListTask);
         blockDetailsTasks.Add(blockListTask);
-
+        blockDetailsTasks.Add(blockBurntFeeTask);
         await blockDetailsTasks.WhenAll();
 
 
         blockResponseDto.BlockHeight = requestDto.BlockHeight;
         blockResponseDto.ChainId = requestDto.ChainId;
         var fee = await _blockChainProvider.GetBlockRewardAsync(requestDto.BlockHeight, requestDto.ChainId);
-        blockResponseDto.BurntFee = new BurntFee()
+
+        if (blockBurntFee.TryGetValue(requestDto.BlockHeight, out var burnt))
         {
-            ElfFee = fee,
-            UsdFee =
-                (double.Parse(await _blockChainProvider.GetTokenUsdPriceAsync("ELF")) * double.Parse(fee)).ToString()
-        };
+            blockResponseDto.BurntFee = new BurntFee()
+            {
+                ElfFee = burnt.ToString(),
+                UsdFee =
+                    (double.Parse(await _blockChainProvider.GetTokenUsdPriceAsync("ELF")) * burnt / 1e8)
+                    .ToString()
+            };
+        }
 
 
         var elfReward = requestDto.ChainId == "AELF"
