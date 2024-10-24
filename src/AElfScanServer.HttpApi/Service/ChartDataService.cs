@@ -1542,7 +1542,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         var nodeBlockProduces = new Dictionary<string, NodeBlockProduce>();
 
-        var nodeBlockProduceIndices = hourProduceQue.ToList();
         var hourNodeBlockProduceIndices = hourProduceQue.Where(c => c.ChainId == request.ChainId).Take(10000).ToList();
         foreach (var hourNodeBlockProduceIndex in hourNodeBlockProduceIndices)
         {

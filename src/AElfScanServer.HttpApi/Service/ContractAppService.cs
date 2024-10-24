@@ -240,14 +240,15 @@ public class ContractAppService : IContractAppService
             {
                 var txn = transactionList[i];
 
-                if (txn.To != req.ContractAddress)
-                {
-                    continue;
-                }
-
+             
                 for (var i1 = 0; i1 < txn.LogEvents.Count; i1++)
                 {
+                    
                     var curEvent = txn.LogEvents[i1];
+                    if (curEvent.ContractAddress != req.ContractAddress)
+                    {
+                        continue;
+                    }
                     curEvent.ExtraProperties.TryGetValue("Indexed", out var indexed);
                     curEvent.ExtraProperties.TryGetValue("NonIndexed", out var nonIndexed);
                     var logEvent = new LogEventIndex()
@@ -255,10 +256,10 @@ public class ContractAppService : IContractAppService
                         TransactionId = txn.TransactionId,
                         ChainId = req.ChainId,
                         BlockHeight = txn.BlockHeight,
-                        MethodName = txn.MethodName,
+                        MethodName = curEvent.EventName,
                         BlockTime = txn.BlockTime,
                         TimeStamp = txn.BlockTime.ToUtcMilliSeconds(),
-                        ToAddress = txn.To,
+                        ToAddress = curEvent.ContractAddress,
                         ContractAddress = curEvent.ContractAddress,
                         EventName = curEvent.EventName,
                         NonIndexed = nonIndexed,
