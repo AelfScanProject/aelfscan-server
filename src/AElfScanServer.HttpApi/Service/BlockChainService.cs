@@ -264,13 +264,15 @@ public class BlockChainService : IBlockChainService, ITransientDependency
                 (double.Parse(await _blockChainProvider.GetTokenUsdPriceAsync("ELF")) * double.Parse(fee)).ToString()
         };
 
+
+        var elfReward = requestDto.ChainId == "AELF"
+            ? CommomHelper
+                .GetMiningRewardPerBlock(_globalOptions.CurrentValue.BlockchainStartTimestamp)
+            : 0;
         blockResponseDto.Reward = new RewardDto()
         {
-            ElfReward = requestDto.ChainId == "AELF"
-                ? CommomHelper
-                    .GetMiningRewardPerBlock(_globalOptions.CurrentValue.BlockchainStartTimestamp).ToString()
-                : "0",
-            UsdReward = (double.Parse(await _blockChainProvider.GetTokenUsdPriceAsync("ELF")) * 0.125)
+            ElfReward = elfReward.ToString(),
+            UsdReward = (double.Parse(await _blockChainProvider.GetTokenUsdPriceAsync("ELF")) * elfReward / 1e8)
                 .ToString()
         };
 
@@ -752,7 +754,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             }
         }
 
-        return address;
+        return "";
     }
 
     public async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
