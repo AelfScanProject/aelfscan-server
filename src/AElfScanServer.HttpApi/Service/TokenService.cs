@@ -189,7 +189,7 @@ public class TokenService : ITokenService, ISingletonDependency
             var tokenInfo = list[0];
 
             var tokenDetailDto = _objectMapper.Map<TokenCommonDto, TokenDetailDto>(tokenInfo);
-            tokenDetailDto.ContractAddressDto = new CommonAddressDto()
+            tokenDetailDto.ContractAddress = new CommonAddressDto()
             {
                 Address = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress,
                 AddressType = AddressType.ContractAddress
@@ -201,7 +201,7 @@ public class TokenService : ITokenService, ISingletonDependency
             {
                 if (contractNames.TryGetValue(tokenDetailDto.TokenContractAddress, out var contractName))
                 {
-                    tokenDetailDto.ContractAddressDto.Name = contractName;
+                    tokenDetailDto.ContractAddress.Name = contractName;
                 }
             }
 

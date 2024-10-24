@@ -8,10 +8,8 @@ public class TokenDetailDto : TokenCommonDto
 
     public double PricePercentChange24h { get; set; }
 
-    public CommonAddressDto ContractAddressDto { get; set; }
+    public CommonAddressDto ContractAddress { get; set; }
     public string TokenContractAddress { get; set; }
-
-
 
     public List<string> AddressTypeList { get; set; }
 }
