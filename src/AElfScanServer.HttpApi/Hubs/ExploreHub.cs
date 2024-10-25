@@ -175,11 +175,11 @@ public class ExploreHub : AbpHub
     {
         try
         {
-            // var list = await _cache.GetAsync("topTokens");
-            // if (!list.IsNullOrEmpty())
-            // {
-            //     return list;
-            // }
+            var list = await _cache.GetAsync("TopTokens");
+            if (!list.IsNullOrEmpty())
+            {
+                return list;
+            }
 
             var searchMergeTokenList =
                 await EsIndex.SearchMergeTokenList(0, 6, "desc", null, _globalOptions.CurrentValue.SpecialSymbols);
@@ -202,7 +202,7 @@ public class ExploreHub : AbpHub
 
             await _cache.SetAsync("topTokens", topTokenDtos, new DistributedCacheEntryOptions()
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
             });
             return topTokenDtos;
         }
