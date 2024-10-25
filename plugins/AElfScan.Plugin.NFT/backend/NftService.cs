@@ -173,7 +173,7 @@ public class NftService : INftService, ISingletonDependency
             var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
             var nftCollectionInfoInput = new GetNftCollectionInfoInput
             {
-                ChainId = chainId,
+                ChainId = _globalOptions.CurrentValue.SideChainId,
                 CollectionSymbolList = new List<string> { collectionSymbol }
             };
             var nftCollectionInfoTask = _nftInfoProvider.GetNftCollectionInfoAsync(nftCollectionInfoInput);
@@ -269,7 +269,8 @@ public class NftService : INftService, ISingletonDependency
         nftDetailDto.SideChainItems = sideNftDetailDto.Items;
 
         nftDetailDto.MergeItems =
-            (decimal.Parse(nftDetailDto.MainChainItems) + decimal.Parse(nftDetailDto.SideChainItems)).ToString();
+            (decimal.Parse(nftDetailDto.MainChainItems.IsNullOrEmpty() ? "0" : nftDetailDto.MainChainItems) +
+             decimal.Parse(nftDetailDto.SideChainItems.IsNullOrEmpty() ? "0" : nftDetailDto.SideChainItems)).ToString();
         nftDetailDto.MainChainHolders = mainNftDetailDto.Holders;
         nftDetailDto.SideChainHolders = sideNftDetailDto.Holders;
 

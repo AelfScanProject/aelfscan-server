@@ -10,15 +10,18 @@ namespace AElfScanServer.HttpApi.Dtos.address;
 public class GetAddressTokenListInput : BaseInput
 {
     [Required] public string Address { get; set; }
-    
+
     public string Search { get; set; } = "";
-    
+
+
     public void SetDefaultSort()
     {
         if (!OrderBy.IsNullOrEmpty() || !OrderInfos.IsNullOrEmpty())
         {
             return;
         }
+
+
         OfOrderInfos((SortField.FormatAmount, SortDirection.Desc), (SortField.Symbol, SortDirection.Desc));
     }
 }

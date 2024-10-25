@@ -192,7 +192,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
     public async Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol)
     {
-        var graphQlHelper = GetGraphQlHelper();
+            var graphQlHelper = GetGraphQlHelper();
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
         {
             Query =
@@ -223,7 +223,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             }",
             Variables = new
             {
-                chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
+                chainId=chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
             }
         });
         return indexerResult.TokenInfo?.Items;
