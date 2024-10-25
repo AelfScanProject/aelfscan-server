@@ -176,7 +176,7 @@ public class AddressService : IAddressService, ISingletonDependency
 
     private async Task<long> GetHolderCountAsync(string symbol)
     {
-        var searchResponse = await _elasticClient.SearchAsync<AccountTokenIndex>(s => s
+        var searchResponse = await _elasticClient.CountAsync<AccountTokenIndex>(s => s
             .Index("accounttokenindex")
             .Query(q => q
                 .Bool(b => b
@@ -185,9 +185,8 @@ public class AddressService : IAddressService, ISingletonDependency
                     )
                 )
             )
-            .Size(0)// Set Size to 0 since we're only interested in the count
         );
-        return searchResponse.Total;
+        return searchResponse.Count;
     }
 
     private async Task<(Dictionary<string, List<string>> symbolList, DateTime beginTime)> GetChangeSymbolList(
