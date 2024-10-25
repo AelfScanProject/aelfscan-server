@@ -34,8 +34,6 @@ public interface IAddressService
     Task PatchAddressInfoAsync(string chainId, string address, List<AddressIndex> list);
 
     public Task PullTokenInfo();
-    
-    public Task SaveCollectionHolderList();
 
     public Task DeleteMergeBlock();
     
@@ -107,6 +105,9 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             await SaveTokenHolderAsync(symbol, new List<string>());
         }
+        await Task.Delay(3000);
+        await SaveMergeTokenList(fixTokenHolderInput.SymbolList);
+
         await _cache.RemoveAsync(RedisKeyHelper.FixTokenHolder());
     }
 
@@ -155,9 +156,10 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             return;
         }
-        
-        await SaveMergeTokenList(symbolMap.Keys.ToList());
+
         await SaveHolderList(beginTime, symbolMap);
+        await Task.Delay(3000);
+        await SaveMergeTokenList(symbolMap.Keys.ToList());
         if (beginTime == default)
         {
             beginTime = DateTime.UtcNow.AddHours(-1);
@@ -170,6 +172,22 @@ public class AddressService : IAddressService, ISingletonDependency
             });
         _logger.LogInformation("PullTokenInfo end {Time}",
             TimeHelper.GetTimeStampFromDateTimeInSeconds(beginTime).ToString());
+    }
+
+    private async Task<long> GetHolderCountAsync(string symbol)
+    {
+        var searchResponse = await _elasticClient.SearchAsync<AccountTokenIndex>(s => s
+            .Index("accounttokenindex")
+            .Query(q => q
+                .Bool(b => b
+                    .Must(
+                        m => m.Term("token.symbol", symbol)
+                    )
+                )
+            )
+            .Size(0)// Set Size to 0 since we're only interested in the count
+        );
+        return searchResponse.Total;
     }
 
     private async Task<(Dictionary<string, List<string>> symbolList, DateTime beginTime)> GetChangeSymbolList(
@@ -199,10 +217,11 @@ public class AddressService : IAddressService, ISingletonDependency
 
             foreach (var indexerTransferInfoDto in tokenTransferListDto.Items)
             {
-                SetSymbolMap(symbolDictionary, indexerTransferInfoDto,indexerTransferInfoDto.Token.Symbol);
+                SetSymbolMap(symbolDictionary, indexerTransferInfoDto, indexerTransferInfoDto.Token.Symbol);
                 if (SymbolType.Nft == TokenSymbolHelper.GetSymbolType(indexerTransferInfoDto.Token.Symbol))
                 {
-                    SetSymbolMap(symbolDictionary, indexerTransferInfoDto,TokenSymbolHelper.GetCollectionSymbol(indexerTransferInfoDto.Token.Symbol));
+                    SetSymbolMap(symbolDictionary, indexerTransferInfoDto,
+                        TokenSymbolHelper.GetCollectionSymbol(indexerTransferInfoDto.Token.Symbol));
                 }
             }
 
@@ -213,7 +232,7 @@ public class AddressService : IAddressService, ISingletonDependency
     }
 
     private static void SetSymbolMap(Dictionary<string, List<string>> symbolList,
-        IndexerTransferInfoDto indexerTransferInfoDto,string symbol)
+        IndexerTransferInfoDto indexerTransferInfoDto, string symbol)
     {
         var addressList = symbolList.GetValueOrDefault(symbol,
             new List<string>());
@@ -325,7 +344,8 @@ public class AddressService : IAddressService, ISingletonDependency
                         var flag = value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
                         if (flag)
                         {
-                            value.HolderCount += tokenInfoIndex.HolderCount;
+                            var holderCount = await GetHolderCountAsync(tokenInfoIndex.Symbol);
+                            value.HolderCount = holderCount;
                             value.TransferCount += tokenInfoIndex.TransferCount;
                             value.ItemCount += tokenInfoIndex.ItemCount;
                             value.Supply += tokenInfoIndex.Supply;
@@ -351,49 +371,9 @@ public class AddressService : IAddressService, ISingletonDependency
 
     private async Task SaveHolderList(DateTime beginTime, Dictionary<string, List<string>> symbolMap)
     {
-        if (beginTime == default)
+        foreach (var keyValuePair in symbolMap)
         {
-            await Task.Delay(3000);
-            var queryCount = 0;
-            var limit = 1000;
-            var skip = 0;
-            do
-            {
-                var searchResponse = _elasticClient.Search<TokenInfoIndex>(s => s
-                    .Index("tokeninfoindex")
-                    .Sort(sort => sort
-                        .Field(f => f
-                            .Field(c => c.Symbol)
-                            .Order(SortOrder.Ascending)
-                        )
-                    )
-                    .From(skip)
-                    .Size(limit)
-                );
-                var tokenList = searchResponse.Documents.ToList();
-                foreach (var item in tokenList)
-                {
-                    try
-                    {
-                        await SaveTokenHolderAsync(item.Symbol, new List<string>());
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogError(e,"SaveTokenHolderAsync Symbol:{Symbol}", item.Symbol
-                            );
-                    }
-                }
-
-                queryCount = tokenList.Count;
-                skip += limit;
-            } while (queryCount == limit);
-        }
-        else
-        {
-            foreach (var keyValuePair in symbolMap)
-            {
-                await SaveTokenHolderAsync(keyValuePair.Key, keyValuePair.Value);
-            }
+            await SaveTokenHolderAsync(keyValuePair.Key, keyValuePair.Value);
         }
     }
 
@@ -454,7 +434,7 @@ public class AddressService : IAddressService, ISingletonDependency
                 {
                     if (dic.TryGetValue(tokenInfoIndex.Address, out var value))
                     {
-                        var flag= value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
+                        var flag = value.ChainIds.AddIfNotContains(tokenInfoIndex.ChainId);
                         if (flag)
                         {
                             value.TransferCount += tokenInfoIndex.TransferCount;
@@ -470,8 +450,9 @@ public class AddressService : IAddressService, ISingletonDependency
                 }
 
                 await _accountTokenRepository.AddOrUpdateManyAsync(dic.Values.ToList());
-                _logger.LogInformation("accountTokenInfoIndices Symbol:{Symbol},queryCount:{count},saveCount:{saveCount}", symbol,
-                    tokenInfoList.Count(),dic.Values.Count);
+                _logger.LogInformation(
+                    "accountTokenInfoIndices Symbol:{Symbol},queryCount:{count},saveCount:{saveCount}", symbol,
+                    tokenInfoList.Count(), dic.Values.Count);
                 skip += maxResultCount;
             } while (queryCount == maxResultCount);
         }
@@ -489,47 +470,7 @@ public class AddressService : IAddressService, ISingletonDependency
         {
             beginDate = DateTimeOffset.FromUnixTimeSeconds(dateLong).DateTime;
         }
-        return beginDate;
-    }
-    
-    
-    public async Task SaveCollectionHolderList()
-    {
-            var queryCount = 0;
-            var limit = 1000;
-            var skip = 0;
-            do
-            {
-                var searchResponse = _elasticClient.Search<TokenInfoIndex>(s => s
-                    .Index("tokeninfoindex")
-                    .Query(q => q
-                        .Bool(b => b
-                            .Must(
-                                m =>
-                                {
-                                    return m.Term(t => t
-                                        .Field(f => f.Type).Value(SymbolType.Nft_Collection)
-                                    );
-                                })
-                        )
-                    )
-                    .Sort(sort => sort
-                        .Field(f => f
-                            .Field(c => c.Symbol)
-                            .Order(SortOrder.Ascending)
-                        )
-                    )
-                    .From(skip)
-                    .Size(limit)
-                );
-                var tokenList = searchResponse.Documents.ToList();
-                foreach (var item in tokenList)
-                {
-                    await SaveTokenHolderAsync(item.Symbol, new List<string>());
-                }
 
-                queryCount = tokenList.Count;
-                skip += limit;
-            } while (queryCount == limit);
+        return beginDate;
     }
 }
