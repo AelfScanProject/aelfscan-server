@@ -175,11 +175,11 @@ public class ExploreHub : AbpHub
     {
         try
         {
-            var list = await _cache.GetAsync("topTokens");
-            if (!list.IsNullOrEmpty())
-            {
-                return list;
-            }
+            // var list = await _cache.GetAsync("topTokens");
+            // if (!list.IsNullOrEmpty())
+            // {
+            //     return list;
+            // }
 
             var searchMergeTokenList =
                 await EsIndex.SearchMergeTokenList(0, 6, "desc", null, _globalOptions.CurrentValue.SpecialSymbols);
