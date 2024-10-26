@@ -285,7 +285,11 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     {
         var key = "address_date";
 
-        await ConnectAsync();
+        if (_globalOptions.CurrentValue.InitMergeAddress)
+        {
+            await _cache.RemoveAsync(key);
+        }
+
         try
         {
             while (true)
@@ -302,12 +306,12 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 if (nowDay == updateDate) break;
 
                 var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
-                var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
-                var queryable = await _addressRepository.GetQueryableAsync();
-                var nowAddressIndexList = queryable.Where(c => c.Date == updateDate)
+                var mergeAddressCountQuery = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
+                var addressQueryable = await _addressRepository.GetQueryableAsync();
+                var nowAddressIndexList = addressQueryable.Where(c => c.Date == updateDate)
                     .Take(10000).ToList();
 
-                var beforeMergeAddressCountList = await GetBeforeMergeAddressCount(queryableAsync, updateDate);
+                var beforeMergeAddressCountList = await GetBeforeMergeAddressCount(mergeAddressCountQuery, updateDate);
 
                 if (nowAddressIndexList.IsNullOrEmpty())
                 {
@@ -357,7 +361,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 Date = updateDateLong,
                 ChainId = addressInfo.ChainId,
                 DateStr = updateDate,
-                AddressCount = addressInfo.TotalUniqueAddressees == 0 ? 0 : addressInfo.TotalUniqueAddressees,
+                AddressCount = 0,
                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
             });
         }
