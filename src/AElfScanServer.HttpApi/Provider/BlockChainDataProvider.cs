@@ -184,7 +184,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
         try
         {
-            var usdPrice = _tokenUsdPriceCache.Get(symbol);
+            var usdPrice = await _tokenUsdPriceCache.GetAsync(symbol);
             if (!usdPrice.IsNullOrEmpty())
             {
                 return usdPrice;
@@ -194,7 +194,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
             var currentAveragePrice = await market.CurrentAveragePrice(symbol + "USDT");
             JObject jsonObject = JsonConvert.DeserializeObject<JObject>(currentAveragePrice);
             var price = jsonObject["price"].ToString();
-            _tokenUsdPriceCache.Set(symbol, price, new DistributedCacheEntryOptions()
+            await _tokenUsdPriceCache.SetAsync(symbol, price, new DistributedCacheEntryOptions()
             {
                 AbsoluteExpiration =
                     DateTimeOffset.UtcNow.AddSeconds(_globalOptions.TokenUsdPriceExpireDurationSeconds)
