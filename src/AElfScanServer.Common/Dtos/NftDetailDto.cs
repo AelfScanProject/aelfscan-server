@@ -13,4 +13,6 @@ public class NftDetailDto : NftInfoDto
 
     public decimal? SideChainFloorPriceOfUsd { get; set; }
     public string TokenContractAddress { get; set; }
+
+    public CommonAddressDto ContractAddress { get; set; }
 }

@@ -434,8 +434,8 @@ public class BlockDetailResponseDto
     public string MerkleTreeRootOfWorldState { get; set; }
     public string MerkleTreeRootOfTransactionState { get; set; }
     public string Extra { get; set; }
-    public Producer Producer { get; set; }
-    public BurntFee BurntFee { get; set; }
+    public Producer Producer { get; set; }=new();
+    public BurntFee BurntFee { get; set; } = new();
     public long Total { get; set; }
     public List<TransactionResponseDto> Transactions { get; set; }
 }

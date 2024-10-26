@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElfScanServer.Common;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Core;
@@ -189,8 +190,22 @@ public class TokenService : ITokenService, ISingletonDependency
             var tokenInfo = list[0];
 
             var tokenDetailDto = _objectMapper.Map<TokenCommonDto, TokenDetailDto>(tokenInfo);
+            tokenDetailDto.ContractAddress = new CommonAddressDto()
+            {
+                Address = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress,
+                AddressType = AddressType.ContractAddress
+            };
             tokenDetailDto.TokenContractAddress =
                 _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
+
+            if (_globalOptions.CurrentValue.ContractNames.TryGetValue(chainId, out var contractNames))
+            {
+                if (contractNames.TryGetValue(tokenDetailDto.TokenContractAddress, out var contractName))
+                {
+                    tokenDetailDto.ContractAddress.Name = contractName;
+                }
+            }
+
             if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
             {
                 //set others
@@ -364,9 +379,11 @@ public class TokenService : ITokenService, ISingletonDependency
         {
             var tokenHolderInfoDto = new TokenHolderInfoDto();
             tokenHolderInfoDto.Quantity = indexerTokenHolderInfoDto.FormatAmount;
-            tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, indexerTokenHolderInfoDto.ChainId,
-                    contractInfoDict);
+
+
+            tokenHolderInfoDto.Address = CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                indexerTokenHolderInfoDto.ChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
+
             if (tokenSupply != 0)
             {
                 tokenHolderInfoDto.Percentage =
@@ -433,7 +450,9 @@ public class TokenService : ITokenService, ISingletonDependency
             var tokenHolderInfoDto =
                 _objectMapper.Map<IndexerTokenHolderInfoDto, TokenHolderInfoDto>(indexerTokenHolderInfoDto);
             tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, contractInfoDict);
+                CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                    indexerTokenHolderInfoDto.Metadata.ChainId, contractInfoDict,
+                    _globalOptions.CurrentValue.ContractNames);
             if (tokenSupply != 0)
             {
                 tokenHolderInfoDto.Percentage =

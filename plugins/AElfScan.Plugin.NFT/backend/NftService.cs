@@ -1,5 +1,6 @@
 using System.Globalization;
 using AElfScanServer.Common;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
@@ -147,7 +148,6 @@ public class NftService : INftService, ISingletonDependency
         {
             var nftInfoDto = _objectMapper.Map<TokenInfoIndex, NftInfoDto>(item);
 
-            _logger.LogInformation("======={c}", item.ChainIds);
             nftInfoDto.ChainIds = item.ChainIds;
             nftInfoDto.Items = item.ItemCount.ToString(CultureInfo.InvariantCulture);
 
@@ -173,7 +173,7 @@ public class NftService : INftService, ISingletonDependency
             var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
             var nftCollectionInfoInput = new GetNftCollectionInfoInput
             {
-                ChainId = chainId,
+                ChainId = _globalOptions.CurrentValue.SideChainId,
                 CollectionSymbolList = new List<string> { collectionSymbol }
             };
             var nftCollectionInfoTask = _nftInfoProvider.GetNftCollectionInfoAsync(nftCollectionInfoInput);
@@ -188,6 +188,21 @@ public class NftService : INftService, ISingletonDependency
             nftDetailDto.Items = collectionInfo.ItemCount.ToString(CultureInfo.InvariantCulture);
 
             nftDetailDto.TokenContractAddress = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress;
+            nftDetailDto.ContractAddress = new CommonAddressDto()
+            {
+                Address = _chainOptions.CurrentValue.GetChainInfo(chainId)?.TokenContractAddress,
+                Name = collectionInfo.Symbol,
+                AddressType = AddressType.ContractAddress
+            };
+
+            if (_globalOptions.CurrentValue.ContractNames.TryGetValue(chainId, out var contractNames))
+            {
+                if (contractNames.TryGetValue(nftDetailDto.TokenContractAddress, out var contractName))
+                {
+                    nftDetailDto.ContractAddress.Name = contractName;
+                }
+            }
+
             //collectionInfo.Symbol is xxx-0
             nftDetailDto.NftCollection.ImageUrl = TokenInfoHelper.GetImageUrl(collectionInfo.ExternalInfo,
                 () => _tokenInfoProvider.BuildImageUrl(collectionInfo.Symbol));
@@ -254,7 +269,8 @@ public class NftService : INftService, ISingletonDependency
         nftDetailDto.SideChainItems = sideNftDetailDto.Items;
 
         nftDetailDto.MergeItems =
-            (decimal.Parse(nftDetailDto.MainChainItems) + decimal.Parse(nftDetailDto.SideChainItems)).ToString();
+            (decimal.Parse(nftDetailDto.MainChainItems.IsNullOrEmpty() ? "0" : nftDetailDto.MainChainItems) +
+             decimal.Parse(nftDetailDto.SideChainItems.IsNullOrEmpty() ? "0" : nftDetailDto.SideChainItems)).ToString();
         nftDetailDto.MainChainHolders = mainNftDetailDto.Holders;
         nftDetailDto.SideChainHolders = sideNftDetailDto.Holders;
 
@@ -377,9 +393,11 @@ public class NftService : INftService, ISingletonDependency
         {
             var tokenHolderInfoDto = new TokenHolderInfoDto();
             tokenHolderInfoDto.Quantity = indexerTokenHolderInfoDto.FormatAmount;
-            tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, indexerTokenHolderInfoDto.ChainId,
-                    contractInfoDict);
+
+            tokenHolderInfoDto.Address = CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                indexerTokenHolderInfoDto.ChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
+
+
             if (tokenSupply != 0)
             {
                 tokenHolderInfoDto.Percentage =
@@ -536,7 +554,7 @@ public class NftService : INftService, ISingletonDependency
             ImageUrl = TokenInfoHelper.GetImageUrl(collectionInfo.ExternalInfo,
                 () => _tokenInfoProvider.BuildImageUrl(collectionInfo.Symbol))
         };
-        
+
         nftItemDetailDto.Holders = tokenHolders;
         foreach (var indexerTokenInfoDto in nftItems)
         {
@@ -662,8 +680,8 @@ public class NftService : INftService, ISingletonDependency
 
             foreach (var chainId in tokenInfo.ChainIds)
             {
-                nftItemHolderInfoDto.Address =
-                    BaseConverter.OfCommonAddress(tokenInfo.Address, chainId, contractInfoDict);
+                nftItemHolderInfoDto.Address = CommonAddressHelper.GetCommonAddress(tokenInfo.Address,
+                    chainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
             }
 
             if (supply > 0)
@@ -697,6 +715,10 @@ public class NftService : INftService, ISingletonDependency
         {
             var activityDto = _objectMapper.Map<NftActivityItem, NftItemActivityDto>(item);
             activityDto.From = BaseConverter.OfCommonAddress(item.From, contractInfoDict);
+
+            activityDto.From = CommonAddressHelper.GetCommonAddress(item.From,
+                item.PriceTokenInfo.ChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
+
             activityDto.To = BaseConverter.OfCommonAddress(item.To, contractInfoDict);
             activityDto.Status = TransactionStatus.Mined;
             var priceSymbol = activityDto.PriceSymbol;
@@ -884,7 +906,9 @@ public class NftService : INftService, ISingletonDependency
                 _objectMapper.Map<IndexerTokenHolderInfoDto, TokenHolderInfoDto>(indexerTokenHolderInfoDto);
 
             tokenHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(indexerTokenHolderInfoDto.Address, contractInfoDict);
+                CommonAddressHelper.GetCommonAddress(indexerTokenHolderInfoDto.Address,
+                    indexerTokenHolderInfoDto.Metadata.ChainId, contractInfoDict,
+                    _globalOptions.CurrentValue.ContractNames);
 
             if (tokenSupply != 0)
             {

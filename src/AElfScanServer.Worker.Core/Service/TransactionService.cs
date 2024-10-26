@@ -119,6 +119,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     private readonly IEntityMappingRepository<DailyBlockRewardIndex, string> _blockRewardRepository;
     private readonly IEntityMappingRepository<DailyTotalBurntIndex, string> _totalBurntRepository;
     private readonly IEntityMappingRepository<DailyDeployContractIndex, string> _deployContractRepository;
+    private readonly IEntityMappingRepository<HourNodeBlockProduceIndex, string> _hourNodeBlockProduceRepository;
 
 
     private readonly IEntityMappingRepository<DailyTransactionCountIndex, string> _transactionCountRepository;
@@ -217,7 +218,8 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         IEntityMappingRepository<MergeAddressIndex, string> mergeAddressRepository,
         IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> dailyMergeUniqueAddressCountRepository,
         IDistributedCache<string> cache,
-        IPriceServerProvider priceServerProvider) :
+        IPriceServerProvider priceServerProvider,
+        IEntityMappingRepository<HourNodeBlockProduceIndex, string> hourNodeBlockProduceRepository) :
         base(optionsAccessor)
     {
         _aelfIndexerProvider = aelfIndexerProvider;
@@ -275,6 +277,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         _mergeAddressRepository = mergeAddressRepository;
         _dailyMergeUniqueAddressCountRepository = dailyMergeUniqueAddressCountRepository;
         _cache = cache;
+        _hourNodeBlockProduceRepository = hourNodeBlockProduceRepository;
     }
 
 
@@ -282,7 +285,11 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     {
         var key = "address_date";
 
-        await ConnectAsync();
+        if (_globalOptions.CurrentValue.InitMergeAddress)
+        {
+            await _cache.RemoveAsync(key);
+        }
+
         try
         {
             while (true)
@@ -299,12 +306,12 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 if (nowDay == updateDate) break;
 
                 var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
-                var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
-                var queryable = await _addressRepository.GetQueryableAsync();
-                var nowAddressIndexList = queryable.Where(c => c.Date == updateDate)
+                var mergeAddressCountQuery = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
+                var addressQueryable = await _addressRepository.GetQueryableAsync();
+                var nowAddressIndexList = addressQueryable.Where(c => c.Date == updateDate)
                     .Take(10000).ToList();
 
-                var beforeMergeAddressCountList = await GetBeforeMergeAddressCount(queryableAsync, updateDate);
+                var beforeMergeAddressCountList = await GetBeforeMergeAddressCount(mergeAddressCountQuery, updateDate);
 
                 if (nowAddressIndexList.IsNullOrEmpty())
                 {
@@ -354,7 +361,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 Date = updateDateLong,
                 ChainId = addressInfo.ChainId,
                 DateStr = updateDate,
-                AddressCount = addressInfo.TotalUniqueAddressees == 0 ? 0 : addressInfo.TotalUniqueAddressees,
+                AddressCount = 0,
                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
             });
         }
@@ -449,171 +456,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         await _cache.SetAsync(key, DateTimeHelper.GetAfterDayDate(updateDate), new DistributedCacheEntryOptions
             { SlidingExpiration = null, AbsoluteExpiration = DateTimeOffset.MaxValue });
     }
-
-
-    // public async Task MergeAddress()
-    // {
-    //     var key = "address_date";
-    //
-    //     await ConnectAsync();
-    //     try
-    //     {
-    //         while (true)
-    //         {
-    //             await Task.Delay(3 * 1000);
-    //             var mergeUniqueAddressInsertList = new List<DailyMergeUniqueAddressCountIndex>();
-    //             var updateDate = RedisDatabase.StringGet(key);
-    //
-    //             if (updateDate.IsNullOrEmpty)
-    //             {
-    //                 updateDate = _globalOptions.CurrentValue.AddressStartDate;
-    //             }
-    //
-    //             var nowDay = DateTime.Now.ToString("yyyy-MM-dd");
-    //             if (nowDay == updateDate)
-    //             {
-    //                 break;
-    //             }
-    //
-    //             var updateDateLong = DateTimeHelper.ParseDateToLong(updateDate);
-    //             var queryableAsync = await _dailyMergeUniqueAddressCountRepository.GetQueryableAsync();
-    //             var beforeMergeAddressCountList =
-    //                 queryableAsync.Where(c => c.DateStr == DateTimeHelper.GetBeforeDayDate(updateDate)).Take(2)
-    //                     .ToList();
-    //
-    //             var queryable = await _addressRepository.GetQueryableAsync();
-    //             var nowAddressIndexList = queryable.Where(c => c.Date == updateDate.ToString()).Take(10000).ToList();
-    //             if (nowAddressIndexList.IsNullOrEmpty())
-    //             {
-    //                 if (beforeMergeAddressCountList.IsNullOrEmpty())
-    //                 {
-    //                     beforeMergeAddressCountList =
-    //                         queryableAsync.Where(c => c.DateStr == updateDate).Take(2).ToList();
-    //                     foreach (var addressInfo in beforeMergeAddressCountList)
-    //                     {
-    //                         mergeUniqueAddressInsertList.Add(
-    //                             new DailyMergeUniqueAddressCountIndex()
-    //                             {
-    //                                 Date = updateDateLong,
-    //                                 ChainId = addressInfo.ChainId,
-    //                                 DateStr = updateDate,
-    //                                 AddressCount = addressInfo.TotalUniqueAddressees,
-    //                                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
-    //                             });
-    //                     }
-    //                 }
-    //                 else
-    //                 {
-    //                     foreach (var addressInfo in beforeMergeAddressCountList)
-    //                     {
-    //                         mergeUniqueAddressInsertList.Add(
-    //                             new DailyMergeUniqueAddressCountIndex()
-    //                             {
-    //                                 Date = updateDateLong,
-    //                                 ChainId = addressInfo.ChainId,
-    //                                 DateStr = updateDate,
-    //                                 AddressCount = 0,
-    //                                 TotalUniqueAddressees = addressInfo.TotalUniqueAddressees
-    //                             });
-    //                     }
-    //                 }
-    //
-    //
-    //                 if (!mergeUniqueAddressInsertList.IsNullOrEmpty())
-    //                 {
-    //                     await _dailyMergeUniqueAddressCountRepository
-    //                         .AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
-    //                 }
-    //
-    //                 _logger.LogInformation($"MergeAddress date{updateDate} no new address");
-    //                 var afterDayDate = DateTimeHelper.GetAfterDayDate(updateDate);
-    //                 RedisDatabase.StringSet(key, afterDayDate);
-    //                 continue;
-    //             }
-    //
-    //
-    //             var nowAddressList = nowAddressIndexList.Select(c => c.Address).Distinct().ToList();
-    //             var mergeAddressIndexList = await GetMergeAddressIndexList(nowAddressList, updateDateLong);
-    //
-    //             var dictionary = new Dictionary<string, MergeAddressIndex>();
-    //             var mergeAddressIndexDic =
-    //                 mergeAddressIndexList.Select(c => c.Address).Distinct().ToDictionary(c => c, c => c);
-    //
-    //             var filterAddressList = new List<AddressIndex>();
-    //             foreach (var index in nowAddressIndexList)
-    //             {
-    //                 if (!mergeAddressIndexDic.ContainsKey(index.Address))
-    //                 {
-    //                     filterAddressList.Add(index);
-    //                 }
-    //             }
-    //
-    //
-    //             var mainChainUniqueAddressCount = 0;
-    //             var sideChainUniqueAddressCount = 0;
-    //             if (!filterAddressList.IsNullOrEmpty())
-    //             {
-    //                 // all address is new 
-    //                 foreach (var index in filterAddressList)
-    //                 {
-    //                     if (index.ChainId == "AELF")
-    //                     {
-    //                         mainChainUniqueAddressCount++;
-    //                     }
-    //                     else
-    //                     {
-    //                         sideChainUniqueAddressCount++;
-    //                     }
-    //
-    //                     dictionary[index.Address + index.ChainId] = new MergeAddressIndex()
-    //                     {
-    //                         Address = index.Address,
-    //                         Date = updateDateLong,
-    //                         ChainId = index.ChainId
-    //                     };
-    //
-    //                     if (index.ChainId == _globalOptions.CurrentValue.SideChainId)
-    //                     {
-    //                         if (!dictionary.ContainsKey(index.Address + "AELF"))
-    //                         {
-    //                             mainChainUniqueAddressCount++;
-    //                         }
-    //
-    //                         dictionary[index.Address + "AELF"] = new MergeAddressIndex()
-    //                         {
-    //                             Address = index.Address,
-    //                             Date = updateDateLong,
-    //                             ChainId = "AELF"
-    //                         };
-    //                     }
-    //                 }
-    //             }
-    //
-    //
-    //             mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(mainChainUniqueAddressCount, "AELF",
-    //                 updateDateLong, updateDate,
-    //                 beforeMergeAddressCountList));
-    //             mergeUniqueAddressInsertList.Add(await GetMergeAddressIndex(sideChainUniqueAddressCount,
-    //                 _globalOptions.CurrentValue.SideChainId,
-    //                 updateDateLong, updateDate,
-    //                 beforeMergeAddressCountList));
-    //
-    //             await _dailyMergeUniqueAddressCountRepository.AddOrUpdateManyAsync(mergeUniqueAddressInsertList);
-    //             var newAddressInsertList = dictionary.Values.ToList();
-    //             if (!newAddressInsertList.IsNullOrEmpty())
-    //             {
-    //                 await _mergeAddressRepository.AddOrUpdateManyAsync(newAddressInsertList);
-    //             }
-    //
-    //             RedisDatabase.StringSet(key, DateTimeHelper.GetAfterDayDate(updateDate));
-    //             _logger.LogInformation($"MergeAddress date{updateDate}  new address:{newAddressInsertList.Count}");
-    //         }
-    //     }
-    //     catch (Exception e)
-    //     {
-    //         _logger.LogError($"MergeAddress err:{e}");
-    //     }
-    // }
 
 
     public async Task<DailyMergeUniqueAddressCountIndex> GetMergeAddressIndex(int count, string chainId, long date,
@@ -878,6 +720,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
     public async Task BatchPullBlockSize(string chainId)
     {
+        _logger.LogInformation($"BatchPullBlockSize start");
         var dic = new Dictionary<string, DailyAvgBlockSizeIndex>();
         await ConnectAsync();
         var redisValue = RedisDatabase.StringGet(RedisKeyHelper.BlockSizeLastBlockHeight(chainId));
@@ -885,6 +728,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         int failCount = 0;
         while (true)
         {
+            _logger.LogInformation($"BatchPullBlockSize {lastBlockHeight}");
             var tasks = new List<Task>();
             var blockSizeIndices = new List<BlockSizeDto>();
             var _lock = new object();
@@ -1237,7 +1081,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 _logger.LogInformation($"BatchPullTransactionTask: lastBlockHeight:{lastBlockHeight}");
                 var batchTransactionList =
                     await GetBatchTransactionList(chainId, lastBlockHeight, lastBlockHeight + PullTransactioninterval);
-        
+
 
                 if (batchTransactionList.IsNullOrEmpty())
                 {
@@ -2156,6 +2000,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 await _blockProduceRepository.AddOrUpdateAsync(blockProduceIndex);
                 await _blockProduceDurationRepository.AddOrUpdateAsync(dailyBlockProduceDurationIndex);
                 await _cycleCountRepository.AddOrUpdateAsync(dailyCycleCountIndex);
+                await UpdateHourNodeBlockProduce(chainId, startTime, endTime);
                 _logger.LogInformation("Insert daily network statistic count index chainId:{chainId},date:{dateStr}",
                     chainId,
                     DateTimeHelper.GetDateTimeString(startTime));
@@ -2165,6 +2010,72 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 _logger.LogError(e, "UpdateDailyNetwork err，UpdateDailyNetwork {chainId}", chainId);
             }
         }
+    }
+
+
+    public async Task UpdateHourNodeBlockProduce(string chainId, long start, long end)
+    {
+        var rangeDayList = DateTimeHelper.GetRangeDayList(start, end);
+
+
+        var hourNodeBlockProduceIndices = new List<HourNodeBlockProduceIndex>();
+
+        foreach (var dayTotalSeconds in rangeDayList)
+        {
+            var dayHourList = DateTimeHelper.GetDayHourList(dayTotalSeconds);
+
+            var queryable = await _nodeBlockProduceRepository.GetQueryableAsync();
+            queryable = queryable.Where(c => c.ChainId == chainId);
+
+
+            var batch = new List<HourNodeBlockProduceIndex>();
+
+            for (var i = 0; i < dayHourList.Count - 1; i++)
+            {
+                start = dayHourList[i];
+                end = dayHourList[i + 1];
+                var indexList = queryable.Where(c => c.StartTime >= start)
+                    .Where(c => c.EndTime < end).ToList();
+
+                if (indexList.IsNullOrEmpty())
+                {
+                    continue;
+                }
+
+                var dic = new Dictionary<string, HourNodeBlockProduceIndex>();
+
+                foreach (var index in indexList)
+                {
+                    if (dic.TryGetValue(index.NodeAddress, out var value))
+                    {
+                        value.MissedBlocks = index.MissedBlocks;
+                        value.Blocks = index.Blcoks;
+                        value.TotalCycle++;
+                    }
+                    else
+                    {
+                        dic[index.NodeAddress] = new HourNodeBlockProduceIndex()
+                        {
+                            Date = dayHourList[i],
+                            DateStr = DateTimeHelper.GetDateTimeString(dayHourList[i]),
+                            ChainId = chainId,
+                            Hour = i,
+                            TotalCycle = 1,
+                            NodeAddress = index.NodeAddress
+                        };
+                    }
+                }
+
+                batch.AddRange(dic.Values.Select(c => c).ToList());
+            }
+
+            hourNodeBlockProduceIndices.AddRange(batch);
+        }
+
+        await _hourNodeBlockProduceRepository.AddOrUpdateManyAsync(hourNodeBlockProduceIndices);
+        _logger.LogInformation(
+            "Insert hour node block produce index chainId:{chainId},start date:{dateStr},end date{endStr}", chainId,
+            DateTimeHelper.GetDateTimeString(start), DateTimeHelper.GetDateTimeString(end));
     }
 
     public async Task BatchUpdateNodeNetworkTask()

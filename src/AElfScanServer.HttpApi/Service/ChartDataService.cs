@@ -1222,7 +1222,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             if (dic.TryGetValue(dailyDeployContract.Date, out var sideData))
             {
                 dailyDeployContract.SideChainTotalCount = sideData.TotalCount;
-                dailyDeployContract.Count += sideData.Count;
+                dailyDeployContract.Count =
+                    (int.Parse(dailyDeployContract.Count) + int.Parse(sideData.Count)).ToString();
                 dailyDeployContract.MergeTotalCount =
                     (int.Parse(dailyDeployContract.MergeTotalCount) + int.Parse(sideData.TotalCount)).ToString();
             }
@@ -1541,7 +1542,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         var nodeBlockProduces = new Dictionary<string, NodeBlockProduce>();
 
-        var nodeBlockProduceIndices = hourProduceQue.ToList();
         var hourNodeBlockProduceIndices = hourProduceQue.Where(c => c.ChainId == request.ChainId).Take(10000).ToList();
         foreach (var hourNodeBlockProduceIndex in hourNodeBlockProduceIndices)
         {
@@ -1840,7 +1840,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     public async Task<UniqueAddressCountResp> GetUniqueAddressCountAsync(ChartDataRequest request)
     {
         return await GetMergeUniqueAddressCountAsync();
-        
     }
 
     public async Task<UniqueAddressCountResp> GetSwitchUniqueAddressCountAsync(ChartDataRequest request)

@@ -7,6 +7,7 @@ using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.Contracts.MultiToken;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
@@ -191,7 +192,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
     public async Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol)
     {
-        var graphQlHelper = GetGraphQlHelper();
+            var graphQlHelper = GetGraphQlHelper();
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
         {
             Query =
@@ -222,7 +223,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             }",
             Variables = new
             {
-                chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
+                chainId=chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
             }
         });
         return indexerResult.TokenInfo?.Items;
@@ -560,12 +561,15 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                     await GetTokenImageAsync(tokenInfo.Symbol, tokenInfo.IssueChainId, tokenInfo.ExternalInfo);
             }
 
+         
             tokenTransferDto.TransactionFeeList =
                 await _tokenInfoProvider.ConvertTransactionFeeAsync(priceDict, indexerTransferInfoDto.ExtraProperties);
-            tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From,
-                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
-            tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To,
-                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
+
+            tokenTransferDto.From = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.From,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
+            tokenTransferDto.To = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.To,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
+          
             tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }

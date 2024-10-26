@@ -35,6 +35,8 @@ public class GlobalOptions
 
     public int MarketCapShowOffset { get; set; }
 
+    public bool InitMergeAddress { get; set; }
+
     public int BpStakedShowOffset { get; set; }
 
     public string OrganizationAddress { get; set; }
