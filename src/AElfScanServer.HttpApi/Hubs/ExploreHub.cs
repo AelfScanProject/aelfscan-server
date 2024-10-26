@@ -175,7 +175,8 @@ public class ExploreHub : AbpHub
     {
         try
         {
-            var list = await _cache.GetAsync("TopTokens");
+            var key = "TopTokens";
+            var list = await _cache.GetAsync(key);
             if (!list.IsNullOrEmpty())
             {
                 return list;
@@ -200,7 +201,7 @@ public class ExploreHub : AbpHub
                 });
             }
 
-            await _cache.SetAsync("topTokens", topTokenDtos, new DistributedCacheEntryOptions()
+            await _cache.SetAsync(key, topTokenDtos, new DistributedCacheEntryOptions()
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
             });
