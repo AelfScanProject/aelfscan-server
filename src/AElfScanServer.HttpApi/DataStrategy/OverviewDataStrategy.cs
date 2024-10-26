@@ -201,50 +201,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
         return marketCap;
     }
-
-
-    public async Task<long> GetTotalAccount(string chainId)
-    {
-        if (_globalOptions.CurrentValue.SwitchMergeAddress)
-        {
-            return await GetMergeTotalAccount(chainId);
-        }
-
-        var totalCount = 0;
-        try
-        {
-            var key = "TotalAccount" + chainId;
-            var count = await _cache.GetAsync(key);
-            count = "";
-
-            var queryableAsync = await _addressRepository.GetQueryableAsync();
-            if (!chainId.IsNullOrEmpty())
-            {
-                queryableAsync = queryableAsync.Where(c => c.ChainId == chainId);
-            }
-
-            if (count.IsNullOrEmpty())
-            {
-                totalCount = queryableAsync.Count();
-                await _cache.SetAsync(key, totalCount.ToString(), new DistributedCacheEntryOptions()
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1)
-                });
-                DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
-                    chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
-                return totalCount;
-            }
-
-
-            return long.Parse(count);
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "get total account err");
-        }
-
-        return totalCount;
-    }
+    
 
     public async Task<long> GetMergeTotalAccount(string chainId)
     {
