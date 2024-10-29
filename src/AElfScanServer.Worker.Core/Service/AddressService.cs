@@ -181,7 +181,8 @@ public class AddressService : IAddressService, ISingletonDependency
             .Query(q => q
                 .Bool(b => b
                     .Must(
-                        m => m.Term("token.symbol", symbol)
+                        m => m.Term("token.symbol", symbol),
+                        m => m.Range(r => r.Field(f => f.FormatAmount).GreaterThan(0))
                     )
                 )
             )
@@ -358,7 +359,7 @@ public class AddressService : IAddressService, ISingletonDependency
                 }
 
                 await _tokenInfoRepository.AddOrUpdateManyAsync(dic.Values.ToList());
-                _logger.LogInformation("tokenInfoIndices count:{count}", tokenInfoList.Count());
+                _logger.LogInformation("tokenInfoIndices queryCount:{count},saveCount:{saveCount}", tokenInfoList.Count(),dic.Values.Count);
                 skip += maxResultCount;
             }
         }
@@ -392,7 +393,8 @@ public class AddressService : IAddressService, ISingletonDependency
                 SkipCount = skip,
                 MaxResultCount = maxResultCount,
                 Sort = "Asc",
-                OrderBy = "Address"
+                OrderBy = "Address",
+                AmountGreaterThanZero = false
             };
 
             do

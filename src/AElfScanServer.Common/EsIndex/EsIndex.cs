@@ -218,6 +218,11 @@ public class EsIndex
                 Terms = input.Types.Cast<object>()
             });
         }
+        filterQueries.Add(new NumericRangeQuery
+        {
+            Field = "formatAmount",
+            GreaterThan = 0
+        });
 
         var searchRequest = new SearchRequest("accounttokenindex")
         {
@@ -262,7 +267,8 @@ public class EsIndex
                             .Term(t => t.Field(f => f.Token.Symbol).Value(symbol)),
                         must => !string.IsNullOrEmpty(chainId)
                             ? must.Terms(t => t.Field(f => f.ChainIds).Terms(chainId))
-                            : null
+                            : null,
+                        must => must.Range(r => r.Field(f => f.FormatAmount).GreaterThan(0))
                     )
                 )
             )
