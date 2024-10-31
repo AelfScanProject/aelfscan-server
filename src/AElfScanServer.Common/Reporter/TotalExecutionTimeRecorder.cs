@@ -27,7 +27,10 @@ public class TotalExecutionTimeRecorder: ISingletonDependency, IInterceptor
         await invocation();
         stopwatch.Stop();
         histogram.Record(stopwatch.ElapsedMilliseconds);
-        _totalHistogram.Record(stopwatch.ElapsedMilliseconds);
+        if (methodName.Contains("OnActionExecutionAsync"))
+        {
+            _totalHistogram.Record(stopwatch.ElapsedMilliseconds);
+        }
     }
 
     private Histogram<long> GetHistogram(string className, string methodName)
