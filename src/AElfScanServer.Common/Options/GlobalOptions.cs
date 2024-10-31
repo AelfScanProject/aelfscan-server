@@ -14,7 +14,12 @@ public class GlobalOptions
     public bool SwitchMergeAddress { get; set; }
     public string AddressStartDate { get; set; }
 
+    public string S3ServiceURL { get; set; }
 
+    public string S3ContractFileBucket { get; set; }
+    public string S3ContractFileDirectory { get; set; }
+    public string S3AccessKey { get; set; }
+    public string S3SecretKey { get; set; }
     public long BlockchainStartTimestamp { get; set; }
     public List<string> SpecialSymbols { get; set; } = new();
 

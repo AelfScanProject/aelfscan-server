@@ -9,6 +9,7 @@ using AElfScanServer.Common;
 using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Provider;
 using AElfScanServer.Common.Token;
 using AElfScanServer.Domain.Shared;
 using AElfScanServer.Domain.Shared.Localization;
@@ -100,6 +101,8 @@ public class HttpApiModule : AbpModule
         context.Services.AddTransient<IAddressTypeService, AddressTypeService>();
         context.Services.AddSingleton<IDynamicTransactionService, DynamicTransactionService>();
         context.Services.AddSingleton<IOpenApiService, OpenApiService>();
+        context.Services.AddSingleton<IContractVerifyService, ContractVerifyService>();
+        context.Services.AddSingleton<IAwsS3Provider, AwsS3Provider>();
 
         var configuration = context.Services.GetConfiguration();
         Configure<BlockChainOption>(configuration.GetSection("BlockChainServer"));
