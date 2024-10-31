@@ -621,8 +621,10 @@ public class NftService : INftService, ISingletonDependency
             {
                 Quantity = nftCollectionHolderInfoIndex.FormatAmount
             };
-            nftItemHolderInfoDto.Address =
-                BaseConverter.OfCommonAddress(nftCollectionHolderInfoIndex.Address, contractInfoDict);
+
+            nftItemHolderInfoDto.Address = CommonAddressHelper.GetCommonAddress(nftCollectionHolderInfoIndex.Address,
+                nftCollectionHolderInfoIndex.Metadata.ChainId, contractInfoDict,
+                _globalOptions.CurrentValue.ContractNames);
             if (supply > 0)
             {
                 nftItemHolderInfoDto.Percentage =
@@ -714,12 +716,12 @@ public class NftService : INftService, ISingletonDependency
         foreach (var item in items)
         {
             var activityDto = _objectMapper.Map<NftActivityItem, NftItemActivityDto>(item);
-            activityDto.From = BaseConverter.OfCommonAddress(item.From, contractInfoDict);
 
             activityDto.From = CommonAddressHelper.GetCommonAddress(item.From,
-                item.PriceTokenInfo.ChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
+                _globalOptions.CurrentValue.SideChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
 
-            activityDto.To = BaseConverter.OfCommonAddress(item.To, contractInfoDict);
+            activityDto.To = CommonAddressHelper.GetCommonAddress(item.To,
+                _globalOptions.CurrentValue.SideChainId, contractInfoDict, _globalOptions.CurrentValue.ContractNames);
             activityDto.Status = TransactionStatus.Mined;
             var priceSymbol = activityDto.PriceSymbol;
             if (!priceSymbol.IsNullOrEmpty())
