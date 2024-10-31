@@ -28,7 +28,8 @@ public interface IContractVerifyService
     // Task DeleteAppAttachmentAsync(string appId, string version, string fileKey);
 
 
-    Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId, string contractAddress);
+    Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId, string contractAddress,
+        string csprojPath);
     // Task DeleteAllAppAttachmentsAsync(string appId, string version);
     // Task<string> GetAppAttachmentContentAsync(string appId, string version, string fileKey);
     // Task UploadAppAttachmentListAsync(List<IFormFile> attachmentList, string appId, string version);
@@ -52,7 +53,7 @@ public class ContractVerifyService : IContractVerifyService
     }
 
     public async Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId,
-        string contractAddress)
+        string contractAddress, string csprojPath)
     {
         if (file == null || file.Length == 0)
             return UploadContractFileResponseDto.Fail("The file cannot be empty");
@@ -72,14 +73,23 @@ public class ContractVerifyService : IContractVerifyService
             _globalOptions.CurrentValue.S3ContractFileDirectory,
             GrainIdHelper.GenerateContractFileKey(chainId, contractAddress));
 
+
+        var pathParts = csprojPath.Split('/');
+        if (pathParts.Length > 1)
+        {
+            pathParts = pathParts.Take(pathParts.Length - 1).ToArray();
+        }
+
+
         if (await ValidContractFile(chainId, contractAddress))
         {
-            await SaveContractFileToGrain(file, chainId, contractAddress);
+            await SaveContractFileToGrain(file, chainId, contractAddress, csprojPath);
         }
 
 
         return UploadContractFileResponseDto.Success("Upload success");
     }
+
 
     public async Task<bool> ValidContractFile(string chainId, string contractAddress)
     {
@@ -90,7 +100,7 @@ public class ContractVerifyService : IContractVerifyService
         return true;
     }
 
-    public async Task SaveContractFileToGrain(IFormFile file, string chainId, string address)
+    public async Task SaveContractFileToGrain(IFormFile file, string chainId, string address, string csprojPath)
     {
         var contractFileResult = new ContractFileResultDto
         {
@@ -98,6 +108,8 @@ public class ContractVerifyService : IContractVerifyService
             ChainId = chainId,
             Address = address
         };
+
+        var directoryName = Path.GetDirectoryName(csprojPath);
 
         using (var stream = new MemoryStream())
         {
@@ -107,6 +119,11 @@ public class ContractVerifyService : IContractVerifyService
             {
                 foreach (var entry in zipArchive.Entries)
                 {
+                    if (!entry.FullName.Contains(directoryName))
+                    {
+                        continue;
+                    }
+
                     if (entry.Length == 0)
                     {
                         AddDirectory(contractFileResult.ContractSourceCode, entry.FullName);
@@ -143,16 +160,26 @@ public class ContractVerifyService : IContractVerifyService
     private void AddFileToDirectory(List<DecompilerContractDto> directories, string fullPath, string base64Content)
     {
         var pathParts = fullPath.Split('/');
-        if (pathParts.Length > 1)
+
+        var fileName = "";
+        var list = new List<string>();
+        for (var i = 0; i < pathParts.Length; i++)
         {
-            pathParts = pathParts.Take(pathParts.Length - 1).ToArray();
+            var pathPart = pathParts[i];
+            if (i == 0 || pathPart.IsNullOrEmpty())
+            {
+                continue;
+            }
+
+            if (i != pathParts.Length - 1)
+            {
+                list.Add(pathPart);
+            }
+
+            fileName = pathPart;
         }
 
-        if (pathParts.Length > 1)
-        {
-            pathParts = pathParts.Skip(1).ToArray();
-        }
-
+        pathParts = list.ToArray();
         var currentDirectory = directories;
         for (var i = 0; i < pathParts.Length; i++)
         {
@@ -162,6 +189,7 @@ public class ContractVerifyService : IContractVerifyService
             {
                 continue;
             }
+
 
             var directory = currentDirectory.Find(d => d.Name == part);
             if (directory == null)
@@ -179,6 +207,8 @@ public class ContractVerifyService : IContractVerifyService
             {
                 currentDirectory = directory.Directory;
             }
+
+          
         }
 
 
@@ -186,7 +216,7 @@ public class ContractVerifyService : IContractVerifyService
         {
             var file = new DecompilerContractFileDto
             {
-                Name = pathParts[^1],
+                Name = fileName,
                 Content = base64Content,
             };
             currentDirectory.Last().Files.Add(file);
