@@ -12,10 +12,12 @@ public class TotalExecutionTimeRecorder: ISingletonDependency, IInterceptor
 {
     private readonly Meter _meter;
     private readonly Dictionary<string, Histogram<long>> _histogramMapCache = new Dictionary<string, Histogram<long>>();
+    private readonly Histogram<long> _totalHistogram;
 
     public TotalExecutionTimeRecorder(IInstrumentationProvider instrumentationProvider)
     {
         _meter = instrumentationProvider.Meter;
+        _totalHistogram = _meter.CreateHistogram<long>("aelfScanTotal", "ms", "Histogram for total execution time");
     }
 
     public async Task InterceptAsync(string className, string methodName, Func<Task> invocation)
@@ -25,8 +27,7 @@ public class TotalExecutionTimeRecorder: ISingletonDependency, IInterceptor
         await invocation();
         stopwatch.Stop();
         histogram.Record(stopwatch.ElapsedMilliseconds);
-        Histogram<long> totalHistogram = _meter.CreateHistogram<long>("aelfScanTotal", "ms", "Histogram for method execution time");
-        totalHistogram.Record(stopwatch.ElapsedMilliseconds);
+        _totalHistogram.Record(stopwatch.ElapsedMilliseconds);
     }
 
     private Histogram<long> GetHistogram(string className, string methodName)
