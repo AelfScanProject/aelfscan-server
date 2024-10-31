@@ -26,6 +26,8 @@ public class TokenHolderInput : BaseInput
 
     public string FuzzySearch { get; set; } = "";
 
+    public bool AmountGreaterThanZero { get; set; } = true;
+
     public void SetDefaultSort()
     {
         if (!OrderBy.IsNullOrEmpty() || !OrderInfos.IsNullOrEmpty())
