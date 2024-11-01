@@ -104,7 +104,7 @@ public class ContractVerifyService : IContractVerifyService
     {
         var contractFileResult = new ContractFileResultDto
         {
-            ContractSourceCode = new List<DecompilerContractDto>(),
+            ContractSourceCode = new List<DecompilerContractFileDto>(),
             ChainId = chainId,
             Address = address
         };
@@ -138,11 +138,11 @@ public class ContractVerifyService : IContractVerifyService
         }
 
         var contractInfo = await _clusterClient
-            .GetGrain<IContractFileGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address)).GetAsync();
+            .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address)).GetAsync();
 
         contractInfo.ContractSourceCode = contractFileResult.ContractSourceCode;
         await _clusterClient
-            .GetGrain<IContractFileGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address))
+            .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address))
             .SaveAndUpdateAsync(contractInfo);
     }
 
@@ -157,7 +157,7 @@ public class ContractVerifyService : IContractVerifyService
         }
     }
 
-    private void AddFileToDirectory(List<DecompilerContractDto> directories, string fullPath, string base64Content)
+    private void AddFileToDirectory(List<DecompilerContractFileDto> directories, string fullPath, string base64Content)
     {
         var pathParts = fullPath.Split('/');
 
@@ -194,21 +194,18 @@ public class ContractVerifyService : IContractVerifyService
             var directory = currentDirectory.Find(d => d.Name == part);
             if (directory == null)
             {
-                directory = new DecompilerContractDto
+                directory = new DecompilerContractFileDto
                 {
                     Name = part,
                     Files = new List<DecompilerContractFileDto>(),
-                    Directory = new List<DecompilerContractDto>()
                 };
                 currentDirectory.Add(directory);
             }
 
             if (i != pathParts.Length - 1)
             {
-                currentDirectory = directory.Directory;
+                currentDirectory = directory.Files;
             }
-
-          
         }
 
 
@@ -223,7 +220,7 @@ public class ContractVerifyService : IContractVerifyService
         }
     }
 
-    private void AddDirectory(List<DecompilerContractDto> directories, string fullPath)
+    private void AddDirectory(List<DecompilerContractFileDto> directories, string fullPath)
     {
         var pathParts = fullPath.Split('/');
         var currentDirectory = directories;
@@ -239,16 +236,15 @@ public class ContractVerifyService : IContractVerifyService
             var directory = currentDirectory.Find(d => d.Name == part);
             if (directory == null)
             {
-                directory = new DecompilerContractDto
+                directory = new DecompilerContractFileDto
                 {
                     Name = part,
-                    Files = new List<DecompilerContractFileDto>(), // 目录下没有文件
-                    Directory = new List<DecompilerContractDto>()
+                    Files = new List<DecompilerContractFileDto>(),
                 };
                 currentDirectory.Add(directory);
             }
 
-            currentDirectory = directory.Directory;
+            currentDirectory = directory.Files;
         }
     }
 

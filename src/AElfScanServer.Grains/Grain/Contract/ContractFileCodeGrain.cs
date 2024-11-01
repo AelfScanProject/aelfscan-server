@@ -5,17 +5,17 @@ using Volo.Abp.ObjectMapping;
 
 namespace AElfScanServer.Grains.Grain.Contract;
 [StorageProvider(ProviderName= "Default")]
-public class ContractFileGrain : Grain<ContractFileState>, IContractFileGrain
+public class ContractFileCodeGrain : Grain<ContractFileCodeState>, IContractFileCodeGrain
 {
     private readonly IObjectMapper _objectMapper;
 
-    public ContractFileGrain(IObjectMapper objectMapper)
+    public ContractFileCodeGrain(IObjectMapper objectMapper)
     {
         _objectMapper = objectMapper;
     }
     public async Task SaveAndUpdateAsync(ContractFileResultDto contractFileResultDto)
     {
-        State = _objectMapper.Map<ContractFileResultDto,ContractFileState>(contractFileResultDto);
+        State = _objectMapper.Map<ContractFileResultDto,ContractFileCodeState>(contractFileResultDto);
         await WriteStateAsync();
         var bizId = GrainIdHelper.GenerateSynchronizationKey(contractFileResultDto.ChainId,
             SynchronizationType.ContractFile.ToString());
@@ -37,7 +37,7 @@ public class ContractFileGrain : Grain<ContractFileState>, IContractFileGrain
             return new ContractFileResultDto();
         }
 
-        return _objectMapper.Map<ContractFileState ,ContractFileResultDto>(State);
+        return _objectMapper.Map<ContractFileCodeState ,ContractFileResultDto>(State);
 
     }
     

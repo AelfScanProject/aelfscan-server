@@ -174,7 +174,7 @@ public class ContractAppService : IContractAppService
     {
         _logger.LogInformation("GetContractFileAsync");
         var contractFileResultDto = await _clusterClient
-            .GetGrain<IContractFileGrain>(GrainIdHelper.GenerateContractFileKey(input.ChainId, input.Address))
+            .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(input.ChainId, input.Address))
             .GetAsync();
         contractFileResultDto.ContractName = GetContractName(input.ChainId, input.Address);
         if (!contractFileResultDto.ContractSourceCode.IsNullOrEmpty())
@@ -312,7 +312,7 @@ public class ContractAppService : IContractAppService
                 {
                     var contractFileId = GrainIdHelper.GenerateContractFileKey(chainId, contractRecord.Address);
                     var contractFileResultDto =
-                        await _clusterClient.GetGrain<IContractFileGrain>(contractFileId).GetAsync();
+                        await _clusterClient.GetGrain<IContractFileCodeGrain>(contractFileId).GetAsync();
                     if (contractFileResultDto.LastBlockHeight != 0 &&
                         synchronizationDto.LastBlockHeight >= contractFileResultDto.LastBlockHeight)
                     {
@@ -329,7 +329,7 @@ public class ContractAppService : IContractAppService
                     }
 
                     var getFilesResult = await _decompilerProvider.GetFilesAsync(getContractRegistrationResult[0].Code);
-                    await _clusterClient.GetGrain<IContractFileGrain>(contractFileId).SaveAndUpdateAsync(
+                    await _clusterClient.GetGrain<IContractFileCodeGrain>(contractFileId).SaveAndUpdateAsync(
                         new ContractFileResultDto
                         {
                             ChainId = chainId,
