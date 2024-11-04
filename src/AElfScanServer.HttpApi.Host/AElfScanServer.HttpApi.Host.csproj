@@ -51,10 +51,17 @@
     <ItemGroup>
         <AssetsSourceFiles Include="Plugins/*" />
     </ItemGroup>
-    
 
+    <ItemGroup>
+        <AssetsSourceFiles Include="Files/*" />
+    </ItemGroup>
+    
     <Target Name="CopyCustomContentOnPublish" AfterTargets="Publish">
         <Copy SourceFiles="@(AssetsSourceFiles)" DestinationFolder="$(PublishDir)/Plugins/" />
+    </Target>
+
+    <Target Name="CopyCustomContentOnPublish" AfterTargets="Publish">
+        <Copy SourceFiles="@(AssetsSourceFiles)" DestinationFolder="$(PublishDir)/Files/" />
     </Target>
 
 </Project>

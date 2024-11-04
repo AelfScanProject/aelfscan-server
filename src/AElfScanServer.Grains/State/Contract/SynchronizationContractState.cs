@@ -2,7 +2,7 @@
 namespace AElfScanServer.Grains.State.Contract;
 
 
-public class SynchronizationState
+public class SynchronizationContractState
 {
     public string ChainId { get; set; }
     

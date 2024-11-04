@@ -45,6 +45,7 @@
         <PackageReference Include="Binance.Spot" Version="4.0.1"/>
         <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
         <PackageReference Include="AWSSDK.S3" Version="3.7.401.2" />
+        <PackageReference Include="KubernetesClient" Version="13.0.11" />
     </ItemGroup>
 
     <ItemGroup>

@@ -8,6 +8,7 @@ using AElfScanServer.Common.HttpClient;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.NodeProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Provider;
 using AElfScanServer.Common.ThirdPart.Exchange;
 using AElfScanServer.Common.Token.Provider;
 using Aetherlink.PriceServer;
@@ -56,6 +57,7 @@ public class AElfScanCommonModule : AbpModule
         context.Services.AddTransient<ITokenInfoProvider, TokenInfoProvider>();
         context.Services.AddTransient<CoinMarketCapProvider, CoinMarketCapProvider>();
         context.Services.AddSingleton<IBlockchainClientFactory<AElfClient>, AElfClientFactory>();
+        context.Services.AddSingleton<IK8sProvider, K8sProvider>();
         context.Services.AddHttpClient();
     }
 

@@ -20,8 +20,8 @@ public class ContractFileCodeGrain : Grain<ContractFileCodeState>, IContractFile
         var bizId = GrainIdHelper.GenerateSynchronizationKey(contractFileResultDto.ChainId,
             SynchronizationType.ContractFile.ToString());
         await GrainFactory
-            .GetGrain<ISynchronizationGrain>(bizId).SaveAndUpdateAsync(
-                new SynchronizationDto()
+            .GetGrain<ISynchronizationContractGrain>(bizId).SaveAndUpdateAsync(
+                new SynchronizationContractDto()
                 {
                   ChainId  = contractFileResultDto.ChainId,
                   BizType = SynchronizationType.ContractFile.ToString(),

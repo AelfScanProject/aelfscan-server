@@ -14,7 +14,7 @@ public interface IAwsS3Provider
 {
     Task<string> UpLoadJsonFileAsync(Stream stream, string directory, string fileName);
 
-    Task<Stream> GetContractFileAsync(string directory, string fileName);
+    Task<byte[]> GetContractFileAsync(string directory, string fileName);
 
     Task DeleteJsonFileAsync(string directory, string fileName);
 }
@@ -37,12 +37,9 @@ public class AwsS3Provider : IAwsS3Provider
 
     private void InitAmazonS3Client()
     {
-        // var accessKeyID = _secretOptions.CurrentValue.S3AccessKey;
-        // var ServiceURL = _globalOptions.CurrentValue.S3ServiceURL;
-        
         var accessKeyID = _globalOptions.CurrentValue.S3AccessKey;
         var ServiceURL = _globalOptions.CurrentValue.S3ServiceURL;
-        
+
         var config = new AmazonS3Config()
         {
             ServiceURL = ServiceURL,
@@ -71,7 +68,8 @@ public class AwsS3Provider : IAwsS3Provider
         return s3Key;
     }
 
-    public async Task<Stream> GetContractFileAsync(string directory, string fileName)
+
+    public async Task<byte[]> GetContractFileAsync(string directory, string fileName)
     {
         var s3Key = GetS3Key(directory, fileName);
         var getObjectRequest = new GetObjectRequest
@@ -80,9 +78,12 @@ public class AwsS3Provider : IAwsS3Provider
             Key = s3Key
         };
 
-        using var response = await _amazonS3Client.GetObjectAsync(getObjectRequest);
-
-        return response.ResponseStream;
+        using (var response = await _amazonS3Client.GetObjectAsync(getObjectRequest))
+        using (var memoryStream = new MemoryStream())
+        {
+            await response.ResponseStream.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
+        }
     }
 
     public async Task DeleteJsonFileAsync(string directory, string fileName)

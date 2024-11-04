@@ -13,26 +13,27 @@ namespace AElfScanServer.HttpApi.Dtos;
 //     public List<IFormFile> AttachmentList { get; set; }
 // }
 
-
-
-public  class AddContractFileInput
+public class AddContractFileInput
 {
     public string ChainId { get; set; }
     public string ContractAddress { get; set; }
-
 }
+
 public class UploadContractFileResponseDto
 {
     public string FileKey { get; set; }
     public string Message { get; set; }
-    
+
+    public bool CodeIsSame { get; set; }
     public ContractFileResult Result { get; set; }
 
-    public static UploadContractFileResponseDto Success(string fileKey)
+    public static UploadContractFileResponseDto Success(string msg, bool codeIsSame = false)
     {
         return new UploadContractFileResponseDto
         {
-            Result = ContractFileResult.Success
+            Result = ContractFileResult.Success,
+            Message = msg,
+            CodeIsSame = codeIsSame
         };
     }
 

@@ -33,7 +33,7 @@ public interface IContractAppService
     Task<GetContractEventResp> GetContractEventsAsync(GetContractEventReq input);
 
     Task SaveContractFileAsync(string chainId);
-    Task UpdateContractHeightAsync(SynchronizationDto input);
+    Task UpdateContractHeightAsync(SynchronizationContractDto input);
 }
 
 [Ump]
@@ -298,7 +298,7 @@ public class ContractAppService : IContractAppService
         {
             var bizId = GrainIdHelper.GenerateSynchronizationKey(chainId,
                 SynchronizationType.ContractFile.ToString());
-            var synchronizationDto = await _clusterClient.GetGrain<ISynchronizationGrain>(bizId).GetAsync();
+            var synchronizationDto = await _clusterClient.GetGrain<ISynchronizationContractGrain>(bizId).GetAsync();
             _logger.LogInformation("SaveContractFileAsync Begin ChainId:{ChainId}, LastBlockHeight {LastBlockHeight}",
                 chainId, synchronizationDto.LastBlockHeight);
             var list = await _indexerGenesisProvider.GetContractListAsync(chainId, 0, maxResultCount, "BlockTime", "asc", "",
@@ -348,10 +348,10 @@ public class ContractAppService : IContractAppService
         } while (queryCount == maxResultCount);
     }
 
-    public async Task UpdateContractHeightAsync(SynchronizationDto input)
+    public async Task UpdateContractHeightAsync(SynchronizationContractDto input)
     {
         var bizId = GrainIdHelper.GenerateSynchronizationKey(input.ChainId,
             SynchronizationType.ContractFile.ToString());
-        await _clusterClient.GetGrain<ISynchronizationGrain>(bizId).SaveAndUpdateAsync(input);
+        await _clusterClient.GetGrain<ISynchronizationContractGrain>(bizId).SaveAndUpdateAsync(input);
     }
 }
