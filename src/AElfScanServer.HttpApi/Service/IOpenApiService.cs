@@ -64,7 +64,7 @@ public class OpenApiService : IOpenApiService
                 task => { organizationAddressBalance = task.Result; }));
 
         tasks.Add(_indexerTokenProvider
-            .GetAddressElfBalanceAsync("AELF", _globalOptions.CurrentValue.ConsensusContractAddress).ContinueWith(
+            .GetAddressElfBalanceAsync("AELF", _globalOptions.CurrentValue.ContractAddressConsensus["AELF"]).ContinueWith(
                 task => { consensusContractAddressBalance = task.Result; }));
 
         await tasks.WhenAll();
@@ -193,6 +193,7 @@ public class OpenApiService : IOpenApiService
 
         var elfPriceUsdPrice = volume24HFromCmc.Quote["USD"].Price;
         var volume24H = volume24HFromCmc.Quote["USD"].Volume_24h;
+       
         foreach (var keyValuePair in currencyPrice.Market_Data.Current_Price)
         {
             if (CurrencyList.Contains(keyValuePair.Key))

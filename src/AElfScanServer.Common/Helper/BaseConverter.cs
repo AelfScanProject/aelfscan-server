@@ -45,46 +45,7 @@ public class BaseConverter
     {
         return baseInfoDto?.Symbol;
     }
-
-    public static CommonAddressDto OfCommonAddress(string address, string chainId,
-        Dictionary<string, ContractInfoDto> contractInfoDict,
-        Func<string> nameFunc = null)
-    {
-        var addressDto = new CommonAddressDto()
-        {
-            Address = address
-        };
-        if (!address.IsNullOrEmpty() && contractInfoDict.TryGetValue(address + chainId, out var contractInfo))
-        {
-            addressDto.AddressType = contractInfo != null ? AddressType.ContractAddress : AddressType.EoaAddress;
-
-            if (nameFunc != null)
-            {
-                addressDto.Name = nameFunc();
-            }
-        }
-
-        return addressDto;
-    }
-
     
-    public static CommonAddressDto OfCommonAddress(string address, Dictionary<string, ContractInfoDto> contractInfoDict,
-        Func<string> nameFunc = null)
-    {
-        var addressDto = new CommonAddressDto()
-        {
-            Address = address
-        };
-        if (!address.IsNullOrEmpty() && contractInfoDict.TryGetValue(address, out var contractInfo))
-        {
-            addressDto.AddressType = contractInfo != null ? AddressType.ContractAddress : AddressType.EoaAddress;
-
-            if (nameFunc != null)
-            {
-                addressDto.Name = nameFunc();
-            }
-        }
-
-        return addressDto;
-    }
+    
+   
 }

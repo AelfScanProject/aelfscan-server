@@ -8,6 +8,7 @@ using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.Contracts.MultiToken;
+using AElfScanServer.Common.Commons;
 using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
@@ -194,7 +195,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
     public async Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol)
     {
-        var graphQlHelper = GetGraphQlHelper();
+            var graphQlHelper = GetGraphQlHelper();
         var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
         {
             Query =
@@ -225,7 +226,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             }",
             Variables = new
             {
-                chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
+                chainId=chainId, symbols = new ArrayList { symbol }, skipCount = 0, maxResultCount = 10
             }
         });
         return indexerResult.TokenInfo?.Items;
@@ -278,10 +279,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Query =
                 @"query($chainId:String,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
                     $search:String,$types:[SymbolType!],$symbols:[String],$searchSymbols:[String],
-                    $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
+                    $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo],$AmountGreaterThanZero:Boolean){
                     accountToken(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,skipCount:$skipCount,types:$types,
                     search:$search,symbols:$symbols,searchSymbols:$searchSymbols,maxResultCount:$maxResultCount,address:$address,addressList:$addressList,
-                    fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
+                    fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos,amountGreaterThanZero:$AmountGreaterThanZero}){
                     totalCount,
                     items{
                         id,
@@ -308,7 +309,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 addressList = input.AddressList,
                 types = input.Types, symbols = input.Symbols, searchSymbols = input.SearchSymbols,
                 search = input.Search, sort = input.Sort, orderBy = input.OrderBy, fuzzySearch = input.FuzzySearch,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter,
+                amountGreaterThanZero = input.AmountGreaterThanZero
             }
         });
         return indexerResult == null ? new IndexerTokenHolderInfoListDto() : indexerResult.AccountToken;
@@ -321,9 +323,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         {
             Query =
                 @"query($chainId:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
-                   $sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo]){
+                   $sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo],$AmountGreaterThanZero:Boolean){
                     accountCollection(input: {chainId:$chainId,symbol:$symbol,skipCount:$skipCount,
-                   maxResultCount:$maxResultCount,address:$address,addressList:$addressList,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos}){
+                   maxResultCount:$maxResultCount,address:$address,addressList:$addressList,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos,
+                   amountGreaterThanZero:$AmountGreaterThanZero}){
                     totalCount,
                     items{
                         id,
@@ -344,7 +347,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 chainId = input.ChainId, symbol = input.CollectionSymbol,
                 skipCount = input.SkipCount, maxResultCount = input.MaxResultCount, address = input.Address,
                 sort = input.Sort, orderBy = input.OrderBy,
-                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter, addressList = input.AddressList
+                orderInfos = input.OrderInfos, searchAfter = input.SearchAfter, addressList = input.AddressList,
+                amountGreaterThanZero = input.AmountGreaterThanZero
             }
         });
         return indexerResult == null ? new IndexerTokenHolderInfoListDto() : indexerResult.AccountCollection;
@@ -560,12 +564,15 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                     await GetTokenImageAsync(tokenInfo.Symbol, tokenInfo.IssueChainId, tokenInfo.ExternalInfo);
             }
 
+         
             tokenTransferDto.TransactionFeeList =
                 await _tokenInfoProvider.ConvertTransactionFeeAsync(priceDict, indexerTransferInfoDto.ExtraProperties);
-            tokenTransferDto.From = BaseConverter.OfCommonAddress(indexerTransferInfoDto.From,
-                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
-            tokenTransferDto.To = BaseConverter.OfCommonAddress(indexerTransferInfoDto.To,
-                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict);
+
+            tokenTransferDto.From = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.From,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
+            tokenTransferDto.To = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.To,
+                indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
+          
             tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }

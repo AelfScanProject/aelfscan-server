@@ -106,7 +106,8 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
             result.Blocks.Add(latestBlockDto);
             if (chainId == "AELF")
             {
-                latestBlockDto.Reward = CommomHelper.GetMiningRewardPerBlock(_globalOptions.CurrentValue.IsMainNet).ToString();
+                latestBlockDto.Reward = CommomHelper
+                    .GetMiningRewardPerBlock(_globalOptions.CurrentValue.BlockchainStartTimestamp).ToString();
             }
             else
             {

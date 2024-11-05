@@ -48,4 +48,8 @@
         <PackageReference Include="AElf.ExceptionHandler" Version="1.7.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Options\SecretOptions.cs" />
+    </ItemGroup>
+
 </Project>

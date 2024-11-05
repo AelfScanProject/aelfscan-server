@@ -327,23 +327,66 @@ public class DynamicTransactionService : IDynamicTransactionService
                     transactionFeeCharged.MergeFrom(logEvent);
                     await SetValueInfoAsync(transactionFees, transactionFeeCharged.Symbol,
                         transactionFeeCharged.Amount);
+                    await SetValueInfoAsync(transactionValues, transactionFeeCharged.Symbol,
+                        transactionFeeCharged.Amount);
+
+                    var address = "";
+                    if (transactionFeeCharged.ChargingAddress == null ||
+                        transactionFeeCharged.ChargingAddress.ToBase58().IsNullOrEmpty())
+                    {
+                        address = transactionIndex.From;
+                    }
+                    else
+                    {
+                        address = transactionFeeCharged.ChargingAddress.ToBase58();
+                    }
+
+                    await HandleTransferData(transactionFeeCharged.Symbol, address,
+                        "", transactionFeeCharged.Amount,
+                        transactionIndex.ChainId, detailDto);
+
+                    break;
+
+                case nameof(CrossChainReceived):
+                    var crossChainReceived = new CrossChainReceived();
+                    crossChainReceived.MergeFrom(logEvent);
+                    await HandleTransferData(crossChainReceived.Symbol, crossChainReceived.From.ToBase58(),
+                        crossChainReceived.To.ToBase58(), crossChainReceived.Amount,
+                        transactionIndex.ChainId, detailDto);
+                    await SetValueInfoAsync(transactionValues, crossChainReceived.Symbol, crossChainReceived.Amount);
+
+                    break;
+                case nameof(CrossChainTransferred):
+                    var crossChainTransferred = new CrossChainTransferred();
+                    crossChainTransferred.MergeFrom(logEvent);
+
+                    await HandleTransferData(crossChainTransferred.Symbol, crossChainTransferred.From.ToBase58(),
+                        crossChainTransferred.To.ToBase58(), crossChainTransferred.Amount,
+                        transactionIndex.ChainId, detailDto);
+                    await SetValueInfoAsync(transactionValues, crossChainTransferred.Symbol,
+                        crossChainTransferred.Amount);
+
+                    break;
+                case nameof(Issued):
+                    var issued = new Issued();
+                    issued.MergeFrom(logEvent);
+                    await HandleTransferData(issued.Symbol, "",
+                        issued.To.ToBase58(), issued.Amount,
+                        transactionIndex.ChainId, detailDto);
+                    await SetValueInfoAsync(transactionValues, issued.Symbol,
+                        issued.Amount);
 
                     break;
                 case nameof(Burned):
                     var burned = new Burned();
                     burned.MergeFrom(logEvent);
-                    if (TokenSymbolHelper.GetSymbolType(burned.Symbol) == SymbolType.Nft &&
-                        "SEED-0".Equals(TokenSymbolHelper.GetCollectionSymbol(burned.Symbol)))
-                    {
-                        break;
-                    }
-
-                    if (_globalOptions.CurrentValue.BurntFeeContractAddresses.TryGetValue(transactionIndex.ChainId,
-                            out var addressList)
-                        && addressList.Contains(burned.Burner.ToBase58()))
-                    {
-                        await SetValueInfoAsync(burntFees, burned.Symbol, burned.Amount);
-                    }
+                    await SetValueInfoAsync(burntFees, burned.Symbol, burned.Amount);
+                    await SetValueInfoAsync(transactionValues, burned.Symbol, burned.Amount);
+                    await HandleTransferData(burned.Symbol, burned.Burner.ToBase58(), ""
+                        , burned.Amount,
+                        transactionIndex.ChainId, detailDto);
+                    
+                  
 
                     break;
             }
@@ -391,6 +434,52 @@ public class DynamicTransactionService : IDynamicTransactionService
         detailDto.BurntFees = burntFees.Values.OrderByDescending(x => x.Amount).ToList();
     }
 
+
+    public async Task HandleTransferData(string symbol, string from, string to, long amount, string chainId,
+        TransactionDetailDto detailDto)
+    {
+        if (TokenSymbolHelper.GetSymbolType(symbol) == SymbolType.Token)
+        {
+            _globalOptions.CurrentValue.TokenImageUrls.TryGetValue(symbol, out var imageUrl);
+            var token = new TokenTransferredDto()
+            {
+                Symbol = symbol,
+                Name = symbol,
+                Amount = amount,
+                AmountString =
+                    await _blockChainProvider.GetDecimalAmountAsync(symbol, amount,
+                        chainId),
+                From = ConvertAddress(from, chainId),
+                To = ConvertAddress(to, chainId),
+                ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(symbol,
+                    chainId),
+                NowPrice = await _blockChainProvider.TransformTokenToUsdValueAsync(symbol,
+                    amount)
+            };
+
+
+            detailDto.TokenTransferreds.Add(token);
+        }
+        else
+        {
+            var nft = new NftsTransferredDto()
+            {
+                Symbol = symbol,
+                Amount = amount,
+                AmountString = await _blockChainProvider.GetDecimalAmountAsync(symbol,
+                    amount, chainId),
+                Name = symbol,
+                From = ConvertAddress(from, chainId),
+                To = ConvertAddress(to, chainId),
+                IsCollection = TokenSymbolHelper.IsCollection(symbol),
+                ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(symbol,
+                    chainId),
+            };
+
+
+            detailDto.NftsTransferreds.Add(nft);
+        }
+    }
 
     public async Task SetValueInfoAsync(Dictionary<string, ValueInfoDto> dic, string symbol, long amount)
     {

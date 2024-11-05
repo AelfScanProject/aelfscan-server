@@ -180,7 +180,8 @@ public class ExploreHub : AbpHub
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
     public virtual async Task<List<TopTokenDto>> GetTopTokens()
     {
-        var list = await _cache.GetAsync("topTokens");
+        var key = "TopTokens";
+            var list = await _cache.GetAsync(key);
         if (!list.IsNullOrEmpty())
         {
             return list;
@@ -205,7 +206,10 @@ public class ExploreHub : AbpHub
             });
         }
 
-        await _cache.SetAsync("topTokens", topTokenDtos);
+        await _cache.SetAsync(key, topTokenDtos, new DistributedCacheEntryOptions()
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
+            });
         return topTokenDtos;
     }
 

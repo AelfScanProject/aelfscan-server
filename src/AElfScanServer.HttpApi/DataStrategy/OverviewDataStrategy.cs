@@ -111,14 +111,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             }));
 
 
-            tasks.Add(_uniqueAddressRepository.GetQueryableAsync().ContinueWith(
-                task =>
-                {
-                    overviewResp.MergeAccounts.Total =
-                        task.Result.Where(c => c.ChainId == chainId).OrderByDescending(c => c.Date).Take(1).ToList()
-                            .First().TotalUniqueAddressees;
-                }));
-
+            tasks.Add(GetMergeTotalAccount(chainId).ContinueWith(task =>
+            {
+                overviewResp.MergeAccounts.Total = task.Result;
+            }));
 
             tasks.Add(_homePageProvider.GetRewardAsync(chainId).ContinueWith(
                 task =>
@@ -207,49 +203,12 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
         return marketCap;
     }
-
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
-        Message = "GetTotalAccount err",
-        TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets=["chainId"])]
-    public virtual async Task<long> GetTotalAccount(string chainId)
-    {
-        if (_globalOptions.CurrentValue.SwitchMergeAddress)
-        {
-            return await GetMergeTotalAccount(chainId);
-        }
-
-          var totalCount = 0;
-       
-            var key = "TotalAccount" + chainId;
-            var count = await _cache.GetAsync(key);
-            count = "";
-
-            var queryableAsync = await _addressRepository.GetQueryableAsync();
-            if (!chainId.IsNullOrEmpty())
-            {
-                queryableAsync = queryableAsync.Where(c => c.ChainId == chainId);
-            }
-
-            if (count.IsNullOrEmpty())
-            {
-                totalCount = queryableAsync.Count();
-                await _cache.SetAsync(key, totalCount.ToString());
-                DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
-                    chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
-                return totalCount;
-            }
-
-
-            return long.Parse(count);
-            
-    }
-
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    
+    [ExceptionHandler( typeof(Exception),
         Message = "GetMergeTotalAccount err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
-    public virtual async Task<long> GetMergeTotalAccount(string chainId)
+    public async Task<long> GetMergeTotalAccount(string chainId)
     {
          var totalCount = 0;
        
@@ -266,7 +225,10 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             if (count.IsNullOrEmpty())
             {
                 totalCount = queryableAsync.Count();
-                await _cache.SetAsync(key, totalCount.ToString());
+                await _cache.SetAsync(key, totalCount.ToString(), new DistributedCacheEntryOptions()
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+                });
                 DataStrategyLogger.LogInformation("overviewtest:TotalAccount {chainId},{count}",
                     chainId.IsNullOrEmpty() ? "merge" : chainId, totalCount);
                 return totalCount;
@@ -319,12 +281,12 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
             tasks.Add(GetMarketCap().ContinueWith(task => { overviewResp.MarketCap = task.Result; }));
 
-            tasks.Add(GetTotalAccount("AELF").ContinueWith(task =>
+            tasks.Add(GetMergeTotalAccount("AELF").ContinueWith(task =>
             {
                 overviewResp.MergeAccounts.MainChain = task.Result;
             }));
 
-            tasks.Add(GetTotalAccount(_globalOptions.CurrentValue.SideChainId).ContinueWith(task =>
+            tasks.Add(GetMergeTotalAccount(_globalOptions.CurrentValue.SideChainId).ContinueWith(task =>
             {
                 overviewResp.MergeAccounts.SideChain = task.Result;
             }));

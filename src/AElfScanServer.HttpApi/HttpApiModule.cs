@@ -100,6 +100,7 @@ public class HttpApiModule : AbpModule
         context.Services.AddTransient<IAddressTypeService, AddressTypeService>();
         context.Services.AddTransient<IOpenApiService, OpenApiService>();
         context.Services.AddSingleton<IDynamicTransactionService, DynamicTransactionService>();
+        context.Services.AddSingleton<IOpenApiService, OpenApiService>();
 
         var configuration = context.Services.GetConfiguration();
         Configure<BlockChainOption>(configuration.GetSection("BlockChainServer"));

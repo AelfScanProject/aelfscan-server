@@ -14,6 +14,8 @@ public class GlobalOptions
     public bool SwitchMergeAddress { get; set; }
     public string AddressStartDate { get; set; }
 
+
+    public long BlockchainStartTimestamp { get; set; }
     public List<string> SpecialSymbols { get; set; } = new();
 
     public string CMCApiKey { get; set; }
@@ -33,6 +35,8 @@ public class GlobalOptions
     public int SupplyChartShowOffset { get; set; }
 
     public int MarketCapShowOffset { get; set; }
+
+    public bool InitMergeAddress { get; set; }
 
     public int BpStakedShowOffset { get; set; }
 

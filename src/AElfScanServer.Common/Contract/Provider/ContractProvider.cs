@@ -71,11 +71,11 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
         List<string> addressList)
     {
       
-            var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListDto>(
+            var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
                 new GraphQLRequest
                 {
                     Query =
-                        @"query($chainId:String!,$addressList:[String!],$skipCount:Int!,$maxResultCount:Int!){
+                        @"query($chainId:String,$addressList:[String!],$skipCount:Int!,$maxResultCount:Int!){
                             contractList(input: {chainId:$chainId,addressList:$addressList,skipCount:$skipCount,maxResultCount:$maxResultCount}){
                                totalCount
                                items {
@@ -99,17 +99,13 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
                         }",
                     Variables = new
                     {
-                        chainId, addressList,
-                        skipCount = 0, maxResultCount = addressList.Count
+                        chainId = chainId,
+                        skipCount = 0, maxResultCount = addressList.Count * 2, addressList = addressList
                     }
                 });
-            if (chainId.IsNullOrEmpty())
-            {
-                return result.Items.ToDictionary(s => s.Address + s.Metadata.ChainId, s => s);
-            }
-
-            return result.Items.ToDictionary(s => s.Address, s => s);
-       
+           
+                return result.ContractList.Items.ToDictionary(s => s.Address + s.Metadata.ChainId, s => s);
+                
     }
 
     [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetContractAddressAsync",

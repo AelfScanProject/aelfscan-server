@@ -186,7 +186,9 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
                     Query =
                         @"query($chainId:String!,$address:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!){
                             accountToken(input: {chainId:$chainId,address:$address,symbol:$symbol,skipCount:$skipCount,maxResultCount:$maxResultCount}){
-                            amount
+                            items {
+                              amount
+                            }
                             }
                         }",
                     Variables = new
