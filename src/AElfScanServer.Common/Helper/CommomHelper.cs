@@ -18,10 +18,6 @@ public class CommomHelper
 {
     public static long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
     public const long InitialMiningRewardPerBlock = 12500000;
- 
-
-    public static long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
-    public const long InitialMiningRewardPerBlock = 12500000;
     public static long MainChainBlockchainStartTimestamp = 1607556204;
     public static long SideChainBlockchainStartTimestamp = 1602905482;
 
