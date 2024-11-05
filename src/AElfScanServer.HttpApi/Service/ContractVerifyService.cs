@@ -148,7 +148,7 @@ public class ContractVerifyService : IContractVerifyService
 
 
     public async Task<bool> ValidContractFile(string chainId, string contractAddress, string contractName,
-        string dotnetVersion, string contractVersion, string contractCode)
+        string dotnetVersion, string contractVersion, string originalContractCode)
     {
         _logger.LogInformation("Starting validation for contract: {ContractName}, Version: {ContractVersion}",
             contractName, contractVersion);
@@ -163,10 +163,10 @@ public class ContractVerifyService : IContractVerifyService
                 GrainIdHelper.GenerateContractDLL(chainId, contractAddress, contractName, contractVersion));
 
             
-            var base64String = Convert.ToBase64String(result);
-            var contractCodeLength = contractCode.Length;
-            var base64StringLength = base64String.Length;
-            bool isValid = base64String == contractCode;
+            var k8sContractCode = Convert.ToBase64String(result);
+            var contractCodeLength = originalContractCode.Length;
+            var base64StringLength = k8sContractCode.Length;
+            bool isValid = k8sContractCode == originalContractCode;
 
             _logger.LogInformation("Contract validation result: {IsValid}", isValid);
             return isValid;
