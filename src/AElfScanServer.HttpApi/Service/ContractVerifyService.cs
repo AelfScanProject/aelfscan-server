@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Provider;
 using AElfScanServer.Grains;
@@ -99,7 +100,7 @@ public class ContractVerifyService : IContractVerifyService
 
             if (await ValidContractFile(chainId, contractAddress, contractName, dotnetVersion, contractVersion,
                     contractCode))
-                
+
             {
                 await SaveContractFileToGrain(file, chainId, contractAddress, csprojPath);
                 _logger.LogInformation("Contract file validated and saved successfully.");
@@ -130,10 +131,13 @@ public class ContractVerifyService : IContractVerifyService
             var contractInfoDto = list.ContractList.Items.First();
             var version = contractInfoDto.Version;
 
+            var versrinonStr = contractInfoDto.ContractVersion.IsNullOrEmpty()
+                ? version.ToString()
+                : contractInfoDto.ContractVersion;
             var contractRegistration =
                 await _indexerGenesisProvider.GetContractRegistrationAsync(chainId, contractInfoDto.CodeHash);
             _logger.LogInformation("Contract code fetched successfully.");
-            return (version.ToString(), contractRegistration[0].Code);
+            return (versrinonStr, contractRegistration[0].Code);
         }
         catch (Exception ex)
         {
@@ -158,7 +162,10 @@ public class ContractVerifyService : IContractVerifyService
                 _globalOptions.CurrentValue.S3ContractFileDirectory,
                 GrainIdHelper.GenerateContractDLL(chainId, contractAddress, contractName, contractVersion));
 
+            
             var base64String = Convert.ToBase64String(result);
+            var contractCodeLength = contractCode.Length;
+            var base64StringLength = base64String.Length;
             bool isValid = base64String == contractCode;
 
             _logger.LogInformation("Contract validation result: {IsValid}", isValid);

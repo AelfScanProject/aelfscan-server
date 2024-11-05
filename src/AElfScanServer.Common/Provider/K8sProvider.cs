@@ -37,35 +37,56 @@ public class K8sProvider : IK8sProvider
 
     private Kubernetes InitK8s3Client()
     {
-        var kubeConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "Files/kubeconfig");
-        var config = KubernetesClientConfiguration.BuildConfigFromConfigFile(kubeConfigPath);
+        var kubeConfigContent = Environment.GetEnvironmentVariable("KUBECONFIG");
+
+        if (string.IsNullOrEmpty(kubeConfigContent))
+        {
+            var defaultPath = Path.Combine(Directory.GetCurrentDirectory(), "Files/kubeconfig");
+            _logger.LogWarning("Environment variable 'KUBECONFIG' not set. Using default path: {KubeConfigPath}",
+                defaultPath);
+            return new Kubernetes(KubernetesClientConfiguration.BuildConfigFromConfigFile(defaultPath));
+        }
+
+        var tempFilePath = Path.GetTempFileName();
+        File.WriteAllText(tempFilePath, kubeConfigContent);
+        _logger.LogInformation("KUBECONFIG content written to temporary file: {TempFilePath}", tempFilePath);
+
+        var config = KubernetesClientConfiguration.BuildConfigFromConfigFile(tempFilePath);
+
+        File.Delete(tempFilePath);
         return new Kubernetes(config);
     }
 
     public async Task<string> StartJob(string image, string chainId, string contractAddress, string contractName,
         string version)
     {
+        string logPrefix =
+            $"[ChainId:{chainId}-ContractAddress:{contractAddress}-ContractName:{contractName}-Version:{version}]";
+
         var jobName = "example-job-" + Guid.NewGuid().ToString("N").Substring(0, 8);
         var jobNamespace = "aelfscan-complier-testnet";
 
+        _logger.LogInformation($"{logPrefix} Creating job '{jobName}' with image '{image}'.");
+
         var job = CreateJobSpec(jobName, image, chainId, contractAddress, contractName, version);
         var createdJob = await _client.CreateNamespacedJobAsync(job, jobNamespace);
-        _logger.LogInformation($"Job '{createdJob.Metadata.Name}' created.");
 
-        var podName = await GetPodNameForJob(_client, jobNamespace, createdJob.Metadata.Name);
+        _logger.LogInformation($"{logPrefix} Job '{createdJob.Metadata.Name}' created.");
 
-        await WaitForPodToBeRunning(_client, jobNamespace, podName);
-        await StreamPodLogs(_client, jobNamespace, podName);
+        var podName = await GetPodNameForJob(_client, jobNamespace, createdJob.Metadata.Name, logPrefix);
 
-        bool jobSucceeded = await WaitForJobCompletion(jobNamespace, createdJob.Metadata.Name);
+        await WaitForPodToBeRunning(_client, jobNamespace, podName, logPrefix);
+        await StreamPodLogs(_client, jobNamespace, podName, logPrefix);
+
+        bool jobSucceeded = await WaitForJobCompletion(jobNamespace, createdJob.Metadata.Name, logPrefix);
 
         if (!jobSucceeded)
         {
-            _logger.LogError($"Job '{createdJob.Metadata.Name}' failed to complete successfully.");
+            _logger.LogError($"{logPrefix} Job '{createdJob.Metadata.Name}' failed to complete successfully.");
             throw new Exception($"Job '{createdJob.Metadata.Name}' encountered an error.");
         }
 
-        return $"Job '{createdJob.Metadata.Name}' completed successfully.";
+        return $"{logPrefix} Job '{createdJob.Metadata.Name}' completed successfully.";
     }
 
     private V1Job CreateJobSpec(string jobName, string image, string chainId, string contractAddress,
@@ -115,21 +136,28 @@ public class K8sProvider : IK8sProvider
         };
     }
 
-    private async Task<string> GetPodNameForJob(Kubernetes client, string namespaceName, string jobName)
+    private async Task<string> GetPodNameForJob(Kubernetes client, string namespaceName, string jobName,
+        string logPrefix)
     {
         while (true)
         {
             var pods = await client.ListNamespacedPodAsync(namespaceName, labelSelector: $"job-name={jobName}");
-            if (pods.Items.Count > 0) return pods.Items[0].Metadata.Name;
+            if (pods.Items.Count > 0)
+            {
+                _logger.LogInformation(
+                    $"{logPrefix} Found Pod '{pods.Items[0].Metadata.Name}' for job '{jobName}'.");
+                return pods.Items[0].Metadata.Name;
+            }
 
-            _logger.LogInformation("Waiting for Pod to start...");
+            _logger.LogInformation($"{logPrefix} Waiting for Pod to start...");
             await Task.Delay(2000);
         }
     }
 
-    private async Task WaitForPodToBeRunning(Kubernetes client, string namespaceName, string podName)
+    private async Task WaitForPodToBeRunning(Kubernetes client, string namespaceName, string podName,
+        string logPrefix)
     {
-        _logger.LogInformation("Waiting for Pod to be in Running state...");
+        _logger.LogInformation($"{logPrefix} Waiting for Pod '{podName}' to be in Running state...");
         var startTime = DateTime.UtcNow;
 
         while (true)
@@ -139,19 +167,19 @@ public class K8sProvider : IK8sProvider
 
             if (containerStatus?.State?.Running != null)
             {
-                _logger.LogInformation("Pod is now in Running state.");
+                _logger.LogInformation($"{logPrefix} Pod '{podName}' is now in Running state.");
                 break;
             }
 
             if (containerStatus?.State?.Waiting != null)
             {
                 _logger.LogWarning(
-                    $"Pod is in {containerStatus.State.Waiting.Reason} state: {containerStatus.State.Waiting.Message}");
+                    $"{logPrefix} Pod '{podName}' is in {containerStatus.State.Waiting.Reason} state: {containerStatus.State.Waiting.Message}");
             }
 
             if (DateTime.UtcNow - startTime > _timeout)
             {
-                _logger.LogError("Timeout waiting for Pod to enter Running state.");
+                _logger.LogError($"{logPrefix} Timeout waiting for Pod '{podName}' to enter Running state.");
                 throw new TimeoutException("Timeout waiting for Pod to be Running.");
             }
 
@@ -159,7 +187,7 @@ public class K8sProvider : IK8sProvider
         }
     }
 
-    private async Task<bool> WaitForJobCompletion(string namespaceName, string jobName)
+    private async Task<bool> WaitForJobCompletion(string namespaceName, string jobName, string logPrefix)
     {
         var startTime = DateTime.UtcNow;
 
@@ -169,18 +197,19 @@ public class K8sProvider : IK8sProvider
 
             if (jobStatus.Status.Succeeded.HasValue && jobStatus.Status.Succeeded.Value > 0)
             {
+                _logger.LogInformation($"{logPrefix} Job '{jobName}' completed successfully.");
                 return true;
             }
 
             if (jobStatus.Status.Failed.HasValue && jobStatus.Status.Failed.Value > 0)
             {
-                _logger.LogError("Job failed with status.");
+                _logger.LogError($"{logPrefix} Job '{jobName}' failed with status.");
                 return false;
             }
 
             if (DateTime.UtcNow - startTime > _timeout)
             {
-                _logger.LogError("Timeout waiting for Job to complete.");
+                _logger.LogError($"{logPrefix} Timeout waiting for Job '{jobName}' to complete.");
                 throw new TimeoutException("Timeout waiting for Job completion.");
             }
 
@@ -188,9 +217,9 @@ public class K8sProvider : IK8sProvider
         }
     }
 
-    private async Task StreamPodLogs(Kubernetes client, string namespaceName, string podName)
+    private async Task StreamPodLogs(Kubernetes client, string namespaceName, string podName, string logPrefix)
     {
-        _logger.LogInformation("Starting to stream Pod logs...");
+        _logger.LogInformation($"{logPrefix} Starting to stream logs for Pod '{podName}'...");
 
         using var podLogs = client.ReadNamespacedPodLogAsync(podName, namespaceName, follow: true);
         using var reader = new StreamReader(await podLogs);
@@ -198,7 +227,7 @@ public class K8sProvider : IK8sProvider
         string line;
         while ((line = await reader.ReadLineAsync()) != null)
         {
-            _logger.LogInformation($"[Pod Log] {line}");
+            _logger.LogInformation($"{logPrefix} [Pod Log] {line}");
         }
     }
 }
