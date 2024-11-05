@@ -8,11 +8,13 @@ using AElfScanServer.Common.HttpClient;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.NodeProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Reporter;
 using AElfScanServer.Common.Provider;
 using AElfScanServer.Common.ThirdPart.Exchange;
 using AElfScanServer.Common.Token.Provider;
 using Aetherlink.PriceServer;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Volo.Abp;
 using Volo.Abp.AutoMapper;
 using Volo.Abp.Caching.StackExchangeRedis;
@@ -59,6 +61,8 @@ public class AElfScanCommonModule : AbpModule
         context.Services.AddSingleton<IBlockchainClientFactory<AElfClient>, AElfClientFactory>();
         context.Services.AddSingleton<IK8sProvider, K8sProvider>();
         context.Services.AddHttpClient();
+        context.Services.Replace(ServiceDescriptor.Singleton<IInterceptor, TotalExecutionTimeRecorder>());
+
     }
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
