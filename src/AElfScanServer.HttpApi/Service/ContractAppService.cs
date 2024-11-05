@@ -314,7 +314,7 @@ public class ContractAppService : IContractAppService
                     var contractFileResultDto =
                         await _clusterClient.GetGrain<IContractFileCodeGrain>(contractFileId).GetAsync();
                     if (contractFileResultDto.LastBlockHeight != 0 &&
-                        synchronizationDto.LastBlockHeight >= contractFileResultDto.LastBlockHeight)
+                        contractRecord.Metadata.Block.BlockHeight <= contractFileResultDto.LastBlockHeight)
                     {
                         continue;
                     }
@@ -325,7 +325,7 @@ public class ContractAppService : IContractAppService
 
                     if (getContractRegistrationResult.Count == 0)
                     {
-                        continue;
+                        break;
                     }
 
                     var getFilesResult = await _decompilerProvider.GetFilesAsync(getContractRegistrationResult[0].Code);
