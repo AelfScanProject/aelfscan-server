@@ -16,6 +16,7 @@ using AElfScanServer.Grains;
 using AElfScanServer.Grains.Grain.Contract;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Provider;
+using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -167,7 +168,9 @@ public class ContractVerifyService : IContractVerifyService
             var contractCodeLength = originalContractCode.Length;
             var base64StringLength = k8sContractCode.Length;
             bool isValid = k8sContractCode == originalContractCode;
-
+            var byteString = ByteString.CopyFrom(result);
+            bool isValid2 = k8sContractCode == byteString.ToString();
+            
             _logger.LogInformation("Contract validation result: {IsValid}", isValid);
             return isValid;
         }
