@@ -351,7 +351,8 @@ public class ContractAppService : IContractAppService
                             ContractVersion = contractRecord.ContractVersion == ""
                                 ? contractRecord.Version.ToString()
                                 : contractRecord.ContractVersion,
-                            ContractSourceCode = getFilesResult.Data
+                            ContractSourceCode = getFilesResult.Data,
+                            IsVerify = false
                         });
                     _logger.LogInformation(
                         "SaveContractFileAsync ChainId:{ChainId}, LastBlockHeight {LastBlockHeight} Address {Address}",

@@ -15,7 +15,7 @@ public class ContractFileResultDto
     [Id(4)] public long LastBlockHeight { get; set; }
     [Id(5)] public List<DecompilerContractFileDto> ContractSourceCode { get; set; }
 
-    public bool IsVerify { get; set; }
+    [Id(6)] public bool IsVerify { get; set; }
 }
 
 [GenerateSerializer]
