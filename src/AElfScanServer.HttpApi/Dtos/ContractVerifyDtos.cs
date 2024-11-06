@@ -4,20 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AElfScanServer.HttpApi.Dtos;
 
-// public class AddContractFileInput
-// {
-//     [ModelBinder(BinderType = typeof(JsonModelBinder))]
-//     public SubscriptionManifestDto Manifest { get; set; }
-//
-//     public IFormFile Code { get; set; }
-//     public List<IFormFile> AttachmentList { get; set; }
-// }
 
-public class AddContractFileInput
-{
-    public string ChainId { get; set; }
-    public string ContractAddress { get; set; }
-}
 
 public class UploadContractFileResponseDto
 {

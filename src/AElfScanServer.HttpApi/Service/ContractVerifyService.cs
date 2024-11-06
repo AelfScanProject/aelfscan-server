@@ -20,6 +20,7 @@ using AElfScanServer.HttpApi.Provider;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -27,6 +28,7 @@ using Newtonsoft.Json;
 using Orleans;
 using Volo.Abp;
 using Volo.Abp.Auditing;
+using Volo.Abp.Caching;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace AElfScanServer.HttpApi.Service;
@@ -50,10 +52,12 @@ public class ContractVerifyService : IContractVerifyService
     private readonly ILogger<ContractVerifyService> _logger;
     private readonly IDecompilerProvider _decompilerProvider;
     private const string ContractVersionFileName = "AssemblyInfo.cs";
+    private IDistributedCache<ContractVerifyResult> _contractVerifyCache;
 
     public ContractVerifyService(IClusterClient clusterClient, IAwsS3Provider awsS3ClientService,
         IOptionsMonitor<GlobalOptions> globalOptions, IIndexerGenesisProvider indexerGenesisProvider,
-        IK8sProvider k8sProvider, ILogger<ContractVerifyService> logger, IDecompilerProvider decompilerProvider)
+        IK8sProvider k8sProvider, ILogger<ContractVerifyService> logger, IDecompilerProvider decompilerProvider,
+        IDistributedCache<ContractVerifyResult> contractVerifyCache)
     {
         _clusterClient = clusterClient;
         _awsS3ClientService = awsS3ClientService;
@@ -62,6 +66,7 @@ public class ContractVerifyService : IContractVerifyService
         _k8sProvider = k8sProvider;
         _logger = logger;
         _decompilerProvider = decompilerProvider;
+        _contractVerifyCache = contractVerifyCache;
     }
 
     public async Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId,
@@ -111,7 +116,17 @@ public class ContractVerifyService : IContractVerifyService
 
             {
                 await SaveContractFileToGrain(file, chainId, contractAddress, csprojPath);
+                await _contractVerifyCache.SetAsync(chainId + contractAddress, new ContractVerifyResult()
+                {
+                    ContractAddress = contractAddress,
+                    VerifyFinished = true
+                }, new DistributedCacheEntryOptions()
+                {
+                    AbsoluteExpiration = null,
+                    SlidingExpiration = null
+                });
                 _logger.LogInformation("Contract file validated and saved successfully.");
+
                 return UploadContractFileResponseDto.Success("Upload success", true);
             }
             else

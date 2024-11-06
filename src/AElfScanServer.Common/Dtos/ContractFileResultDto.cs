@@ -3,7 +3,6 @@ using Orleans;
 
 namespace AElfScanServer.Common.Dtos;
 
-
 [GenerateSerializer]
 public class ContractFileResultDto
 {
@@ -15,6 +14,8 @@ public class ContractFileResultDto
 
     [Id(4)] public long LastBlockHeight { get; set; }
     [Id(5)] public List<DecompilerContractFileDto> ContractSourceCode { get; set; }
+
+    public bool IsVerify { get; set; }
 }
 
 [GenerateSerializer]
@@ -25,4 +26,3 @@ public class DecompilerContractFileDto
     [Id(2)] public string FileType { get; set; }
     [Id(3)] public List<DecompilerContractFileDto> Files { get; set; }
 }
-
