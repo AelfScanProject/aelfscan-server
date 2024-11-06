@@ -2368,7 +2368,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                     {
                         if (task.Result.IsNullOrEmpty())
                         {
-                            _logger.LogError(
+                            _logger.LogWarning(
                                 "Get batch transaction list is null,chainId:{chainId},start:{startBlockHeight},end:{endBlockHeight}",
                                 chainId, start, end);
                             return;

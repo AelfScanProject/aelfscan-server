@@ -72,7 +72,7 @@ public class HttpProvider : IHttpProvider
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "InvokeAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public virtual async Task<T> InvokeAsync<T>(string domain, ApiInfo apiInfo,
         Dictionary<string, string> pathParams = null,
         Dictionary<string, string> param = null,

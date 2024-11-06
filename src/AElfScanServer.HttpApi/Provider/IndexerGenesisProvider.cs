@@ -48,7 +48,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetContractListAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","addressList"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetContractListAsync), LogTargets = ["chainId","addressList"])]
     public virtual async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
         List<string> addressList)
     {
@@ -94,7 +94,7 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetContractListAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount","orderBy","address"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetContractListAsync), LogTargets = ["chainId","skipCount","maxResultCount","orderBy","address"])]
     public virtual async Task<IndexerContractListResultDto> GetContractListAsync(string chainId,
         int skipCount,
         int maxResultCount, string orderBy = "", string sort = "", string address = "", long blockHeight = 0)

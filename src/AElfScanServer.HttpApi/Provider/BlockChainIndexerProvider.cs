@@ -159,7 +159,7 @@ public class BlockChainIndexerProvider : IBlockChainIndexerProvider, ISingletonD
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetTransactionCount err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+        MethodName = nameof(ExceptionHandlingService.HandleException), LogTargets = ["chainId"])]
 
     public virtual async Task<long> GetTransactionCount(string chainId)
     {

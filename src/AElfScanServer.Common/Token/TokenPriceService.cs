@@ -7,6 +7,7 @@ using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Token.Provider;
 using Microsoft.Extensions.Logging;
+using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 
 namespace AElfScanServer.Common.Token;
@@ -29,13 +30,12 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
         _tokenExchangeProvider = tokenExchangeProvider;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler( typeof(Exception),
         Message = "GetHistoryExchangeAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["baseCoin","quoteCoin"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenPriceAsync), LogTargets = ["baseCoin","quoteCoin"])]
     public virtual async Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin)
     {
-      
             AssertHelper.IsTrue(!baseCoin.IsNullOrEmpty() && !quoteCoin.IsNullOrEmpty(),
                 "Get token price fail, baseCoin or quoteCoin is empty.");
             if (baseCoin.ToUpper().Equals(quoteCoin.ToUpper()))
@@ -63,7 +63,7 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetTokenHistoryPriceAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["baseCoin","quoteCoin","timestamp"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenPriceAsync),LogTargets = ["baseCoin","quoteCoin","timestamp"])]
     public virtual async Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, long timestamp)
     {
         

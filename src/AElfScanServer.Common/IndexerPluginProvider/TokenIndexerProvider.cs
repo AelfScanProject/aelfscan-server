@@ -356,7 +356,7 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
 
     [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetTokenImageAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["symbol","chainId"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenImageAsync), LogTargets = ["symbol","chainId"])]
     public virtual async Task<string> GetTokenImageAsync(string symbol, string chainId,
         List<ExternalInfoDto> externalInfo = null)
     {

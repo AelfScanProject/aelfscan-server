@@ -176,7 +176,7 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetAddressElfBalanceAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","address"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetAddressElfBalanceAsync), LogTargets = ["chainId","address"])]
     public virtual async Task<long> GetAddressElfBalanceAsync(string chainId, string address)
     {
       

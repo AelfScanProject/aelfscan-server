@@ -64,7 +64,7 @@ public abstract class DataStrategyBase<TInput, TOutPut> : AbpRedisCache, IDataSt
 
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception), Message = "SaveData",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public virtual async Task SaveData(TOutPut data, TInput input)
     {
         var key = DisplayKey(input);
@@ -76,7 +76,7 @@ public abstract class DataStrategyBase<TInput, TOutPut> : AbpRedisCache, IDataSt
 
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception), Message = "DisplayData",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public virtual async Task<TOutPut> DisplayData(TInput input)
     {
         var key = DisplayKey(input);

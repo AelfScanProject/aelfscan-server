@@ -173,7 +173,7 @@ public class AELFIndexerProvider : ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetTransactionsAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","startBlockHeight","endBlockHeight","transactionId"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTransactionsAsync), LogTargets = ["chainId","startBlockHeight","endBlockHeight","transactionId"])]
     public virtual async Task<List<TransactionIndex>> GetTransactionsAsync(string chainId, long startBlockHeight,
         long endBlockHeight, string transactionId)
     {
@@ -204,7 +204,7 @@ public class AELFIndexerProvider : ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetTransactionsDataAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","startBlockHeight","endBlockHeight","transactionId"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTransactionsDataAsync), LogTargets = ["chainId","startBlockHeight","endBlockHeight","transactionId"])]
     public virtual async Task<List<TransactionData>> GetTransactionsDataAsync(string chainId, long startBlockHeight,
         long endBlockHeight, string transactionId)
     {

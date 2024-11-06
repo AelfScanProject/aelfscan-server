@@ -766,10 +766,10 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         return "";
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(IOException),  typeof(Exception),
         Message = "ParseBlockBurntAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","startBlockHeight","endBlockHeight"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionParseBlockBurntAsync), LogTargets = ["chainId","startBlockHeight","endBlockHeight"])]
     public virtual async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
         long endBlockHeight)
     {

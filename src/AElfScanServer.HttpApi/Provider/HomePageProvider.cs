@@ -59,7 +59,7 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetRewardAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetRewardAsync), LogTargets = ["chainId"])]
     public virtual async Task<long> GetRewardAsync(string chainId)
     {
       

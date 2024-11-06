@@ -36,7 +36,7 @@ public class DailyHolderProvider : IDailyHolderProvider, ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetDailyHolderListAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetDailyHolderListAsync), LogTargets = ["chainId"])]
     public virtual async Task<IndexerDailyHolderDto> GetDailyHolderListAsync(string chainId)
     {
         var indexerDailyHolderDto = new IndexerDailyHolderDto();

@@ -45,7 +45,7 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
         _exchangeOptions = exchangeOptions;
         _netWorkReflectionOption = netWorkReflectionOption;
         _logger = logger;
-        _exchangeProviders = exchangeProviders.ToDictionary(p => p.Name().ToString());
+        _exchangeProviders = exchangeProviders.GroupBy(p => p.Name()).ToDictionary( g => g.Key.ToString(), g => g.First());
     }
     
     
@@ -120,7 +120,7 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetExchangeAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["provider","baseCoin","quoteCoin","providerName"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetExchangeAsync),LogTargets = ["provider","baseCoin","quoteCoin","providerName"])]
     public virtual async Task<KeyValuePair<string, TokenExchangeDto>> GetExchangeAsync(
         IExchangeProvider provider, string baseCoin, string quoteCoin, string providerName)
     {
@@ -134,7 +134,7 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetHistoryExchangeAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["provider","baseCoin","quoteCoin","timestamp","providerName"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetExchangeAsync), LogTargets = ["provider","baseCoin","quoteCoin","timestamp","providerName"])]
     public virtual async Task<KeyValuePair<string, TokenExchangeDto>> GetHistoryExchangeAsync(
         IExchangeProvider provider, string baseCoin, string quoteCoin, long timestamp, string providerName)
     {

@@ -177,7 +177,7 @@ public class TokenService : ITokenService, ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetTokenDetailAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","symbol"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenDetailAsync),LogTargets = ["chainId","symbol"])]
     public virtual async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId = "")
     {
       

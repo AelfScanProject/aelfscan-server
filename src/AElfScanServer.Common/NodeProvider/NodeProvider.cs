@@ -42,10 +42,10 @@ public class NodeProvider : AbpRedisCache, ISingletonDependency
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler( typeof(Exception),
         Message = "GetBlockSize err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","blockHeight"])]
+        MethodName = nameof(ExceptionHandlingService.HandleException), LogTargets = ["chainId","blockHeight"])]
     public virtual async Task<BlockSizeDto> GetBlockSize(string chainId, long blockHeight)
     {
        

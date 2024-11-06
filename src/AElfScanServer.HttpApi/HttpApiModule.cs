@@ -1,4 +1,5 @@
 using AElf.EntityMapping.Elasticsearch;
+using AElf.ExceptionHandler.ABP;
 using AElf.Indexing.Elasticsearch;
 using AElf.OpenTelemetry;
 using AElfScanServer.HttpApi.Options;
@@ -41,6 +42,7 @@ using Volo.Abp.TenantManagement;
 namespace AElfScanServer.HttpApi;
 
 [DependsOn(
+    typeof(AOPExceptionModule),
     typeof(AElfScanServerApplicationContractsModule),
     typeof(AbpAutoMapperModule),
     typeof(AbpAccountHttpApiModule),

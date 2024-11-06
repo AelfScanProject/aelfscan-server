@@ -128,7 +128,7 @@ public class BinanceProvider : IExchangeProvider
     [ExceptionHandler(typeof(HttpRequestException), typeof(TimeoutException), typeof(Exception),
         Message = "ExecuteBlockDetectAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
     public virtual async Task<(bool, T)> ExecuteBlockDetectAsync<T>(Func<Task<T>> func)
     {
         return (true, await func());

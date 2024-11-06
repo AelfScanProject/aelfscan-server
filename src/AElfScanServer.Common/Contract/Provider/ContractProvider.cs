@@ -41,7 +41,7 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
 
     [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "IsContractAddressAsync",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["chainId","address"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionIsContractAddressAsync), LogTargets = ["chainId","address"])]
     public virtual async Task<bool> IsContractAddressAsync(string chainId, string address)
     {
      
@@ -66,7 +66,7 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
 
     [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetContractListAsync",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["chainId","addressList"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetContractListAsync), LogTargets = ["chainId","addressList"])]
     public virtual async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
         List<string> addressList)
     {
@@ -110,7 +110,7 @@ public class GenesisPluginProvider : IGenesisPluginProvider, ISingletonDependenc
 
     [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetContractAddressAsync",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException),ReturnDefault = ReturnDefault.New, LogTargets = ["chainId","address"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetContractAddressAsync),LogTargets = ["chainId","address"])]
     public virtual async Task<IndexerContractListResultDto> GetContractAddressAsync(string chainId, string address)
     {
         var indexerContractListResultDto = new IndexerContractListResultDto()

@@ -209,7 +209,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetTokenUsd24ChangeAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["symbol"])]
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenUsd24ChangeAsync), LogTargets = ["symbol"])]
     public virtual async Task<BinancePriceDto> GetTokenUsd24ChangeAsync(string symbol)
     {
         // var market = new Market(_blockChainOptions.BNBaseUrl, _blockChainOptions.BNApiKey,

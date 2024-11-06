@@ -37,7 +37,7 @@ public class AwakenIndexerProvider : IAwakenIndexerProvider, ISingletonDependenc
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetAwakenTvl err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","timeStamp"])]
+        MethodName = nameof(ExceptionHandlingService.HandleException), LogTargets = ["chainId","timeStamp"])]
     public virtual async Task<TotalValueLockedResultDto> GetAwakenTvl(string chainId, long timeStamp)
     {
         var graphQlHelper = _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.AwakenIndexer);
