@@ -258,7 +258,7 @@ public class ContractVerifyService : IContractVerifyService
             var result = await _awsS3ClientService.GetContractFileAsync(
                 _globalOptions.CurrentValue.S3ContractFileDirectory,
                 GrainIdHelper.GenerateContractDLL(chainId, contractAddress, contractName, contractVersion));
-            
+
             var k8sContractCode = Convert.ToBase64String(result);
 
 
@@ -266,11 +266,7 @@ public class ContractVerifyService : IContractVerifyService
             var base64StringLength = k8sContractCode.Length;
             bool isValid = k8sContractCode == originalContractCode;
 
-            var k8sFileData = await _decompilerProvider.GetFilesAsync(k8sContractCode);
 
-            var originalFileData = await _decompilerProvider.GetFilesAsync(originalContractCode);
-
-            
             if (contractCodeLength == base64StringLength)
             {
                 _logger.LogInformation("Contract codes have the same length. Ensure versions match.");
@@ -292,153 +288,6 @@ public class ContractVerifyService : IContractVerifyService
         }
     }
 
-
-    private void WriteFile(string s, string fileName)
-    {
-        // 解码 Base64 字符串
-        byte[] fileBytes = Convert.FromBase64String(s);
-
-        // 创建临时文件路径
-        string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), fileName + ".txt");
-
-        // 将字节写入临时文件
-        File.WriteAllBytes(tempFilePath, fileBytes);
-    }
-
-    private string ComputeMd5Hash<T>(T input)
-    {
-        using (var md5 = MD5.Create())
-        {
-            // 将对象序列化为 JSON 字符串
-            var json = JsonSerializer.Serialize(input);
-            var bytes = Encoding.UTF8.GetBytes(json);
-
-            // 计算哈希值
-            var hashBytes = md5.ComputeHash(bytes);
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-        }
-    }
-
-    public bool CompareGetContractFilesResponseDto(GetContractFilesResponseDto obj1,
-        GetContractFilesResponseDto obj2)
-    {
-        if (obj1 == null || obj2 == null)
-            return obj1 == obj2;
-
-        var a = 1;
-        if (obj1.Code != obj2.Code)
-        {
-            a = 1;
-        }
-
-        if (obj1.Msg != obj2.Msg)
-        {
-            a = 1;
-        }
-
-        if (obj1.Version != obj2.Version)
-        {
-            a = 1;
-        }
-
-        // 比较基本类型字段
-        // if (obj1.Code != obj2.Code || obj1.Msg != obj2.Msg || obj1.Version != obj2.Version)
-        //     return false;
-
-        // 比较 Data 字段中的每个 DecompilerContractFileDto 对象
-        // if (obj1.Data == null || obj2.Data == null)
-        //     return obj1.Data == obj2.Data;
-
-
-        if (obj1.Data.Count != obj2.Data.Count)
-            a = 1;
-
-        // 对 Data 列表按 Name 字段排序后再进行比较
-        var sortedData1 = obj1.Data.OrderBy(d => d.Name).ToList();
-        var sortedData2 = obj2.Data.OrderBy(d => d.Name).ToList();
-
-        for (int i = 0; i < sortedData1.Count; i++)
-        {
-            if (!CompareDecompilerContractFileDto(sortedData1[i], sortedData2[i]))
-                return false;
-        }
-
-        return true;
-    }
-
-    public bool CompareDecompilerContractFileDto(DecompilerContractFileDto dto1, DecompilerContractFileDto dto2)
-    {
-        if (dto1 == null || dto2 == null)
-            return dto1 == dto2;
-
-        var a = 1;
-
-        if (dto1.Name != dto2.Name)
-        {
-            a = 1;
-        }
-
-        if (dto1.Content != dto2.Content)
-        {
-            CompareText(dto1.Content, dto2.Content);
-
-
-            a = 1;
-        }
-
-        if (dto1.FileType != dto2.FileType)
-        {
-            a = 1;
-        }
-
-
-        // 比较 Files 字段：递归前按 Name 字段排序
-        // if (dto1.Files == null || dto2.Files == null)
-        //     return dto1.Files == dto2.Files;
-
-        if (dto1.Files == null)
-        {
-            if (dto2.Files == null)
-            {
-                return true;
-            }
-
-            a = 1;
-        }
-
-        if (dto1.Files.Count != dto2.Files.Count)
-            a = 1;
-
-        var sortedFiles1 = dto1.Files.OrderBy(f => f.Name).ToList();
-        var sortedFiles2 = dto2.Files.OrderBy(f => f.Name).ToList();
-
-        for (int i = 0; i < sortedFiles1.Count; i++)
-        {
-            if (!CompareDecompilerContractFileDto(sortedFiles1[i], sortedFiles2[i]))
-                return false;
-        }
-
-        return true;
-    }
-
-
-    private bool CompareText(string s1, string s2)
-    {
-        byte[] data = Convert.FromBase64String(s1);
-        string decodedStringS1 = Encoding.UTF8.GetString(data);
-
-        byte[] data2 = Convert.FromBase64String(s2);
-        string decodedStringS2 = Encoding.UTF8.GetString(data2);
-
-        var tree1 = CSharpSyntaxTree.ParseText(JsonConvert.SerializeObject(decodedStringS1));
-        var tree2 = CSharpSyntaxTree.ParseText(JsonConvert.SerializeObject(decodedStringS2));
-        var root1 = tree1.GetRoot();
-        var root2 = tree2.GetRoot();
-        bool areEquivalent = root1.IsEquivalentTo(root2);
-
-
-        return areEquivalent;
-    }
 
     public async Task SaveContractFileToGrain(IFormFile file, string chainId, string address, string csprojPath)
     {
