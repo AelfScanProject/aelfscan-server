@@ -143,7 +143,7 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    private async Task<string> GetContractVersion(string chainId, string contractAddress, string contractName,
+    private async Task<string> GetContractVersion(string chainId, string contractAddress,
         string contractCode)
     {
         var contractInfo = await _clusterClient
@@ -187,13 +187,20 @@ public class ContractVerifyService : IContractVerifyService
 
     public string GetAssemblyInformationalVersion(string base64EncodedContent)
     {
-        var decodedBytes = Convert.FromBase64String(base64EncodedContent);
-        var decodedContent = Encoding.UTF8.GetString(decodedBytes);
+        byte[] decodedBytes = Convert.FromBase64String(base64EncodedContent);
+        string decodedContent = Encoding.UTF8.GetString(decodedBytes);
 
-        var match = Regex.Match(decodedContent, @"AssemblyInformationalVersion\(""(?<version>[\d\.]+)""\)");
+        var match = Regex.Match(decodedContent, @"AssemblyInformationalVersion\(""([^""]*)""\)");
+
         if (match.Success)
         {
-            return match.Groups["version"].Value;
+            string contentInsideBrackets = match.Groups[1].Value;
+            return contentInsideBrackets;
+            _logger.LogInformation("AssemblyInformationalVersion version: " + contentInsideBrackets);
+        }
+        else
+        {
+            _logger.LogInformation("Not finf AssemblyInformationalVersion version");
         }
 
         return "";
@@ -241,6 +248,14 @@ public class ContractVerifyService : IContractVerifyService
             var contractRegistration =
                 await _indexerGenesisProvider.GetContractRegistrationAsync(chainId, contractInfoDto.CodeHash);
             _logger.LogInformation("Contract code fetched successfully.");
+
+            var contractVersion = await GetContractVersion(chainId, contractAddress, contractRegistration[0].Code);
+
+            if (!contractVersion.IsNullOrEmpty())
+            {
+                versrinonStr = contractVersion;
+            }
+
             return (versrinonStr, contractRegistration[0].Code);
         }
         catch (Exception ex)
@@ -259,13 +274,7 @@ public class ContractVerifyService : IContractVerifyService
 
         try
         {
-            var version = await GetContractVersion(chainId, contractAddress, contractName, originalContractCode);
-
-            if (!version.IsNullOrEmpty())
-            {
-                contractVersion = version;
-            }
-
+            
             await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
                 contractName, contractVersion);
             _logger.LogInformation("Kubernetes job started for contract validation.");

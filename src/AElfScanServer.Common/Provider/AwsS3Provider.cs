@@ -65,6 +65,8 @@ public class AwsS3Provider : IAwsS3Provider
             return string.Empty;
         }
 
+        _logger.LogInformation($"Upload file to s3 successful,key:{s3Key}");
+
         return s3Key;
     }
 
