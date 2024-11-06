@@ -185,6 +185,68 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
+    public static bool CompareGetContractFilesResponseDto(GetContractFilesResponseDto obj1,
+        GetContractFilesResponseDto obj2)
+    {
+        var f = 1;
+        if (obj1 == null || obj2 == null)
+            return obj1 == obj2;
+
+        if (obj1.Code != obj2.Code || obj1.Msg != obj2.Msg || obj1.Version != obj2.Version)
+            ;
+        {
+            f = 1;
+        }
+
+
+
+
+        if (obj1.Data.Count != obj2.Data.Count)
+            return false;
+
+        // 对 Data 列表按 Name 字段排序后再进行比较
+        var sortedData1 = obj1.Data.OrderBy(d => d.Name).ToList();
+        var sortedData2 = obj2.Data.OrderBy(d => d.Name).ToList();
+
+        for (int i = 0; i < sortedData1.Count; i++)
+        {
+            if (!CompareDecompilerContractFileDto(sortedData1[i], sortedData2[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+
+    public static bool CompareDecompilerContractFileDto(DecompilerContractFileDto dto1, DecompilerContractFileDto dto2)
+    {
+        if (dto1 == null || dto2 == null)
+            return dto1 == dto2;
+
+        // 比较基本类型字段
+        if (dto1.Name != dto2.Name || dto1.Content != dto2.Content || dto1.FileType != dto2.FileType)
+            return false;
+
+        // 比较 Files 字段：递归前按 Name 字段排序
+        if (dto1.Files == null || dto2.Files == null)
+            return dto1.Files == dto2.Files;
+
+        if (dto1.Files.Count != dto2.Files.Count)
+            return false;
+
+        var sortedFiles1 = dto1.Files.OrderBy(f => f.Name).ToList();
+        var sortedFiles2 = dto2.Files.OrderBy(f => f.Name).ToList();
+
+        for (int i = 0; i < sortedFiles1.Count; i++)
+        {
+            if (!CompareDecompilerContractFileDto(sortedFiles1[i], sortedFiles2[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+
     public string GetAssemblyInformationalVersion(string base64EncodedContent)
     {
         byte[] decodedBytes = Convert.FromBase64String(base64EncodedContent);
@@ -274,7 +336,6 @@ public class ContractVerifyService : IContractVerifyService
 
         try
         {
-            
             await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
                 contractName, contractVersion);
             _logger.LogInformation("Kubernetes job started for contract validation.");
@@ -290,6 +351,24 @@ public class ContractVerifyService : IContractVerifyService
             var base64StringLength = k8sContractCode.Length;
             bool isValid = k8sContractCode == originalContractCode;
 
+
+            string filePath = "/Users/wuhaoxuan/Desktop/tmpdata/EBridge.Contracts.Bridge.dll";
+
+            try
+            {
+                // 读取文件字节内容
+                byte[] fileBytes = File.ReadAllBytes(filePath);
+
+                // 将字节内容转换为 Base64 字符串
+                string base64String = Convert.ToBase64String(fileBytes);
+                bool isValid2 = k8sContractCode == base64String;
+                Console.WriteLine("Base64 内容：");
+                Console.WriteLine(base64String);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"文件读取或转换过程中出错：{ex.Message}");
+            }
 
             if (contractCodeLength == base64StringLength)
             {

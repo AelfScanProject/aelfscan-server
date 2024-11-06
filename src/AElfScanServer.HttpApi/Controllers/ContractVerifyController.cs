@@ -15,7 +15,7 @@ namespace AElfScanServer.HttpApi.Controllers;
 [RemoteService]
 [Area("app")]
 [ControllerName("contractVerify")]
-[Route("api/app/contract")]
+[Route("api/contractfile")]
 public class ContractVerifyController : AbpController
 {
     private readonly IContractVerifyService _contractVerifyService;
