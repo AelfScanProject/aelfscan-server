@@ -95,6 +95,13 @@ public class ContractVerifyService : IContractVerifyService
             return UploadContractFileResponseDto.Fail("Only ZIP files can be uploaded");
         }
 
+
+        var isValidNetVersion = await IsValidNetVersion(file, csprojPath, dotnetVersion);
+        if (!isValidNetVersion)
+        {
+            return UploadContractFileResponseDto.Fail("The.NET version is inconsistent with the source code");
+        }
+
         string contractName = Path.GetFileNameWithoutExtension(csprojPath);
 
         try
@@ -132,13 +139,13 @@ public class ContractVerifyService : IContractVerifyService
             else
             {
                 _logger.LogWarning("Contract file validation failed");
-                return UploadContractFileResponseDto.Success("Contract code verification failed");
+                return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred during contract file upload and validation process.");
-            return UploadContractFileResponseDto.Fail("An error occurred during upload");
+            return UploadContractFileResponseDto.Fail("Verification failed");
         }
     }
 
@@ -197,8 +204,6 @@ public class ContractVerifyService : IContractVerifyService
         {
             f = 1;
         }
-
-
 
 
         if (obj1.Data.Count != obj2.Data.Count)
@@ -448,13 +453,69 @@ public class ContractVerifyService : IContractVerifyService
         }
     }
 
+
+    public async Task<bool> IsValidNetVersion(IFormFile file, string csprojPath,
+        string netVersion)
+    {
+        try
+        {
+            var directoryName = Path.GetDirectoryName(csprojPath);
+
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                stream.Position = 0;
+                using (var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read))
+                {
+                    foreach (var entry in zipArchive.Entries)
+                    {
+                        if (!entry.FullName.Contains(directoryName))
+                        {
+                            continue;
+                        }
+
+                        if (entry.Length > 0)
+                        {
+                            if (entry.FullName.EndsWith(".csproj"))
+                            {
+                                var netVersionFromCsproj = await GetNetVersion(entry);
+                                return netVersionFromCsproj == netVersion;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while compare net version.");
+        }
+
+        return false;
+    }
+
     private async Task<string> GetBase64Content(ZipArchiveEntry entry)
     {
         using (var entryStream = entry.Open())
         using (var reader = new StreamReader(entryStream))
         {
             var content = await reader.ReadToEndAsync();
+
+
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(content));
+        }
+    }
+
+    private async Task<string> GetNetVersion(ZipArchiveEntry entry)
+    {
+        using (var entryStream = entry.Open())
+        using (var reader = new StreamReader(entryStream))
+        {
+            var content = await reader.ReadToEndAsync();
+            var match = Regex.Match(content, @"<TargetFramework>(.*?)</TargetFramework>");
+            var netVersion = match.Success ? match.Groups[1].Value : null;
+
+            return netVersion;
         }
     }
 

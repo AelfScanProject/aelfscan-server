@@ -8,7 +8,6 @@ namespace AElfScanServer.HttpApi.Dtos;
 
 public class UploadContractFileResponseDto
 {
-    public string FileKey { get; set; }
     public string Message { get; set; }
 
     public bool CodeIsSame { get; set; }
