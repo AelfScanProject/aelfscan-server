@@ -193,13 +193,6 @@ public class ContractAppService : IContractAppService
                 contractFileResultDto.ContractSourceCode.OrderBy(o => o.Name).ToList();
         }
 
-        var verifyResult = await _contractVerifyCache.GetAsync(input.ChainId + input.Address);
-
-        if (verifyResult != null)
-        {
-            contractFileResultDto.IsVerify = verifyResult.VerifyFinished;
-        }
-
         return contractFileResultDto;
     }
 

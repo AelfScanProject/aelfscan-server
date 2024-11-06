@@ -37,6 +37,9 @@ public interface IContractVerifyService
 {
     Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId, string contractAddress,
         string csprojPath, string dotnetVersion);
+
+
+    Task<string> UploadContractStatesAsync(string chainId, string contractAddress);
 }
 
 [RemoteService(IsEnabled = false)]
@@ -68,6 +71,62 @@ public class ContractVerifyService : IContractVerifyService
         _decompilerProvider = decompilerProvider;
         _contractVerifyCache = contractVerifyCache;
     }
+
+
+    public async Task<string> UploadContractStatesAsync(string chainId, string contractAddress)
+    {
+        var list = await _indexerGenesisProvider.GetContractListAsync(chainId, 0, 1, "BlockTime", "asc",
+            contractAddress);
+        var contractInfoDto = list.ContractList.Items.First();
+        var version = contractInfoDto.Version;
+
+        var versrinonStr = contractInfoDto.ContractVersion.IsNullOrEmpty()
+            ? version.ToString()
+            : contractInfoDto.ContractVersion;
+        var contractRegistration =
+            await _indexerGenesisProvider.GetContractRegistrationAsync(chainId, contractInfoDto.CodeHash);
+        var getFilesResult = await _decompilerProvider.GetFilesAsync(contractRegistration[0].Code);
+
+        await _clusterClient
+            .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractAddress))
+            .SaveAndUpdateAsync(
+                new ContractFileResultDto
+                {
+                    ChainId = chainId,
+                    Address = contractAddress,
+                    LastBlockHeight = contractInfoDto.Metadata.Block.BlockHeight,
+                    ContractName = GetContractName(chainId, contractAddress),
+                    ContractVersion = contractInfoDto.ContractVersion == ""
+                        ? contractInfoDto.Version.ToString()
+                        : contractInfoDto.ContractVersion,
+                    ContractSourceCode = getFilesResult.Data,
+                    IsVerify = false
+                });
+
+        // var contractInfo = await _clusterClient
+        //     .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractAddress))
+        //     .GetAsync();
+        //
+        // contractInfo.IsVerify = false;
+        // await _clusterClient
+        //     .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractInfo))
+        //     .SaveAndUpdateAsync(contractInfo);
+        return "success";
+    }
+
+    public string GetContractName(string chainId, string address)
+    {
+        _globalOptions.CurrentValue.ContractNames.TryGetValue(chainId, out var contractNames);
+        if (contractNames == null)
+        {
+            return "";
+        }
+
+        contractNames.TryGetValue(address, out var contractName);
+
+        return contractName;
+    }
+
 
     public async Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId,
         string contractAddress, string csprojPath, string dotnetVersion)
@@ -123,15 +182,7 @@ public class ContractVerifyService : IContractVerifyService
 
             {
                 await SaveContractFileToGrain(file, chainId, contractAddress, csprojPath);
-                await _contractVerifyCache.SetAsync(chainId + contractAddress, new ContractVerifyResult()
-                {
-                    ContractAddress = contractAddress,
-                    VerifyFinished = true
-                }, new DistributedCacheEntryOptions()
-                {
-                    AbsoluteExpiration = null,
-                    SlidingExpiration = null
-                });
+
                 _logger.LogInformation($"{contractAddress} Contract file validated and saved successfully.");
 
                 return UploadContractFileResponseDto.Success("Upload success", true);
@@ -428,6 +479,7 @@ public class ContractVerifyService : IContractVerifyService
             var contractInfo = await _clusterClient
                 .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address)).GetAsync();
             contractInfo.ContractSourceCode = contractFileResult.ContractSourceCode;
+            contractInfo.IsVerify = true;
             await _clusterClient
                 .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address))
                 .SaveAndUpdateAsync(contractInfo);
