@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Orleans;
 using Volo.Abp;
@@ -48,6 +49,7 @@ public class ContractVerifyService : IContractVerifyService
     private readonly IK8sProvider _k8sProvider;
     private readonly ILogger<ContractVerifyService> _logger;
     private readonly IDecompilerProvider _decompilerProvider;
+    private const string ContractVersionFileName = "AssemblyInfo.cs";
 
     public ContractVerifyService(IClusterClient clusterClient, IAwsS3Provider awsS3ClientService,
         IOptionsMonitor<GlobalOptions> globalOptions, IIndexerGenesisProvider indexerGenesisProvider,
@@ -126,7 +128,7 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    private async Task<string> GetContractVersion(string chainId, string contractAddress, string conrtactName,
+    private async Task<string> GetContractVersion(string chainId, string contractAddress, string contractName,
         string contractCode)
     {
         var contractInfo = await _clusterClient
@@ -134,7 +136,7 @@ public class ContractVerifyService : IContractVerifyService
             .GetAsync();
         var fileList = new List<DecompilerContractFileDto>();
 
-        if (contractInfo == null)
+        if (contractInfo == null || contractInfo.Address.IsNullOrEmpty())
         {
             var getContractFilesResponseDto = await _decompilerProvider.GetFilesAsync(contractCode);
             if (!getContractFilesResponseDto.Data.IsNullOrEmpty())
@@ -147,8 +149,61 @@ public class ContractVerifyService : IContractVerifyService
             fileList = contractInfo.ContractSourceCode;
         }
 
-        foreach (var decompilerContractFileDto in fileList)
+
+        var fileContent = "";
+
+        foreach (var file in fileList)
         {
+            fileContent = await GetVersionContent(file);
+            if (!fileContent.IsNullOrEmpty())
+            {
+                break;
+            }
+        }
+
+        if (!fileContent.IsNullOrEmpty())
+        {
+            return GetAssemblyInformationalVersion(fileContent);
+        }
+
+        return "";
+    }
+
+
+    public string GetAssemblyInformationalVersion(string base64EncodedContent)
+    {
+        var decodedBytes = Convert.FromBase64String(base64EncodedContent);
+        var decodedContent = Encoding.UTF8.GetString(decodedBytes);
+
+        var match = Regex.Match(decodedContent, @"AssemblyInformationalVersion\(""(?<version>[\d\.]+)""\)");
+        if (match.Success)
+        {
+            return match.Groups["version"].Value;
+        }
+
+        return "";
+    }
+
+    private async Task<string> GetVersionContent(DecompilerContractFileDto file)
+    {
+        if (file.Name == ContractVersionFileName)
+        {
+            return file.Content;
+        }
+
+        if (file.Files.IsNullOrEmpty())
+        {
+            return "";
+        }
+
+        foreach (var decompilerContractFileDto in file.Files)
+        {
+            var versionContent = await GetVersionContent(decompilerContractFileDto);
+
+            if (!versionContent.IsNullOrEmpty())
+            {
+                return versionContent;
+            }
         }
 
         return "";
@@ -189,52 +244,33 @@ public class ContractVerifyService : IContractVerifyService
 
         try
         {
-            // 1. 启动 Kubernetes Job 进行合约验证
+            var version = await GetContractVersion(chainId, contractAddress, contractName, originalContractCode);
+
+            if (!version.IsNullOrEmpty())
+            {
+                contractVersion = version;
+            }
+
             await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
                 contractName, contractVersion);
             _logger.LogInformation("Kubernetes job started for contract validation.");
 
-            // 2. 从 S3 获取已上传的合约文件内容
             var result = await _awsS3ClientService.GetContractFileAsync(
                 _globalOptions.CurrentValue.S3ContractFileDirectory,
                 GrainIdHelper.GenerateContractDLL(chainId, contractAddress, contractName, contractVersion));
-
-            // 3. 获取本地合约文件并进行 base64 编码
-            var localFilePath =
-                "/Users/wuhaoxuan/Downloads/build 4/EBridge.Contracts.Bridge-1.5.0.0/EBridge.Contracts.Bridge.dll";
-            string localFileBase64;
-            if (File.Exists(localFilePath))
-            {
-                var localFileBytes = await File.ReadAllBytesAsync(localFilePath);
-                localFileBase64 = Convert.ToBase64String(localFileBytes);
-                _logger.LogInformation("Local contract file read and encoded successfully.");
-            }
-            else
-            {
-                _logger.LogError("Local contract file not found at path: {LocalFilePath}", localFilePath);
-                return false;
-            }
-
-            // 4. 比较合约文件内容的 base64 编码结果
+            
             var k8sContractCode = Convert.ToBase64String(result);
 
 
             var contractCodeLength = originalContractCode.Length;
             var base64StringLength = k8sContractCode.Length;
             bool isValid = k8sContractCode == originalContractCode;
-            bool isValid2 = k8sContractCode == localFileBase64;
 
             var k8sFileData = await _decompilerProvider.GetFilesAsync(k8sContractCode);
 
             var originalFileData = await _decompilerProvider.GetFilesAsync(originalContractCode);
 
-            var k8sHash = ComputeMd5Hash(k8sFileData);
-            var originalHash = ComputeMd5Hash(originalFileData);
-
-            var compareGetContractFilesResponseDto = CompareGetContractFilesResponseDto(k8sFileData, originalFileData);
-
-
-            // 输出合约文件对比结果和长度信息
+            
             if (contractCodeLength == base64StringLength)
             {
                 _logger.LogInformation("Contract codes have the same length. Ensure versions match.");
