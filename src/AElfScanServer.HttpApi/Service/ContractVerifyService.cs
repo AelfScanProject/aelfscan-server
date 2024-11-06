@@ -132,19 +132,20 @@ public class ContractVerifyService : IContractVerifyService
                     AbsoluteExpiration = null,
                     SlidingExpiration = null
                 });
-                _logger.LogInformation("Contract file validated and saved successfully.");
+                _logger.LogInformation($"{contractAddress} Contract file validated and saved successfully.");
 
                 return UploadContractFileResponseDto.Success("Upload success", true);
             }
             else
             {
-                _logger.LogWarning("Contract file validation failed");
+                _logger.LogWarning($"{contractAddress} Contract file validation failed");
                 return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An error occurred during contract file upload and validation process.");
+            _logger.LogError(ex,
+                $"{contractAddress} An error occurred during contract file upload and validation process.");
             return UploadContractFileResponseDto.Fail("Verification failed");
         }
     }
@@ -355,25 +356,25 @@ public class ContractVerifyService : IContractVerifyService
             var contractCodeLength = originalContractCode.Length;
             var base64StringLength = k8sContractCode.Length;
             bool isValid = k8sContractCode == originalContractCode;
-
-
-            string filePath = "/Users/wuhaoxuan/Desktop/tmpdata/EBridge.Contracts.Bridge.dll";
-
-            try
-            {
-                // 读取文件字节内容
-                byte[] fileBytes = File.ReadAllBytes(filePath);
-
-                // 将字节内容转换为 Base64 字符串
-                string base64String = Convert.ToBase64String(fileBytes);
-                bool isValid2 = k8sContractCode == base64String;
-                Console.WriteLine("Base64 内容：");
-                Console.WriteLine(base64String);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"文件读取或转换过程中出错：{ex.Message}");
-            }
+            //
+            //
+            // string filePath = "/Users/wuhaoxuan/Desktop/tmpdata/EBridge.Contracts.Bridge.dll";
+            //
+            // try
+            // {
+            //     // 读取文件字节内容
+            //     byte[] fileBytes = File.ReadAllBytes(filePath);
+            //
+            //     // 将字节内容转换为 Base64 字符串
+            //     string base64String = Convert.ToBase64String(fileBytes);
+            //     bool isValid2 = k8sContractCode == base64String;
+            //     Console.WriteLine("Base64 内容：");
+            //     Console.WriteLine(base64String);
+            // }
+            // catch (Exception ex)
+            // {
+            //     Console.WriteLine($"文件读取或转换过程中出错：{ex.Message}");
+            // }
 
             if (contractCodeLength == base64StringLength)
             {
@@ -382,16 +383,16 @@ public class ContractVerifyService : IContractVerifyService
             else
             {
                 _logger.LogWarning(
-                    "Contract code lengths differ: Original Length: {OriginalLength}, S3 Length: {S3Length}",
-                    contractCodeLength, base64StringLength);
+                    "{address} Contract code lengths differ: Original Length: {OriginalLength}, S3 Length: {S3Length}",
+                    contractAddress, contractCodeLength, base64StringLength);
             }
 
-            _logger.LogInformation("Contract validation result: {IsValid}", isValid);
+            _logger.LogInformation($"{contractAddress} Contract validation result: {isValid}");
             return isValid;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during contract validation.");
+            _logger.LogError(ex, $"Error during contract validation. {contractAddress}");
             return false;
         }
     }
