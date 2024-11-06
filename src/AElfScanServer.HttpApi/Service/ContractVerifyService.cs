@@ -154,24 +154,29 @@ public class ContractVerifyService : IContractVerifyService
     private async Task<string> GetContractVersion(string chainId, string contractAddress,
         string contractCode)
     {
-        var contractInfo = await _clusterClient
-            .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractAddress))
-            .GetAsync();
+        // var contractInfo = await _clusterClient
+        //     .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractAddress))
+        //     .GetAsync();
         var fileList = new List<DecompilerContractFileDto>();
+        //
+        // if (contractInfo == null || contractInfo.Address.IsNullOrEmpty())
+        // {
+        //     var getContractFilesResponseDto = await _decompilerProvider.GetFilesAsync(contractCode);
+        //     if (!getContractFilesResponseDto.Data.IsNullOrEmpty())
+        //     {
+        //         fileList = getContractFilesResponseDto.Data;
+        //     }
+        // }
+        // else
+        // {
+        //     fileList = contractInfo.ContractSourceCode;
+        // }
 
-        if (contractInfo == null || contractInfo.Address.IsNullOrEmpty())
+        var getContractFilesResponseDto = await _decompilerProvider.GetFilesAsync(contractCode);
+        if (!getContractFilesResponseDto.Data.IsNullOrEmpty())
         {
-            var getContractFilesResponseDto = await _decompilerProvider.GetFilesAsync(contractCode);
-            if (!getContractFilesResponseDto.Data.IsNullOrEmpty())
-            {
-                fileList = getContractFilesResponseDto.Data;
-            }
+            fileList = getContractFilesResponseDto.Data;
         }
-        else
-        {
-            fileList = contractInfo.ContractSourceCode;
-        }
-
 
         var fileContent = "";
 
@@ -356,25 +361,6 @@ public class ContractVerifyService : IContractVerifyService
             var contractCodeLength = originalContractCode.Length;
             var base64StringLength = k8sContractCode.Length;
             bool isValid = k8sContractCode == originalContractCode;
-            //
-            //
-            // string filePath = "/Users/wuhaoxuan/Desktop/tmpdata/EBridge.Contracts.Bridge.dll";
-            //
-            // try
-            // {
-            //     // 读取文件字节内容
-            //     byte[] fileBytes = File.ReadAllBytes(filePath);
-            //
-            //     // 将字节内容转换为 Base64 字符串
-            //     string base64String = Convert.ToBase64String(fileBytes);
-            //     bool isValid2 = k8sContractCode == base64String;
-            //     Console.WriteLine("Base64 内容：");
-            //     Console.WriteLine(base64String);
-            // }
-            // catch (Exception ex)
-            // {
-            //     Console.WriteLine($"文件读取或转换过程中出错：{ex.Message}");
-            // }
 
             if (contractCodeLength == base64StringLength)
             {
