@@ -13,7 +13,7 @@ namespace AElfScanServer.HttpApi.Controllers;
 [AggregateExecutionTime]
 [RemoteService]
 [Area("app")]
-[ControllerName("contractVerify")]
+[ControllerName("contractFile")]
 [Route("api/app/contractfile")]
 public class ContractUpdateController : AbpController
 {
