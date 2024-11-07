@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElf.Standards.ACS10;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Options;
@@ -53,11 +56,13 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
         _blockExtraIndexRepository = blockExtraIndexRepository;
         _addressIndexRepository = addressIndexRepository;
     }
-
-    public async Task<long> GetRewardAsync(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetRewardAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetRewardAsync), LogTargets = ["chainId"])]
+    public virtual async Task<long> GetRewardAsync(string chainId)
     {
-        try
-        {
+      
             if (chainId != "AELF")
             {
                 return 0;
@@ -126,19 +131,15 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
                 TimeSpan.FromSeconds(_globalOptions.CurrentValue.RewardCacheExpiration));
             _logger.LogInformation("Set cache when Get reward from chain,chainId:{chainId},amount:{amount}", chainId, amount);
             return amount;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Get reward err,chainId:{chainId}", chainId);
-        }
-
-        return 0;
     }
 
-    public async Task<decimal> GetTransactionCountPerLastMinute(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTransactionCountPerLastMinute err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task<decimal> GetTransactionCountPerLastMinute(string chainId)
     {
-        try
-        {
+      
             await ConnectAsync();
             var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionChartData(chainId));
             if (redisValue.IsNullOrEmpty)
@@ -157,11 +158,6 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
 
             return (decimal)transactionCountPerMinuteDtos.Skip(transactionCountPerMinuteDtos.Count - 3).Take(1).First()
                 .Count;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Get  transaction count per minute err,chainId:{chainId}", chainId);
-            return 0;
-        }
+       
     }
 }

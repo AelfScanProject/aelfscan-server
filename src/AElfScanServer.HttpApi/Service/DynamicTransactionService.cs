@@ -22,6 +22,7 @@ using Nest;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
+using AElf.ExceptionHandler;
 using AElf.OpenTelemetry;
 using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos.Indexer;
@@ -29,6 +30,7 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Common.ExceptionHandling;
 using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -96,7 +98,12 @@ public class DynamicTransactionService : IDynamicTransactionService
     }
 
 
-    public async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTransactionDetailAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
+    public virtual async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
     {
         var transactionDetailResponseDto = new TransactionDetailResponseDto();
         if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == request.ChainId))
@@ -104,8 +111,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             return transactionDetailResponseDto;
         }
 
-        try
-        {
+        
             var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
             if (detailResponseDto != null)
             {
@@ -156,14 +162,7 @@ public class DynamicTransactionService : IDynamicTransactionService
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
             });
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTransactionDetailAsync error ");
-        }
-
-
-        return transactionDetailResponseDto;
+            
     }
 
 
@@ -498,13 +497,17 @@ public class DynamicTransactionService : IDynamicTransactionService
         }
     }
 
-    public async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTransactionsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
+    public virtual async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
     {
         var result = new TransactionsResponseDto();
         result.Transactions = new List<TransactionResponseDto>();
 
-        try
-        {
+      
             requestDto.SetDefaultSort();
             var indexerTransactionList = await _blockChainIndexerProvider.GetTransactionsAsync(requestDto);
 
@@ -536,12 +539,6 @@ public class DynamicTransactionService : IDynamicTransactionService
                 .ToList();
 
             result.Total = indexerTransactionList.TotalCount;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestTransactionsAsync error");
-            return result;
-        }
 
         return result;
     }

@@ -172,6 +172,7 @@ public class OpenApiService : IOpenApiService
     public async Task<List<CurrencyPrice>> GetCurrencyPriceAsync()
     {
         
+        
         var result = new List<CurrencyPrice>();
         var tasks = new List<Task>();
 

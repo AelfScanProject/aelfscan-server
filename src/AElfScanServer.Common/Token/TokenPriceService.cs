@@ -1,9 +1,13 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Token.Provider;
 using Microsoft.Extensions.Logging;
+using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 
 namespace AElfScanServer.Common.Token;
@@ -26,10 +30,12 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
         _tokenExchangeProvider = tokenExchangeProvider;
     }
 
-    public async Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin)
+    [ExceptionHandler( typeof(Exception),
+        Message = "GetHistoryExchangeAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenPriceAsync), LogTargets = ["baseCoin","quoteCoin"])]
+    public virtual async Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin)
     {
-        try
-        {
             AssertHelper.IsTrue(!baseCoin.IsNullOrEmpty() && !quoteCoin.IsNullOrEmpty(),
                 "Get token price fail, baseCoin or quoteCoin is empty.");
             if (baseCoin.ToUpper().Equals(quoteCoin.ToUpper()))
@@ -51,18 +57,16 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
             }
 
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "[GetTokenPriceAsync] error.");
-            return new CommonTokenPriceDto();
-        }
+       
     }
 
-    public async Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, long timestamp)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTokenHistoryPriceAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenPriceAsync),LogTargets = ["baseCoin","quoteCoin","timestamp"])]
+    public virtual async Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, long timestamp)
     {
-        try
-        {
+        
             AssertHelper.IsTrue(!baseCoin.IsNullOrEmpty() && !quoteCoin.IsNullOrEmpty() && timestamp > 0,
                 "Get token price fail, baseCoin or quoteCoin is empty.");
             if (baseCoin.ToUpper().Equals(quoteCoin.ToUpper()))
@@ -82,11 +86,6 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
             {
                 Price = avgExchange
             };
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "[GetTokenHistoryPriceAsync] error.");
-            return new CommonTokenPriceDto();
-        }
+       
     }
 }

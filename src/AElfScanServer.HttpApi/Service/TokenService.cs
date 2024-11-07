@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
@@ -12,6 +14,7 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -83,10 +86,13 @@ public class TokenService : ITokenService, ISingletonDependency
         _globalOptions = globalOptions;
     }
 
-    public async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTokenListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["input"])]
+    public virtual async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
     {
-        try
-        {
+        
             if (input.ChainId.IsNullOrEmpty())
             {
                 return await GetMergeTokenListAsync(input);
@@ -108,15 +114,7 @@ public class TokenService : ITokenService, ISingletonDependency
                 Total = indexerTokenListDto.TotalCount,
                 List = list
             };
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTokenListAsync err");
-        }
-
-        return new ListResponseDto<TokenCommonDto>
-        {
-        };
+            
     }
 
     public async Task<ListResponseDto<TokenCommonDto>> GetMergeTokenListAsync(TokenListInput input)
@@ -176,11 +174,13 @@ public class TokenService : ITokenService, ISingletonDependency
         public List<string> ChainIds { get; set; }
     }
 
-
-    public async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId = "")
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTokenDetailAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenDetailAsync),LogTargets = ["chainId","symbol"])]
+    public virtual async Task<TokenDetailDto> GetTokenDetailAsync(string symbol, string chainId = "")
     {
-        try
-        {
+      
             var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
 
             AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
@@ -223,14 +223,7 @@ public class TokenService : ITokenService, ISingletonDependency
             }
 
             return tokenDetailDto;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTokenDetailAsync err");
-        }
-
-
-        return new TokenDetailDto();
+        
     }
 
     public async Task<TokenDetailDto> GetMergeTokenDetailAsync(string symbol, string chainId)

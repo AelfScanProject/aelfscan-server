@@ -1,5 +1,8 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
+using AElfScanServer.Common.ExceptionHandling;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -58,35 +61,27 @@ public abstract class DataStrategyBase<TInput, TOutPut> : AbpRedisCache, IDataSt
 
     public abstract Task<TOutPut> QueryData(TInput input);
 
-    public async Task SaveData(TOutPut data, TInput input)
-    {
-        try
-        {
-            var key = DisplayKey(input);
-            var value = JsonConvert.SerializeObject(data);
 
-            await _cache.SetAsync(key, value);
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "SaveData error");
-        }
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception), Message = "SaveData",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task SaveData(TOutPut data, TInput input)
+    {
+        var key = DisplayKey(input);
+        var value = JsonConvert.SerializeObject(data);
+
+        await _cache.SetAsync(key, value);
     }
 
 
-    public async Task<TOutPut> DisplayData(TInput input)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception), Message = "DisplayData",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException))]
+    public virtual async Task<TOutPut> DisplayData(TInput input)
     {
-        try
-        {
-            var key = DisplayKey(input);
-            var s = await _cache.GetAsync(key);
-            return JsonConvert.DeserializeObject<TOutPut>(s);
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "DisplayData error");
-            return default;
-        }
+        var key = DisplayKey(input);
+        var s = await _cache.GetAsync(key);
+        return JsonConvert.DeserializeObject<TOutPut>(s);
     }
 
     public abstract string DisplayKey(TInput input);

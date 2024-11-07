@@ -60,7 +60,6 @@ public class AddressAppService : IAddressAppService
     private readonly IGenesisPluginProvider _genesisPluginProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly IAddressTypeService _addressTypeService;
-    private readonly IEntityMappingRepository<AccountTokenIndex, string> _accountTokenRepository;
     private readonly IElasticClient _elasticClient;
 
 

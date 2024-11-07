@@ -206,8 +206,6 @@ public class HttpApiHostModule : AbpModule
             app.UseMultiTenancy();
         }
 
-        app.UseAuthorization();
-
         app.UseAbpSwaggerUI(options =>
         {
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "AElfScanServer API");

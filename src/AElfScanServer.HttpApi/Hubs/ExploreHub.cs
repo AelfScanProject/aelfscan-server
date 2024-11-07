@@ -2,11 +2,14 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.HttpApi.Dtos;
@@ -91,8 +94,12 @@ public class ExploreHub : AbpHub
             HubGroupHelper.GetBpProduceGroupName(request.ChainId));
     }
 
-
-    public async Task PushRequestBpProduceAsync(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "PushRequestBpProduceAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
+        FinallyTargetType = typeof(ExploreHub), FinallyMethodName = nameof(FinallyPushRequestBpProduceAsync))]
+    public virtual async Task PushRequestBpProduceAsync(string chainId)
     {
         var key = "bpProduce" + chainId;
 
@@ -101,29 +108,25 @@ public class ExploreHub : AbpHub
             return;
         }
 
-        try
+        while (true)
         {
-            while (true)
-            {
-                await Task.Delay(2000);
-                var startNew = Stopwatch.StartNew();
-                var resp = await _bpDataStrategy.DisplayData(chainId);
+            await Task.Delay(2000);
+            var startNew = Stopwatch.StartNew();
+            var resp = await _bpDataStrategy.DisplayData(chainId);
 
-                await _hubContext.Clients.Groups(HubGroupHelper.GetBpProduceGroupName(chainId))
-                    .SendAsync("ReceiveBpProduce", resp);
-                startNew.Stop();
-                _logger.LogInformation("PushRequestBpProduceAsync costTime:{chainId},{costTime}", chainId,
-                    startNew.Elapsed.TotalSeconds);
-            }
+            await _hubContext.Clients.Groups(HubGroupHelper.GetBpProduceGroupName(chainId))
+                .SendAsync("ReceiveBpProduce", resp);
+            startNew.Stop();
+            _logger.LogInformation("PushRequestBpProduceAsync costTime:{chainId},{costTime}", chainId,
+                startNew.Elapsed.TotalSeconds);
         }
-        catch (Exception e)
-        {
-            _logger.LogError("push bp produce error: {error}", e);
-        }
-        finally
-        {
-            _isPushRunning.TryRemove(key, out var v);
-        }
+    }
+
+    public async Task FinallyPushRequestBpProduceAsync(string chainId)
+    {
+        var key = "bpProduce" + chainId;
+        _isPushRunning.TryRemove(key, out var v);
+        _logger.LogInformation($"FinallyPushRequestBpProduceAsync {key}");
     }
 
 
@@ -171,52 +174,51 @@ public class ExploreHub : AbpHub
         await Clients.Caller.SendAsync("ReceiveMergeBlockInfo", resp);
     }
 
-    public async Task<List<TopTokenDto>> GetTopTokens()
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTopTokens err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task<List<TopTokenDto>> GetTopTokens()
     {
-        try
-        {
-            var key = "TopTokens";
+        var key = "TopTokens";
             var list = await _cache.GetAsync(key);
-            if (!list.IsNullOrEmpty())
+        if (!list.IsNullOrEmpty())
+        {
+            return list;
+        }
+
+        var searchMergeTokenList =
+            await EsIndex.SearchMergeTokenList(0, 6, "desc", null, _globalOptions.CurrentValue.SpecialSymbols);
+
+        var topTokenDtos = new List<TopTokenDto>();
+        foreach (var tokenInfoIndex in searchMergeTokenList.list)
+        {
+            topTokenDtos.Add(new TopTokenDto
             {
-                return list;
-            }
+                Symbol = tokenInfoIndex.Symbol,
+                ChainIds = tokenInfoIndex.ChainIds.OrderByDescending(c => c).ToList(),
+                Transfers = tokenInfoIndex.TransferCount,
+                Holder = tokenInfoIndex.HolderCount,
+                TokenName = tokenInfoIndex.TokenName,
+                Type = tokenInfoIndex.Type,
+                ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(tokenInfoIndex.Symbol,
+                    tokenInfoIndex.IssueChainId, tokenInfoIndex.ExternalInfo)
+            });
+        }
 
-            var searchMergeTokenList =
-                await EsIndex.SearchMergeTokenList(0, 6, "desc", null, _globalOptions.CurrentValue.SpecialSymbols);
-
-            var topTokenDtos = new List<TopTokenDto>();
-            foreach (var tokenInfoIndex in searchMergeTokenList.list)
-            {
-                topTokenDtos.Add(new TopTokenDto
-                {
-                    Symbol = tokenInfoIndex.Symbol,
-                    ChainIds = tokenInfoIndex.ChainIds.OrderByDescending(c => c).ToList(),
-                    Transfers = tokenInfoIndex.TransferCount,
-                    Holder = tokenInfoIndex.HolderCount,
-                    TokenName = tokenInfoIndex.TokenName,
-                    Type = tokenInfoIndex.Type,
-                    ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(tokenInfoIndex.Symbol,
-                        tokenInfoIndex.IssueChainId, tokenInfoIndex.ExternalInfo)
-                });
-            }
-
-            await _cache.SetAsync(key, topTokenDtos, new DistributedCacheEntryOptions()
+        await _cache.SetAsync(key, topTokenDtos, new DistributedCacheEntryOptions()
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
             });
-            return topTokenDtos;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "get top tokens err");
-        }
-
-        return new List<TopTokenDto>();
+        return topTokenDtos;
     }
 
-
-    public async Task PushMergeBlockInfoAsync(string chainId = "")
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "PushMergeBlockInfoAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
+        FinallyTargetType = typeof(ExploreHub), FinallyMethodName = nameof(FinallyPushMergeBlockInfoAsync))]
+    public virtual async Task PushMergeBlockInfoAsync(string chainId = "")
     {
         var key = "mergeBlockInfo" + chainId;
         if (!_isPushRunning.TryAdd(key, true))
@@ -224,49 +226,47 @@ public class ExploreHub : AbpHub
             return;
         }
 
-        try
+        while (true)
         {
-            while (true)
+            await Task.Delay(2000);
+            if (chainId.IsNullOrEmpty())
             {
-                await Task.Delay(2000);
-                if (chainId.IsNullOrEmpty())
+                var transactions = await _latestTransactionsDataStrategy.DisplayData("");
+                var resp = new WebSocketMergeBlockInfoDto()
                 {
-                    var transactions = await _latestTransactionsDataStrategy.DisplayData("");
-                    var resp = new WebSocketMergeBlockInfoDto()
-                    {
-                        LatestTransactions = transactions,
-                        TopTokens = await GetTopTokens()
-                    };
-                    await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
-                        .SendAsync("ReceiveMergeBlockInfo", resp);
-                }
-                else
+                    LatestTransactions = transactions,
+                    TopTokens = await GetTopTokens()
+                };
+                await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
+                    .SendAsync("ReceiveMergeBlockInfo", resp);
+            }
+            else
+            {
+                var startNew = Stopwatch.StartNew();
+                var transactions = await _latestTransactionsDataStrategy.DisplayData(chainId);
+                var blocks = await _latestBlocksDataStrategy.DisplayData(chainId);
+                var resp = new WebSocketMergeBlockInfoDto()
                 {
-                    var startNew = Stopwatch.StartNew();
-                    var transactions = await _latestTransactionsDataStrategy.DisplayData(chainId);
-                    var blocks = await _latestBlocksDataStrategy.DisplayData(chainId);
-                    var resp = new WebSocketMergeBlockInfoDto()
-                    {
-                        LatestTransactions = transactions,
-                        LatestBlocks = blocks
-                    };
-                    await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName(chainId))
-                        .SendAsync("ReceiveMergeBlockInfo", resp);
-                    startNew.Stop();
-                    _logger.LogInformation("PushMergeBlockInfoAsync costTime:{chainId},{costTime}", chainId,
-                        startNew.Elapsed.TotalSeconds);
-                }
+                    LatestTransactions = transactions,
+                    LatestBlocks = blocks
+                };
+                await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName(chainId))
+                    .SendAsync("ReceiveMergeBlockInfo", resp);
+                startNew.Stop();
+                _logger.LogInformation("PushMergeBlockInfoAsync costTime:{chainId},{costTime}", chainId,
+                    startNew.Elapsed.TotalSeconds);
             }
         }
-        catch (Exception e)
-        {
-            _logger.LogError("push merge block info error: {error}", e);
-        }
-        finally
-        {
-            _isPushRunning.TryRemove(key, out var v);
-        }
     }
+
+
+    public async Task FinallyPushMergeBlockInfoAsync(string chainId)
+    {
+        var key = "mergeBlockInfo" + chainId;
+        _isPushRunning.TryRemove(key, out var v);
+        _logger.LogInformation($"FinallyPushMergeBlockInfoAsync {key}");
+    }
+
 
     public async Task UnsubscribeMergeBlockInfo(CommonRequest request)
     {
@@ -298,7 +298,12 @@ public class ExploreHub : AbpHub
     }
 
 
-    public async Task PushBlockOverViewAsync(string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "PushBlockOverViewAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
+        FinallyTargetType = typeof(ExploreHub), FinallyMethodName = nameof(FinallyPushBlockOverViewAsync))]
+    public virtual async Task PushBlockOverViewAsync(string chainId)
     {
         var key = "overview" + chainId;
         if (!_isPushRunning.TryAdd(key, true))
@@ -307,31 +312,27 @@ public class ExploreHub : AbpHub
         }
 
 
-        try
+        while (true)
         {
-            while (true)
-            {
-                await Task.Delay(2000);
-                var startNew = Stopwatch.StartNew();
-                var resp = await _overviewDataStrategy.DisplayData(chainId);
-                await _hubContext.Clients.Groups(HubGroupHelper.GetBlockOverviewGroupName(chainId))
-                    .SendAsync("ReceiveBlockchainOverview", resp);
+            await Task.Delay(2000);
+            var startNew = Stopwatch.StartNew();
+            var resp = await _overviewDataStrategy.DisplayData(chainId);
+            await _hubContext.Clients.Groups(HubGroupHelper.GetBlockOverviewGroupName(chainId))
+                .SendAsync("ReceiveBlockchainOverview", resp);
 
-                startNew.Stop();
-                _logger.LogInformation("PushBlockOverViewAsync costTime:{chainId},{costTime}", chainId,
-                    startNew.Elapsed.TotalSeconds);
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("push block overview error: {error}", e);
-        }
-        finally
-        {
-            _isPushRunning.TryRemove(key, out var v);
+            startNew.Stop();
+            _logger.LogInformation("PushBlockOverViewAsync costTime:{chainId},{costTime}", chainId,
+                startNew.Elapsed.TotalSeconds);
         }
     }
 
+
+    public async Task FinallyPushBlockOverViewAsync(string chainId)
+    {
+        var key = "overview" + chainId;
+        _isPushRunning.TryRemove(key, out var v);
+        _logger.LogInformation($"FinallyPushBlockOverViewAsync {key}");
+    }
 
     public async Task RequestTransactionDataChart(GetTransactionPerMinuteRequestDto request)
     {
@@ -381,8 +382,12 @@ public class ExploreHub : AbpHub
             HubGroupHelper.GetTransactionCountPerMinuteGroupName(request.ChainId));
     }
 
-
-    public async Task PushTransactionCountPerMinuteAsync(string chainId = "")
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "PushTransactionCountPerMinuteAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
+        FinallyTargetType = typeof(ExploreHub), FinallyMethodName = nameof(FinallyPushTransactionCountPerMinuteAsync))]
+    public virtual async Task PushTransactionCountPerMinuteAsync(string chainId = "")
     {
         var key = "transactionCountPerMinute" + chainId;
         if (!_isPushRunning.TryAdd(key, true))
@@ -390,37 +395,35 @@ public class ExploreHub : AbpHub
             return;
         }
 
-        try
+
+        while (true)
         {
-            while (true)
+            if (chainId.IsNullOrEmpty())
             {
-                if (chainId.IsNullOrEmpty())
-                {
-                    await Task.Delay(60 * 1000);
-                    await RequestMergeTransactionDataChart();
-                }
-                else
-                {
-                    await Task.Delay(60 * 1000);
-                    var startNew = Stopwatch.StartNew();
-                    var resp = await _HomePageService.GetTransactionPerMinuteAsync(chainId);
-                    resp.All = resp.All.Take(resp.All.Count - 3).ToList();
-                    resp.Owner = resp.Owner.Take(resp.Owner.Count - 3).ToList();
-                    await _hubContext.Clients.Groups(HubGroupHelper.GetTransactionCountPerMinuteGroupName(chainId))
-                        .SendAsync("ReceiveTransactionDataChart", resp);
-                    startNew.Stop();
-                    _logger.LogInformation("PushTransactionCountPerMinuteAsync costTime:{chainId},{costTime}", chainId,
-                        startNew.Elapsed.TotalSeconds);
-                }
+                await Task.Delay(60 * 1000);
+                await RequestMergeTransactionDataChart();
+            }
+            else
+            {
+                await Task.Delay(60 * 1000);
+                var startNew = Stopwatch.StartNew();
+                var resp = await _HomePageService.GetTransactionPerMinuteAsync(chainId);
+                resp.All = resp.All.Take(resp.All.Count - 3).ToList();
+                resp.Owner = resp.Owner.Take(resp.Owner.Count - 3).ToList();
+                await _hubContext.Clients.Groups(HubGroupHelper.GetTransactionCountPerMinuteGroupName(chainId))
+                    .SendAsync("ReceiveTransactionDataChart", resp);
+                startNew.Stop();
+                _logger.LogInformation("PushTransactionCountPerMinuteAsync costTime:{chainId},{costTime}", chainId,
+                    startNew.Elapsed.TotalSeconds);
             }
         }
-        catch (Exception e)
-        {
-            _logger.LogError("Push transaction count per minute error: {error}", e);
-        }
-        finally
-        {
-            _isPushRunning.TryRemove(key, out var v);
-        }
+    }
+
+
+    public async Task FinallyPushTransactionCountPerMinuteAsync(string chainId)
+    {
+        var key = "transactionCountPerMinute" + chainId;
+        _isPushRunning.TryRemove(key, out var v);
+        _logger.LogInformation($"FinallyPushTransactionCountPerMinuteAsync {key}");
     }
 }

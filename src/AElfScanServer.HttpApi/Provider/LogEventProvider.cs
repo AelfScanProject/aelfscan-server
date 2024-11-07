@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Options;
@@ -40,75 +43,17 @@ public class LogEventProvider : AbpRedisCache, ISingletonDependency
         _logEventIndexRepository = logEventIndexRepository;
     }
 
-
-    // public async Task<LogEventResponseDto> GetLogEventListAsync(GetLogEventRequestDto request)
-    // {
-    //     var result = new LogEventResponseDto();
-    //
-    //     try
-    //     {
-    //         var searchRequest =
-    //             new SearchRequest(BlockChainIndexNameHelper.GenerateLogEventIndexName(request.ChainId))
-    //             {
-    //                 Query = new MatchAllQuery(),
-    //                 Size = request.MaxResultCount,
-    //                 // 设置每页返回的文档数量
-    //                 Sort = new List<ISort>
-    //                 {
-    //                     new FieldSort() { Field = "blockHeight", Order = request.SortOrder },
-    //                     new FieldSort { Field = "index", Order = SortOrder.Ascending }
-    //                 },
-    //             };
-    //
-    //
-    //         if (request.BlockHeight > 0)
-    //         {
-    //             searchRequest.SearchAfter = new object[]
-    //                 { request.BlockHeight, request.Index > 0 ? request.Index : 0 };
-    //         }
-    //
-    //
-    //         if (!request.ContractName.IsNullOrEmpty())
-    //         {
-    //             searchRequest.Query = new BoolQuery()
-    //             {
-    //                 Must = new List<QueryContainer>()
-    //                 {
-    //                     new TermQuery()
-    //                     {
-    //                         Field = "contractName",
-    //                         Value = request.ContractName
-    //                     },
-    //                 }
-    //             };
-    //         }
-    //
-    //
-    //         var searchResponse = _elasticClient.Search<LogEventIndex>(searchRequest);
-    //         result.Total = searchResponse.Total;
-    //
-    //         var logEventIndices = searchResponse.Documents.ToList();
-    //         result.LogEvents = logEventIndices;
-    //     }
-    //     catch (Exception e)
-    //     {
-    //         _logger.LogError(e, "GetLogEventList error,request:{@request}", request);
-    //     }
-    //
-    //     return result;
-    // }
-
-
-    public async Task<LogEventResponseDto> GetLogEventListAsync(GetLogEventRequestDto request)
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetLogEventListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
+    public virtual async Task<LogEventResponseDto> GetLogEventListAsync(GetLogEventRequestDto request)
     {
         var result = new LogEventResponseDto();
-
-
-        try
-        {
+        
             var mustQuery = new List<Func<QueryContainerDescriptor<LogEventIndex>, QueryContainer>>();
-
-
+            
             mustQuery.Add(mu => mu.Term(t => t.Field(f => f.ContractAddress).Value(request.ContractAddress)));
 
             QueryContainer Filter(QueryContainerDescriptor<LogEventIndex> f) => f.Bool(b => b.Must(mustQuery));
@@ -126,11 +71,7 @@ public class LogEventProvider : AbpRedisCache, ISingletonDependency
 
             result.Total = resp.Item1;
             result.LogEvents = resp.Item2;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLogEventList error,request:{@request}", request);
-        }
+    
 
         return result;
     }
