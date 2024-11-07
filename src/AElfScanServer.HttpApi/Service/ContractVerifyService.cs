@@ -152,7 +152,7 @@ public class ContractVerifyService : IContractVerifyService
 
         if (!validInfo.hasCsprojPath)
         {
-            return UploadContractFileResponseDto.Fail("The format of the Project File Path is incorrect.",
+            return UploadContractFileResponseDto.Fail("The file path was not found in the uploaded files.",
                 VerifyErrCode.PathErr);
         }
 
