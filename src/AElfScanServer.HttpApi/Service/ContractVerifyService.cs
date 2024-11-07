@@ -461,18 +461,13 @@ public class ContractVerifyService : IContractVerifyService
                         if (entry.FullName.EndsWith(csprojPath))
                         {
                             hasCsprojPath = true;
-                        }
 
-                        if (!entry.FullName.Contains(directoryName))
-                        {
-                            continue;
-                        }
-
-                        if (entry.Length > 0)
-                        {
-                            if (entry.FullName.EndsWith(".csproj"))
+                            if (entry.Length > 0)
                             {
-                                fileNetVerison = await GetNetVersion(entry);
+                                if (entry.FullName.EndsWith(".csproj"))
+                                {
+                                    fileNetVerison = await GetNetVersion(entry);
+                                }
                             }
                         }
                     }

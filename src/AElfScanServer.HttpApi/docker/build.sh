@@ -38,7 +38,7 @@ DOWNLOAD_BINARY_TIME=$((DOWNLOAD_BINARY_END - DOWNLOAD_BINARY_START))
 
 RESTORE_START=$(date +%s)
 # Restore dependencies
-dotnet restore "${SLN}"
+dotnet restore "${SLN}" 
 RESTORE_END=$(date +%s)
 RESTORE_TIME=$((RESTORE_END - RESTORE_START))
 
@@ -73,7 +73,7 @@ else
     /p:Version=${VERSION} \
     -c Release \
     -o /opt/build/${ContractsName}-${VERSION} \
-    --verbosity detailed
+    --no-restore
 fi
 
 PUBLISH_END=$(date +%s)
