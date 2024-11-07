@@ -4,13 +4,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AElfScanServer.HttpApi.Dtos;
 
-
+public enum VerifyErrCode
+{
+    VerifyErr,
+    NetVersionErr,
+    PathErr
+}
 
 public class UploadContractFileResponseDto
 {
     public string Message { get; set; }
 
     public bool CodeIsSame { get; set; }
+
+
+    public VerifyErrCode ErrCode { get; set; }
+
     public ContractFileResult Result { get; set; }
 
     public static UploadContractFileResponseDto Success(string msg, bool codeIsSame = false)
@@ -23,12 +32,13 @@ public class UploadContractFileResponseDto
         };
     }
 
-    public static UploadContractFileResponseDto Fail(string message)
+    public static UploadContractFileResponseDto Fail(string message, VerifyErrCode err)
     {
         return new UploadContractFileResponseDto
         {
             Message = message,
             Result = ContractFileResult.Fail,
+            ErrCode = err
         };
     }
 }

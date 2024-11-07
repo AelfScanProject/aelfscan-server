@@ -124,7 +124,6 @@ public class ContractVerifyService : IContractVerifyService
     public async Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId,
         string contractAddress, string csprojPath, string dotnetVersion)
     {
-        
         var startNew = Stopwatch.StartNew();
         _logger.LogInformation(
             "Starting upload for contract file: {FileName}, ChainId: {ChainId}, ContractAddress: {ContractAddress}",
@@ -133,27 +132,33 @@ public class ContractVerifyService : IContractVerifyService
         if (file == null || file.Length == 0)
         {
             _logger.LogWarning("The file is empty. Upload failed.");
-            return UploadContractFileResponseDto.Fail("The file cannot be empty");
+            return UploadContractFileResponseDto.Fail("The file cannot be empty", VerifyErrCode.PathErr);
         }
 
         if (file.Length > MaxFileSize)
         {
             _logger.LogWarning("File size exceeds limit: {FileSize} bytes.", file.Length);
-            return UploadContractFileResponseDto.Fail("File size exceeds limit");
+            return UploadContractFileResponseDto.Fail("File size exceeds limit", VerifyErrCode.PathErr);
         }
 
         var fileExtension = Path.GetExtension(file.FileName).ToLower();
         if (fileExtension != ".zip")
         {
             _logger.LogWarning("Invalid file extension: {FileExtension}. Only ZIP files are allowed.", fileExtension);
-            return UploadContractFileResponseDto.Fail("Only ZIP files can be uploaded");
+            return UploadContractFileResponseDto.Fail("Only ZIP files can be uploaded", VerifyErrCode.PathErr);
         }
 
+        var validInfo = await IsValidNetVersionAndPath(file, csprojPath, dotnetVersion);
 
-        var isValidNetVersion = await IsValidNetVersion(file, csprojPath, dotnetVersion);
-        if (!isValidNetVersion)
+        if (!validInfo.hasCsprojPath)
         {
-            return UploadContractFileResponseDto.Fail("The.NET version is inconsistent with the source code");
+            return UploadContractFileResponseDto.Fail("The format of the Project File Path is incorrect.",
+                VerifyErrCode.PathErr);
+        }
+
+        if (!validInfo.hasNetVersion)
+        {
+            return UploadContractFileResponseDto.Fail("Compiler version mismatch.", VerifyErrCode.NetVersionErr);
         }
 
         string contractName = Path.GetFileNameWithoutExtension(csprojPath);
@@ -191,7 +196,7 @@ public class ContractVerifyService : IContractVerifyService
                 saveContractFileToGrainStart.Stop();
                 _logger.LogInformation(
                     $"Statistical time saveContractFileToGrainStart: {saveContractFileToGrainStart.Elapsed.TotalSeconds}");
-               
+
                 _logger.LogInformation($"{contractAddress} Contract file validated and saved successfully.");
 
                 startNew.Stop();
@@ -202,14 +207,16 @@ public class ContractVerifyService : IContractVerifyService
             else
             {
                 _logger.LogWarning($"{contractAddress} Contract file validation failed");
-                return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.");
+                return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.",
+                    VerifyErrCode.VerifyErr);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
                 $"{contractAddress} An error occurred during contract file upload and validation process.");
-            return UploadContractFileResponseDto.Fail("Verification failed");
+            return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.",
+                VerifyErrCode.VerifyErr);
         }
     }
 
@@ -434,9 +441,12 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    public async Task<bool> IsValidNetVersion(IFormFile file, string csprojPath,
+    public async Task<(bool hasCsprojPath, bool hasNetVersion)> IsValidNetVersionAndPath(IFormFile file,
+        string csprojPath,
         string netVersion)
     {
+        bool hasCsprojPath = false;
+        var fileNetVerison = "";
         try
         {
             var directoryName = Path.GetDirectoryName(csprojPath);
@@ -449,6 +459,11 @@ public class ContractVerifyService : IContractVerifyService
                 {
                     foreach (var entry in zipArchive.Entries)
                     {
+                        if (entry.FullName.Contains(csprojPath))
+                        {
+                            hasCsprojPath = true;
+                        }
+
                         if (!entry.FullName.Contains(directoryName))
                         {
                             continue;
@@ -458,8 +473,7 @@ public class ContractVerifyService : IContractVerifyService
                         {
                             if (entry.FullName.EndsWith(".csproj"))
                             {
-                                var netVersionFromCsproj = await GetNetVersion(entry);
-                                return netVersionFromCsproj == netVersion;
+                                fileNetVerison = await GetNetVersion(entry);
                             }
                         }
                     }
@@ -471,7 +485,7 @@ public class ContractVerifyService : IContractVerifyService
             _logger.LogError(ex, "An error occurred while compare net version.");
         }
 
-        return false;
+        return (hasCsprojPath, fileNetVerison == netVersion);
     }
 
     private async Task<string> GetBase64Content(ZipArchiveEntry entry)
