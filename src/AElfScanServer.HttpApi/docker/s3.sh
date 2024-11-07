@@ -32,14 +32,19 @@ export AWS_DEFAULT_REGION="ap-northeast-1"
 FILE_NAME="contractFile-${CHAIN_ID}-${CONTRACT_ADDRESS}-${CONTRACT_NAME}-${CONTRACT_VERSION}.zip"
 
 cd /opt
+S3_DOWNLOAD_END=$(date +%s)
 # Download file
 echo "Downloading file from S3..."
 aws s3 cp "s3://${S3_BUCKET}/${S3_DIRECTORY}/${FILE_NAME}" "./${FILE_NAME}" --endpoint-url "https://s3.ap-northeast-1.amazonaws.com" --region "ap-northeast-1"
+S3_DOWNLOAD_END=$(date +%s)
+S3_DOWNLOAD_TIME=$((S3_DOWNLOAD_END - S3_DOWNLOAD_START))
 
 # Unzip file
+UNZIP_START=$(date +%s)
 echo "Unzipping file..."
 unzip "./${FILE_NAME}" -d "./"
-
+UNZIP_END=$(date +%s)
+UNZIP_TIME=$((UNZIP_END - UNZIP_START))
 # Find unzipped directory (assuming only one directory is created after unzipping)
 UNZIPPED_DIR=$(find . -mindepth 1 -maxdepth 1 -type d)
 mkdir -p /opt/contracts/
@@ -66,6 +71,9 @@ else
     exit 1
 fi
 
+END_TIME=$(date +%s)
+TOTAL_TIME=$((END_TIME - START_TIME))
+
 # Save environment variables to file
 echo "CONTRACT_NAME=$CONTRACT_NAME" >> /opt/contract_env.sh
 echo "CONTRACT_VERSION=$CONTRACT_VERSION" >> /opt/contract_env.sh
@@ -76,3 +84,9 @@ echo "CONTRACT_ADDRESS=$CONTRACT_ADDRESS" >> /opt/contract_env.sh
 echo "Executing build.sh script..."
 /bin/bash -x /opt/build.sh "$CONTRACT_NAME" "$CONTRACT_VERSION" "$SOLUTION_FILE_NAME"
 echo "File download and extraction completed!"
+
+# Output timing information
+echo "Statistical time S3 file download time: ${S3_DOWNLOAD_TIME} seconds"
+echo "Unzip time: ${UNZIP_TIME} seconds"
+echo "build.sh execution time: ${BUILD_SCRIPT_TIME} seconds"
+echo "Total execution time for s3.sh: ${TOTAL_TIME} seconds"

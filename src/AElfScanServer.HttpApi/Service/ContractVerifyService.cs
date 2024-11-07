@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -103,14 +104,6 @@ public class ContractVerifyService : IContractVerifyService
                     IsVerify = false
                 });
 
-        // var contractInfo = await _clusterClient
-        //     .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractAddress))
-        //     .GetAsync();
-        //
-        // contractInfo.IsVerify = false;
-        // await _clusterClient
-        //     .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractInfo))
-        //     .SaveAndUpdateAsync(contractInfo);
         return "success";
     }
 
@@ -165,24 +158,38 @@ public class ContractVerifyService : IContractVerifyService
 
         try
         {
+            var getContractCodeStart = Stopwatch.StartNew();
             var contractInfo = await GetContractCode(chainId, contractAddress);
+            getContractCodeStart.Stop();
+            _logger.LogInformation(
+                $"Statistical time Get contract code from indexer: {getContractCodeStart.Elapsed.TotalSeconds}");
             var contractVersion = contractInfo.Item1;
             var contractCode = contractInfo.Item2;
             _logger.LogInformation("Uploading contract file to S3...");
+
+            var upLoadJsonFileStart = Stopwatch.StartNew();
             using (var memoryStream = new MemoryStream())
             {
                 await file.CopyToAsync(memoryStream);
+
                 await _awsS3ClientService.UpLoadJsonFileAsync(memoryStream,
                     _globalOptions.CurrentValue.S3ContractFileDirectory,
                     GrainIdHelper.GenerateContractFile(chainId, contractAddress, contractName, contractVersion));
+                upLoadJsonFileStart.Stop();
+                _logger.LogInformation(
+                    $"Statistical time upLoadJsonFileStart: {upLoadJsonFileStart.Elapsed.TotalSeconds}");
             }
 
             if (await ValidContractFile(chainId, contractAddress, contractName, dotnetVersion, contractVersion,
                     contractCode))
 
             {
+                var saveContractFileToGrainStart = Stopwatch.StartNew();
                 await SaveContractFileToGrain(file, chainId, contractAddress, csprojPath);
-
+                saveContractFileToGrainStart.Stop();
+                _logger.LogInformation(
+                    $"Statistical time saveContractFileToGrainStart: {saveContractFileToGrainStart.Elapsed.TotalSeconds}");
+               
                 _logger.LogInformation($"{contractAddress} Contract file validated and saved successfully.");
 
                 return UploadContractFileResponseDto.Success("Upload success", true);
@@ -202,26 +209,9 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    private async Task<string> GetContractVersion(string chainId, string contractAddress,
-        string contractCode)
+    private async Task<string> GetContractVersion(string contractCode)
     {
-        // var contractInfo = await _clusterClient
-        //     .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, contractAddress))
-        //     .GetAsync();
         var fileList = new List<DecompilerContractFileDto>();
-        //
-        // if (contractInfo == null || contractInfo.Address.IsNullOrEmpty())
-        // {
-        //     var getContractFilesResponseDto = await _decompilerProvider.GetFilesAsync(contractCode);
-        //     if (!getContractFilesResponseDto.Data.IsNullOrEmpty())
-        //     {
-        //         fileList = getContractFilesResponseDto.Data;
-        //     }
-        // }
-        // else
-        // {
-        //     fileList = contractInfo.ContractSourceCode;
-        // }
 
         var getContractFilesResponseDto = await _decompilerProvider.GetFilesAsync(contractCode);
         if (!getContractFilesResponseDto.Data.IsNullOrEmpty())
@@ -249,66 +239,6 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    public static bool CompareGetContractFilesResponseDto(GetContractFilesResponseDto obj1,
-        GetContractFilesResponseDto obj2)
-    {
-        var f = 1;
-        if (obj1 == null || obj2 == null)
-            return obj1 == obj2;
-
-        if (obj1.Code != obj2.Code || obj1.Msg != obj2.Msg || obj1.Version != obj2.Version)
-            ;
-        {
-            f = 1;
-        }
-
-
-        if (obj1.Data.Count != obj2.Data.Count)
-            return false;
-
-        // 对 Data 列表按 Name 字段排序后再进行比较
-        var sortedData1 = obj1.Data.OrderBy(d => d.Name).ToList();
-        var sortedData2 = obj2.Data.OrderBy(d => d.Name).ToList();
-
-        for (int i = 0; i < sortedData1.Count; i++)
-        {
-            if (!CompareDecompilerContractFileDto(sortedData1[i], sortedData2[i]))
-                return false;
-        }
-
-        return true;
-    }
-
-
-    public static bool CompareDecompilerContractFileDto(DecompilerContractFileDto dto1, DecompilerContractFileDto dto2)
-    {
-        if (dto1 == null || dto2 == null)
-            return dto1 == dto2;
-
-        // 比较基本类型字段
-        if (dto1.Name != dto2.Name || dto1.Content != dto2.Content || dto1.FileType != dto2.FileType)
-            return false;
-
-        // 比较 Files 字段：递归前按 Name 字段排序
-        if (dto1.Files == null || dto2.Files == null)
-            return dto1.Files == dto2.Files;
-
-        if (dto1.Files.Count != dto2.Files.Count)
-            return false;
-
-        var sortedFiles1 = dto1.Files.OrderBy(f => f.Name).ToList();
-        var sortedFiles2 = dto2.Files.OrderBy(f => f.Name).ToList();
-
-        for (int i = 0; i < sortedFiles1.Count; i++)
-        {
-            if (!CompareDecompilerContractFileDto(sortedFiles1[i], sortedFiles2[i]))
-                return false;
-        }
-
-        return true;
-    }
-
-
     public string GetAssemblyInformationalVersion(string base64EncodedContent)
     {
         byte[] decodedBytes = Convert.FromBase64String(base64EncodedContent);
@@ -320,7 +250,6 @@ public class ContractVerifyService : IContractVerifyService
         {
             string contentInsideBrackets = match.Groups[1].Value;
             return contentInsideBrackets;
-            _logger.LogInformation("AssemblyInformationalVersion version: " + contentInsideBrackets);
         }
         else
         {
@@ -373,7 +302,7 @@ public class ContractVerifyService : IContractVerifyService
                 await _indexerGenesisProvider.GetContractRegistrationAsync(chainId, contractInfoDto.CodeHash);
             _logger.LogInformation("Contract code fetched successfully.");
 
-            var contractVersion = await GetContractVersion(chainId, contractAddress, contractRegistration[0].Code);
+            var contractVersion = await GetContractVersion(contractRegistration[0].Code);
 
             if (!contractVersion.IsNullOrEmpty())
             {
@@ -398,13 +327,20 @@ public class ContractVerifyService : IContractVerifyService
 
         try
         {
+            var k8sStart = Stopwatch.StartNew();
+
             await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
                 contractName, contractVersion);
             _logger.LogInformation("Kubernetes job started for contract validation.");
+            _logger.LogInformation($"Statistical time k8sStart: {k8sStart.Elapsed.TotalSeconds}");
+
+            var s3Dlownload = Stopwatch.StartNew();
 
             var result = await _awsS3ClientService.GetContractFileAsync(
                 _globalOptions.CurrentValue.S3ContractFileDirectory,
                 GrainIdHelper.GenerateContractDLL(chainId, contractAddress, contractName, contractVersion));
+            s3Dlownload.Stop();
+            _logger.LogInformation($"Statistical time s3Dlownload: {s3Dlownload.Elapsed.TotalSeconds}");
 
             var k8sContractCode = Convert.ToBase64String(result);
 

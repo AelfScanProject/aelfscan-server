@@ -27,7 +27,7 @@ public class ContractVerifyController : AbpController
 
 
     [HttpPost("upload")]
-    public async Task<UploadContractFileResponseDto> AddSubscriptionAsync(IFormFile file, string chainId,
+    public async Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId,
         string contractAddress, string csprojPath, string dotnetVersion)
     {
         return await _contractVerifyService.UploadContractFileAsync(file, chainId, contractAddress, csprojPath,
