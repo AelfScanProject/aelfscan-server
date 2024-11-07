@@ -221,15 +221,13 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    private async Task<string> GetContractVersion(string contractCode)
+    private async Task<string> GetContractVersion(string chainId, string address)
     {
-        var fileList = new List<DecompilerContractFileDto>();
+        var contractInfo = await _clusterClient
+            .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address)).GetAsync();
 
-        var getContractFilesResponseDto = await _decompilerProvider.GetFilesAsync(contractCode);
-        if (!getContractFilesResponseDto.Data.IsNullOrEmpty())
-        {
-            fileList = getContractFilesResponseDto.Data;
-        }
+        var fileList = contractInfo.ContractSourceCode;
+
 
         var fileContent = "";
 
@@ -314,7 +312,8 @@ public class ContractVerifyService : IContractVerifyService
                 await _indexerGenesisProvider.GetContractRegistrationAsync(chainId, contractInfoDto.CodeHash);
             _logger.LogInformation("Contract code fetched successfully.");
 
-            var contractVersion = await GetContractVersion(contractRegistration[0].Code);
+
+            var contractVersion = await GetContractVersion(chainId, contractAddress);
 
             if (!contractVersion.IsNullOrEmpty())
             {
@@ -459,7 +458,7 @@ public class ContractVerifyService : IContractVerifyService
                 {
                     foreach (var entry in zipArchive.Entries)
                     {
-                        if (entry.FullName.Contains(csprojPath))
+                        if (entry.FullName.EndsWith(csprojPath))
                         {
                             hasCsprojPath = true;
                         }
