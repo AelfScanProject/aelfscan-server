@@ -124,6 +124,8 @@ public class ContractVerifyService : IContractVerifyService
     public async Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId,
         string contractAddress, string csprojPath, string dotnetVersion)
     {
+        
+        var startNew = Stopwatch.StartNew();
         _logger.LogInformation(
             "Starting upload for contract file: {FileName}, ChainId: {ChainId}, ContractAddress: {ContractAddress}",
             file.FileName, chainId, contractAddress);
@@ -192,6 +194,9 @@ public class ContractVerifyService : IContractVerifyService
                
                 _logger.LogInformation($"{contractAddress} Contract file validated and saved successfully.");
 
+                startNew.Stop();
+                _logger.LogInformation(
+                    $"Statistical time TOTAL: {startNew.Elapsed.TotalSeconds}");
                 return UploadContractFileResponseDto.Success("Upload success", true);
             }
             else

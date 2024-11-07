@@ -32,7 +32,7 @@ export AWS_DEFAULT_REGION="ap-northeast-1"
 FILE_NAME="contractFile-${CHAIN_ID}-${CONTRACT_ADDRESS}-${CONTRACT_NAME}-${CONTRACT_VERSION}.zip"
 
 cd /opt
-S3_DOWNLOAD_END=$(date +%s)
+S3_DOWNLOAD_START=$(date +%s)
 # Download file
 echo "Downloading file from S3..."
 aws s3 cp "s3://${S3_BUCKET}/${S3_DIRECTORY}/${FILE_NAME}" "./${FILE_NAME}" --endpoint-url "https://s3.ap-northeast-1.amazonaws.com" --region "ap-northeast-1"
