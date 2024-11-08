@@ -44,13 +44,6 @@ RESTORE_TIME=$((RESTORE_END - RESTORE_START))
 
 echo "Starting contract compilation"
 
-dotnet publish \
-  contract/${ContractsName}/${ContractsName}.csproj \
-  /p:NoBuild=false \
-  /p:Version=${VERSION} \
-  -c Release \
-  -o /opt/build/${ContractsName}-${VERSION} \
-  --verbosity detailed
     
 PUBLISH_START=$(date +%s)
 if [ "${ContractsName}" = "all" ]; then
