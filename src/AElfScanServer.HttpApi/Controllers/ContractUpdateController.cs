@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos;
-using AElfScanServer.HttpApi.Dtos.ChartData;
 using AElfScanServer.HttpApi.Service;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Http;
@@ -14,28 +13,19 @@ namespace AElfScanServer.HttpApi.Controllers;
 [AggregateExecutionTime]
 [RemoteService]
 [Area("app")]
-[ControllerName("contractVerify")]
-[Route("api/contractfile")]
-public class ContractVerifyController : AbpController
+[ControllerName("contractFile")]
+[Route("api/app/contractfile")]
+public class ContractUpdateController : AbpController
 {
     private readonly IContractVerifyService _contractVerifyService;
 
-    public ContractVerifyController(IChartDataService chartDataService, IContractVerifyService contractVerifyService)
+    public ContractUpdateController(IChartDataService chartDataService, IContractVerifyService contractVerifyService)
     {
         _contractVerifyService = contractVerifyService;
     }
 
 
-    [HttpPost("upload")]
-    public async Task<UploadContractFileResponseDto> UploadContractFileAsync(IFormFile file, string chainId,
-        string contractAddress, string csprojPath, string dotnetVersion)
-    {
-        return await _contractVerifyService.UploadContractFileAsync(file, chainId, contractAddress, csprojPath,
-            dotnetVersion);
-    }
-
-
-    [HttpPost("upload/update")]
+    [HttpPost("update")]
     public async Task<string> UpdateContract(string chainId, string contractAddress)
     {
         return await _contractVerifyService.UploadContractStatesAsync(chainId, contractAddress);

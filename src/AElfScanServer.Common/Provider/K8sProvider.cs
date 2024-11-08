@@ -37,23 +37,11 @@ public class K8sProvider : IK8sProvider
 
     private Kubernetes InitK8s3Client()
     {
-        var kubeConfigContent = Environment.GetEnvironmentVariable("KUBECONFIG");
+        var path = Environment.GetEnvironmentVariable("KUBECONFIG");
 
-        if (string.IsNullOrEmpty(kubeConfigContent))
-        {
-            var defaultPath = Path.Combine(Directory.GetCurrentDirectory(), "Files/kubeconfig");
-            _logger.LogWarning("Environment variable 'KUBECONFIG' not set. Using default path: {KubeConfigPath}",
-                defaultPath);
-            return new Kubernetes(KubernetesClientConfiguration.BuildConfigFromConfigFile(defaultPath));
-        }
 
-        var tempFilePath = Path.GetTempFileName();
-        File.WriteAllText(tempFilePath, kubeConfigContent);
-        _logger.LogInformation("KUBECONFIG content written to temporary file: {TempFilePath}", tempFilePath);
+        var config = KubernetesClientConfiguration.BuildConfigFromConfigFile(path);
 
-        var config = KubernetesClientConfiguration.BuildConfigFromConfigFile(tempFilePath);
-
-        File.Delete(tempFilePath);
         return new Kubernetes(config);
     }
 
@@ -62,7 +50,6 @@ public class K8sProvider : IK8sProvider
     {
         string logPrefix =
             $"[ChainId:{chainId}-ContractAddress:{contractAddress}-ContractName:{contractName}-Version:{version}]";
-
         var jobName = "example-job-" + Guid.NewGuid().ToString("N").Substring(0, 8);
         var jobNamespace = "aelfscan-complier-testnet";
 
@@ -85,6 +72,12 @@ public class K8sProvider : IK8sProvider
             _logger.LogError($"{logPrefix} Job '{createdJob.Metadata.Name}' failed to complete successfully.");
             throw new Exception($"Job '{createdJob.Metadata.Name}' encountered an error.");
         }
+
+        Task.Run(async () =>
+        {
+            await _client.DeleteNamespacedJobAsync(createdJob.Metadata.Name, jobNamespace, new V1DeleteOptions());
+            _logger.LogInformation($"{logPrefix} Job '{createdJob.Metadata.Name}' deleted asynchronously.");
+        });
 
         return $"{logPrefix} Job '{createdJob.Metadata.Name}' completed successfully.";
     }
