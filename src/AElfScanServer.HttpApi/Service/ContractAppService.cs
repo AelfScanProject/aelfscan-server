@@ -319,7 +319,7 @@ public class ContractAppService : IContractAppService
                     var contractFileResultDto =
                         await _clusterClient.GetGrain<IContractFileCodeGrain>(contractFileId).GetAsync();
                     if (contractFileResultDto.LastBlockHeight != 0 &&
-                        synchronizationDto.LastBlockHeight >= contractFileResultDto.LastBlockHeight)
+                        contractRecord.Metadata.Block.BlockHeight <= contractFileResultDto.LastBlockHeight)
                     {
                         continue;
                     }
