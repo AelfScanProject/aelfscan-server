@@ -6,33 +6,34 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\AElfScanServer.Application\AElfScanServer.Application.csproj" />
-        <ProjectReference Include="..\AElfScanServer.HttpApi\AElfScanServer.HttpApi.csproj" />
+        <ProjectReference Include="..\AElfScanServer.Application\AElfScanServer.Application.csproj"/>
+        <ProjectReference Include="..\AElfScanServer.HttpApi\AElfScanServer.HttpApi.csproj"/>
     </ItemGroup>
 
 
     <ItemGroup>
-        <PackageReference Include="AElf.OpenTelemetry" Version="1.0.0" />
-        <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
-        <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
-        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
-        <PackageReference Include="Serilog.Sinks.RollingFile" Version="3.3.0" />
-        <PackageReference Include="Volo.Abp.Autofac" Version="8.2.0" />
-        <PackageReference Include="GraphQL.Client" Version="6.0.0" />
-        <PackageReference Include="GraphQL.Client.Serializer.Newtonsoft" Version="6.0.0" />
-        <PackageReference Include="Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy" Version="8.2.0" />
+        <PackageReference Include="AElf.OpenTelemetry" Version="1.0.0"/>
+        <PackageReference Include="AetherlinkPriceServer" Version="1.0.5"/>
+        <PackageReference Include="Serilog.AspNetCore" Version="8.0.1"/>
+        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0"/>
+        <PackageReference Include="Serilog.Sinks.RollingFile" Version="3.3.0"/>
+        <PackageReference Include="Volo.Abp.Autofac" Version="8.2.0"/>
+        <PackageReference Include="GraphQL.Client" Version="6.0.0"/>
+        <PackageReference Include="GraphQL.Client.Serializer.Newtonsoft" Version="6.0.0"/>
+        <PackageReference Include="Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy" Version="8.2.0"/>
 
-        <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.6" />
-        <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="8.0.6" />
-        <PackageReference Include="AElf.Client" Version="1.1.0" />
-        <PackageReference Include="Volo.Abp.Caching.StackExchangeRedis" Version="8.2.0" />
-        <PackageReference Include="Orleans.Providers.MongoDB" Version="8.0.3" />
-        <PackageReference Include="Volo.Abp.AspNetCore.Serilog" Version="8.2.0" />
-        <PackageReference Include="Volo.Abp.EventBus.RabbitMQ" Version="8.2.0" />
-        <PackageReference Include="Volo.Abp.Identity.Application" Version="8.2.0" />
-        <PackageReference Include="Volo.Abp.Swashbuckle" Version="8.2.0" />
-        <PackageReference Include="Com.Ctrip.Framework.Apollo.Configuration" Version="2.10.2" />
+        <PackageReference Include="Portable.BouncyCastle" Version="1.9.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.6"/>
+        <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="8.0.6"/>
+        <PackageReference Include="AElf.Client" Version="1.1.0"/>
+        <PackageReference Include="Volo.Abp.Caching.StackExchangeRedis" Version="8.2.0"/>
+        <PackageReference Include="Orleans.Providers.MongoDB" Version="8.0.3"/>
+        <PackageReference Include="Volo.Abp.AspNetCore.Serilog" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.EventBus.RabbitMQ" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.Identity.Application" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.Swashbuckle" Version="8.2.0"/>
+        <PackageReference Include="Com.Ctrip.Framework.Apollo.Configuration" Version="2.10.2"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.10.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -49,12 +50,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <AssetsSourceFiles Include="Plugins/*" />
+        <AssetsSourceFiles Include="Plugins/*"/>
     </ItemGroup>
-    
 
     <Target Name="CopyCustomContentOnPublish" AfterTargets="Publish">
-        <Copy SourceFiles="@(AssetsSourceFiles)" DestinationFolder="$(PublishDir)/Plugins/" />
+        <Copy SourceFiles="@(AssetsSourceFiles)" DestinationFolder="$(PublishDir)/Plugins/"/>
     </Target>
+
 
 </Project>

@@ -13,5 +13,5 @@ public class GetContractFileResultDto
 {
     public string ContractName { get; set; }
     public string ContractVersion { get; set; }
-    public List<DecompilerContractDto> ContractSourceCode { get; set; }
+    public List<DecompilerContractFileDto> ContractSourceCode { get; set; }
 }

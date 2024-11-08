@@ -8,7 +8,7 @@ public class GrainsAutoMapperProfile : Profile
 {
     public GrainsAutoMapperProfile()
     {
-        CreateMap<ContractFileState, ContractFileResultDto>().ReverseMap();
-        CreateMap<SynchronizationState, SynchronizationDto>().ReverseMap();
+        CreateMap<ContractFileCodeState, ContractFileResultDto>().ReverseMap();
+        CreateMap<SynchronizationContractState, SynchronizationContractDto>().ReverseMap();
     }
 }

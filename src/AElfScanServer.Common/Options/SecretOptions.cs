@@ -6,4 +6,8 @@ public class SecretOptions
     public string ClientSecret { get; set; }
 
     public string CMCApiKey { get; set; }
+
+    public string S3AccessKey { get; set; }
+
+    public string S3SecretKey { get; set; }
 }

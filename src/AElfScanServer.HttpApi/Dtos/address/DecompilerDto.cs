@@ -8,5 +8,5 @@ public class GetContractFilesResponseDto
     public int Code { get; set; }
     public string Msg { get; set; }
     public string Version { get; set; }
-    public List<DecompilerContractDto> Data { get; set; }
+    public List<DecompilerContractFileDto> Data { get; set; }
 }
