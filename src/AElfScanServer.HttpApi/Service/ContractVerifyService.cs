@@ -356,13 +356,15 @@ public class ContractVerifyService : IContractVerifyService
             _logger.LogInformation(
                 $"Contract code length: {contractCodeLength}, Base64 string length: {base64StringLength}");
 
-            var compareContractFile = await CompareContractFile(originalContractCode, k8sContractCode, contractName);
+            var compareContractFile = await
+                CompareContractFile(originalContractCode, k8sContractCode, contractName);
+            _logger.LogInformation($"{contractAddress} compare contract file is {compareContractFile.isDiff}");
             return compareContractFile;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error during contract validation. {contractAddress}");
-            return (new List<string>(), true);
+            return (new List<string>() { "Error during contract validation" }, true);
         }
     }
 
