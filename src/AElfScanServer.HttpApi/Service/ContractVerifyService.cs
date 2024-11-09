@@ -356,9 +356,13 @@ public class ContractVerifyService : IContractVerifyService
             _logger.LogInformation(
                 $"Contract code length: {contractCodeLength}, Base64 string length: {base64StringLength}");
 
+            var startNew = Stopwatch.StartNew();
             var compareContractFile = await
                 CompareContractFile(originalContractCode, k8sContractCode, contractName);
-            _logger.LogInformation($"{contractAddress} compare contract file is {compareContractFile.isDiff}");
+            startNew.Stop();
+
+            _logger.LogInformation(
+                $"{contractAddress} compare contract file is {compareContractFile.isDiff}, costTime:{startNew.Elapsed.TotalSeconds}");
             return compareContractFile;
         }
         catch (Exception ex)
