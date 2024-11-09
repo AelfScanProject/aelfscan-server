@@ -75,12 +75,13 @@ public class K8sProvider : IK8sProvider
 
         Task.Run(async () =>
         {
-            await _client.DeleteNamespacedJobAsync(createdJob.Metadata.Name, jobNamespace, new V1DeleteOptions());
-            _logger.LogInformation($"{logPrefix} Job '{createdJob.Metadata.Name}' deleted asynchronously.");
+            await _client.DeleteNamespacedPodAsync(podName, jobNamespace, new V1DeleteOptions());
+            _logger.LogInformation($"{logPrefix} Pod '{podName}' deleted asynchronously.");
         });
 
         return $"{logPrefix} Job '{createdJob.Metadata.Name}' completed successfully.";
     }
+
 
     private V1Job CreateJobSpec(string jobName, string image, string chainId, string contractAddress,
         string contractName, string version)

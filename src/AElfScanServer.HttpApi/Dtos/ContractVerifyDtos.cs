@@ -15,9 +15,10 @@ public class UploadContractFileResponseDto
 {
     public string Message { get; set; }
 
+    public string ErrMessage { get; set; }
     public bool CodeIsSame { get; set; }
 
-
+    public List<string> DiffFileNames { get; set; }
     public VerifyErrCode ErrCode { get; set; }
 
     public ContractFileResult Result { get; set; }
@@ -32,13 +33,26 @@ public class UploadContractFileResponseDto
         };
     }
 
-    public static UploadContractFileResponseDto Fail(string message, VerifyErrCode err)
+    public static UploadContractFileResponseDto Fail(string message, VerifyErrCode err,
+        List<string> diffFileNames = null)
     {
         return new UploadContractFileResponseDto
         {
             Message = message,
             Result = ContractFileResult.Fail,
-            ErrCode = err
+            ErrCode = err,
+            DiffFileNames = diffFileNames
+        };
+    }
+
+    public static UploadContractFileResponseDto SystemFail(string message, VerifyErrCode err, string errMsg)
+    {
+        return new UploadContractFileResponseDto
+        {
+            Message = message,
+            Result = ContractFileResult.Fail,
+            ErrCode = err,
+            ErrMessage = errMsg
         };
     }
 }
