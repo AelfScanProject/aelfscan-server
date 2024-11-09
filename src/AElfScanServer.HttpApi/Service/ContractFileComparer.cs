@@ -117,12 +117,12 @@ public static class ContractFileComparer
     private static void SaveContentDifference(string name, string content1, string content2)
     {
         string diffDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Differences");
-    
+
         if (!Directory.Exists(diffDirectory))
         {
             Directory.CreateDirectory(diffDirectory);
         }
-    
+
         string filePath1 = Path.Combine(diffDirectory, $"Difference_{name}_File1.txt");
         string filePath2 = Path.Combine(diffDirectory, $"Difference_{name}_File2.txt");
 

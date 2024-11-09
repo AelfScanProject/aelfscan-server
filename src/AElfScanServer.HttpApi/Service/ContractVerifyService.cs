@@ -346,6 +346,7 @@ public class ContractVerifyService : IContractVerifyService
             var k8sContractCode = await RunK8sProcess(chainId, contractAddress, contractName, dotnetVersion,
                 contractVersion);
 
+
             var contractCodeLength = originalContractCode.Length;
             var base64StringLength = k8sContractCode.Length;
             if (k8sContractCode == originalContractCode)
@@ -379,7 +380,7 @@ public class ContractVerifyService : IContractVerifyService
         string dotnetVersion, string contractVersion)
     {
         var k8sStart = Stopwatch.StartNew();
-        
+
         await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
             contractName, contractVersion);
         _logger.LogInformation("Kubernetes job started for contract validation.");
