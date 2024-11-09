@@ -360,7 +360,7 @@ public class ContractVerifyService : IContractVerifyService
 
             var startNew = Stopwatch.StartNew();
             var compareContractFile = await
-                CompareContractFile(originalContractCode, k8sContractCode, contractName);
+                CompareContractFile(chainId, contractAddress, k8sContractCode, contractName);
             startNew.Stop();
 
             _logger.LogInformation(
@@ -398,19 +398,21 @@ public class ContractVerifyService : IContractVerifyService
         return k8sContractCode;
     }
 
-    public async Task<(List<string> diffFileNames, bool isDiff)> CompareContractFile(string originalCode,
+    public async Task<(List<string> diffFileNames, bool isDiff)> CompareContractFile(string chainId, string address,
         string k8sCode, string contractName)
     {
         var originalFile = new GetContractFilesResponseDto();
         var k8sFile = new GetContractFilesResponseDto();
 
-        var task = new List<Task>();
-        task.Add(_decompilerProvider.GetFilesAsync(originalCode)
-            .ContinueWith(task1 => { return originalFile = task1.Result; }));
-        task.Add(_decompilerProvider.GetFilesAsync(k8sCode)
+        var tasks = new List<Task>();
+        tasks.Add(_clusterClient
+            .GetGrain<IContractFileCodeGrain>(GrainIdHelper.GenerateContractFileKey(chainId, address)).GetAsync()
+            .ContinueWith(
+                task => { originalFile.Data = task.Result.ContractSourceCode; }));
+        tasks.Add(_decompilerProvider.GetFilesAsync(k8sCode)
             .ContinueWith(task1 => { return k8sFile = task1.Result; }));
 
-        await Task.WhenAll(task);
+        await Task.WhenAll(tasks);
 
 
         return ContractFileComparer.CompareGetContractFilesResponseDto(originalFile, k8sFile, contractName);
