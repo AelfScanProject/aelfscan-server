@@ -15,6 +15,7 @@ public class UploadContractFileResponseDto
 {
     public string Message { get; set; }
 
+    public string ErrMessage { get; set; }
     public bool CodeIsSame { get; set; }
 
     public List<string> DiffFileNames { get; set; }
@@ -41,6 +42,17 @@ public class UploadContractFileResponseDto
             Result = ContractFileResult.Fail,
             ErrCode = err,
             DiffFileNames = diffFileNames
+        };
+    }
+
+    public static UploadContractFileResponseDto SystemFail(string message, VerifyErrCode err, string errMsg)
+    {
+        return new UploadContractFileResponseDto
+        {
+            Message = message,
+            Result = ContractFileResult.Fail,
+            ErrCode = err,
+            ErrMessage = errMsg
         };
     }
 }

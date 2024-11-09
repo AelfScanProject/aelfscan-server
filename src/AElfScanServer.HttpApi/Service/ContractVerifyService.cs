@@ -218,8 +218,8 @@ public class ContractVerifyService : IContractVerifyService
         {
             _logger.LogError(ex,
                 $"{contractAddress} An error occurred during contract file upload and validation process.");
-            return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.",
-                VerifyErrCode.VerifyErr);
+            return UploadContractFileResponseDto.SystemFail("Contract code mismatch. Please re-upload.",
+                VerifyErrCode.VerifyErr, "An error occurred during contract file upload and validation process");
         }
     }
 
