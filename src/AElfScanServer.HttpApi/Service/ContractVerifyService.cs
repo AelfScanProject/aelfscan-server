@@ -178,7 +178,7 @@ public class ContractVerifyService : IContractVerifyService
             using (var memoryStream = new MemoryStream())
             {
                 await file.CopyToAsync(memoryStream);
-            
+
                 await _awsS3ClientService.UpLoadJsonFileAsync(memoryStream,
                     _globalOptions.CurrentValue.S3ContractFileDirectory,
                     GrainIdHelper.GenerateContractFile(chainId, contractAddress, contractName, contractVersion));
@@ -187,7 +187,7 @@ public class ContractVerifyService : IContractVerifyService
                     $"Statistical time upLoadJsonFileStart: {upLoadJsonFileStart.Elapsed.TotalSeconds}");
             }
 
-            var contractFileValid = await ValidContractFile(chainId, contractAddress, contractName, dotnetVersion,
+            var contractFileValid = await ValidContractFileIsDiff(chainId, contractAddress, contractName, dotnetVersion,
                 contractVersion,
                 contractCode);
 
@@ -333,7 +333,7 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    public async Task<(List<string> diffFileNames, bool isDiff)> ValidContractFile(string chainId,
+    public async Task<(List<string> diffFileNames, bool isDiff)> ValidContractFileIsDiff(string chainId,
         string contractAddress, string contractName,
         string dotnetVersion, string contractVersion, string originalContractCode)
     {
@@ -345,14 +345,14 @@ public class ContractVerifyService : IContractVerifyService
             var k8sContractCode = await RunK8sProcess(chainId, contractAddress, contractName, dotnetVersion,
                 contractVersion);
 
+            var contractCodeLength = originalContractCode.Length;
+            var base64StringLength = k8sContractCode.Length;
             if (k8sContractCode == originalContractCode)
             {
-                return (new List<string>(), true);
+                return (new List<string>(), false);
             }
 
 
-            var contractCodeLength = originalContractCode.Length;
-            var base64StringLength = k8sContractCode.Length;
             _logger.LogInformation(
                 $"Contract code length: {contractCodeLength}, Base64 string length: {base64StringLength}");
 
@@ -362,7 +362,7 @@ public class ContractVerifyService : IContractVerifyService
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error during contract validation. {contractAddress}");
-            return default;
+            return (new List<string>(), true);
         }
     }
 
