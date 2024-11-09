@@ -86,13 +86,13 @@ public static class ContractFileComparer
         string decodedContent2 = DecodeBase64(content2);
 
         bool areEquivalent = CompareCodeContent(decodedContent1, decodedContent2);
-        if (!areEquivalent)
+        if (areEquivalent)
         {
-            return true;
+            return false;
         }
 
         // SaveContentDifference(fileName, decodedContent1, decodedContent2);
-        return false;
+        return true;
     }
 
     private static string DecodeBase64(string encodedContent)

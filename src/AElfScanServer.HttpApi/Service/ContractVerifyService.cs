@@ -313,6 +313,7 @@ public class ContractVerifyService : IContractVerifyService
                 : contractInfoDto.ContractVersion;
             var contractRegistration =
                 await _indexerGenesisProvider.GetContractRegistrationAsync(chainId, contractInfoDto.CodeHash);
+
             _logger.LogInformation("Contract code fetched successfully.");
 
 
