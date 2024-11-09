@@ -178,7 +178,7 @@ public class ContractVerifyService : IContractVerifyService
             using (var memoryStream = new MemoryStream())
             {
                 await file.CopyToAsync(memoryStream);
-
+            
                 await _awsS3ClientService.UpLoadJsonFileAsync(memoryStream,
                     _globalOptions.CurrentValue.S3ContractFileDirectory,
                     GrainIdHelper.GenerateContractFile(chainId, contractAddress, contractName, contractVersion));
@@ -187,9 +187,18 @@ public class ContractVerifyService : IContractVerifyService
                     $"Statistical time upLoadJsonFileStart: {upLoadJsonFileStart.Elapsed.TotalSeconds}");
             }
 
-            if (await ValidContractFile(chainId, contractAddress, contractName, dotnetVersion, contractVersion,
-                    contractCode))
+            var contractFileValid = await ValidContractFile(chainId, contractAddress, contractName, dotnetVersion,
+                contractVersion,
+                contractCode);
 
+
+            if (contractFileValid.isDiff)
+            {
+                _logger.LogWarning($"{contractAddress} Contract file validation failed");
+                return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.",
+                    VerifyErrCode.VerifyErr, contractFileValid.diffFileNames);
+            }
+            else
             {
                 var saveContractFileToGrainStart = Stopwatch.StartNew();
                 await SaveContractFileToGrain(file, chainId, contractAddress, csprojPath);
@@ -203,12 +212,6 @@ public class ContractVerifyService : IContractVerifyService
                 _logger.LogInformation(
                     $"Statistical time TOTAL: {startNew.Elapsed.TotalSeconds}");
                 return UploadContractFileResponseDto.Success("Upload success", true);
-            }
-            else
-            {
-                _logger.LogWarning($"{contractAddress} Contract file validation failed");
-                return UploadContractFileResponseDto.Fail("Contract code mismatch. Please re-upload.",
-                    VerifyErrCode.VerifyErr);
             }
         }
         catch (Exception ex)
@@ -330,7 +333,8 @@ public class ContractVerifyService : IContractVerifyService
     }
 
 
-    public async Task<bool> ValidContractFile(string chainId, string contractAddress, string contractName,
+    public async Task<(List<string> diffFileNames, bool isDiff)> ValidContractFile(string chainId,
+        string contractAddress, string contractName,
         string dotnetVersion, string contractVersion, string originalContractCode)
     {
         _logger.LogInformation("Starting validation for contract: {ContractName}, Version: {ContractVersion}",
@@ -338,49 +342,71 @@ public class ContractVerifyService : IContractVerifyService
 
         try
         {
-            var k8sStart = Stopwatch.StartNew();
+            var k8sContractCode = await RunK8sProcess(chainId, contractAddress, contractName, dotnetVersion,
+                contractVersion);
 
-            await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
-                contractName, contractVersion);
-            _logger.LogInformation("Kubernetes job started for contract validation.");
-            _logger.LogInformation($"Statistical time k8sStart: {k8sStart.Elapsed.TotalSeconds}");
-
-            var s3Dlownload = Stopwatch.StartNew();
-
-            var result = await _awsS3ClientService.GetContractFileAsync(
-                _globalOptions.CurrentValue.S3ContractFileDirectory,
-                GrainIdHelper.GenerateContractDLL(chainId, contractAddress, contractName, contractVersion));
-            s3Dlownload.Stop();
-            _logger.LogInformation($"Statistical time s3Dlownload: {s3Dlownload.Elapsed.TotalSeconds}");
-
-            var k8sContractCode = Convert.ToBase64String(result);
+            if (k8sContractCode == originalContractCode)
+            {
+                return (new List<string>(), true);
+            }
 
 
             var contractCodeLength = originalContractCode.Length;
             var base64StringLength = k8sContractCode.Length;
-            bool isValid = k8sContractCode == originalContractCode;
+            _logger.LogInformation(
+                $"Contract code length: {contractCodeLength}, Base64 string length: {base64StringLength}");
 
-            if (contractCodeLength == base64StringLength)
-            {
-                _logger.LogInformation("Contract codes have the same length. Ensure versions match.");
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "{address} Contract code lengths differ: Original Length: {OriginalLength}, S3 Length: {S3Length}",
-                    contractAddress, contractCodeLength, base64StringLength);
-            }
-
-            _logger.LogInformation($"{contractAddress} Contract validation result: {isValid}");
-            return isValid;
+            var compareContractFile = await CompareContractFile(originalContractCode, k8sContractCode, contractName);
+            return compareContractFile;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error during contract validation. {contractAddress}");
-            return false;
+            return default;
         }
     }
 
+
+    public async Task<string> RunK8sProcess(string chainId,
+        string contractAddress, string contractName,
+        string dotnetVersion, string contractVersion)
+    {
+        var k8sStart = Stopwatch.StartNew();
+
+        await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
+            contractName, contractVersion);
+        _logger.LogInformation("Kubernetes job started for contract validation.");
+        _logger.LogInformation($"Statistical time k8sStart: {k8sStart.Elapsed.TotalSeconds}");
+
+        var s3Download = Stopwatch.StartNew();
+
+        var result = await _awsS3ClientService.GetContractFileAsync(
+            _globalOptions.CurrentValue.S3ContractFileDirectory,
+            GrainIdHelper.GenerateContractDLL(chainId, contractAddress, contractName, contractVersion));
+        s3Download.Stop();
+        _logger.LogInformation($"Statistical time s3 download: {s3Download.Elapsed.TotalSeconds}");
+
+        var k8sContractCode = Convert.ToBase64String(result);
+        return k8sContractCode;
+    }
+
+    public async Task<(List<string> diffFileNames, bool isDiff)> CompareContractFile(string originalCode,
+        string k8sCode, string contractName)
+    {
+        var originalFile = new GetContractFilesResponseDto();
+        var k8sFile = new GetContractFilesResponseDto();
+
+        var task = new List<Task>();
+        task.Add(_decompilerProvider.GetFilesAsync(originalCode)
+            .ContinueWith(task1 => { return originalFile = task1.Result; }));
+        task.Add(_decompilerProvider.GetFilesAsync(k8sCode)
+            .ContinueWith(task1 => { return k8sFile = task1.Result; }));
+
+        await Task.WhenAll(task);
+
+
+        return ContractFileComparer.CompareGetContractFilesResponseDto(originalFile, k8sFile, contractName);
+    }
 
     public async Task SaveContractFileToGrain(IFormFile file, string chainId, string address, string csprojPath)
     {
