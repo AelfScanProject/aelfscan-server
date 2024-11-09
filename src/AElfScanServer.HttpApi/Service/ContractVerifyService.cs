@@ -379,7 +379,7 @@ public class ContractVerifyService : IContractVerifyService
         string dotnetVersion, string contractVersion)
     {
         var k8sStart = Stopwatch.StartNew();
-
+        
         await _k8sProvider.StartJob(_globalOptions.CurrentValue.Images[dotnetVersion], chainId, contractAddress,
             contractName, contractVersion);
         _logger.LogInformation("Kubernetes job started for contract validation.");

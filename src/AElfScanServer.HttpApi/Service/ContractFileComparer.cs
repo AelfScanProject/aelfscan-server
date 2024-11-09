@@ -58,7 +58,7 @@ public static class ContractFileComparer
             if (file.Name.EndsWith(".csproj"))
                 continue;
 
-            var findFile = sourceFiles.First(c => c.Name == file.Name);
+            var findFile = sourceFiles.FirstOrDefault(c => c.Name == file.Name);
 
             if (file.Content.IsNullOrEmpty() && findFile != null && findFile.Content.IsNullOrEmpty())
             {
