@@ -398,7 +398,6 @@ public class AddressAppService : IAddressAppService
         var sideChainHolderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync(_globalOptions.SideChainId,
             input.Address,
             new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
-
         await Task.WhenAll(mainChainCurAddressAssetTask, holderInfosTask, priceDtoTask,
             sideChainCurAddressAssetTask);
 
