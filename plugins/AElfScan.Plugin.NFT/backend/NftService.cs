@@ -508,7 +508,7 @@ public class NftService : INftService, ISingletonDependency
         AssertHelper.NotEmpty(collectionInfos, "this nft collection not exist");
         var collectionInfo = collectionInfos[0];
         var nftItemDetailDto = _objectMapper.Map<IndexerTokenInfoDto, NftItemDetailDto>(nftItem);
-        nftItemDetailDto.Quantity = DecimalHelper.Divide(nftItem.TotalSupply, nftItem.Decimals);
+        nftItemDetailDto.Quantity = DecimalHelper.Divide(nftItem.Supply, nftItem.Decimals);
 
         nftItemDetailDto.Item.ImageUrl = TokenInfoHelper.GetImageUrl(nftItem.ExternalInfo,
             () => _tokenInfoProvider.BuildImageUrl(nftItem.Symbol));
@@ -530,19 +530,23 @@ public class NftService : INftService, ISingletonDependency
 
     public async Task<NftItemDetailDto> GetMergeNftItemDetailAsync(string symbol)
     {
-        var nftItems = await _tokenIndexerProvider.GetTokenDetailAsync("", symbol);
-        AssertHelper.NotEmpty(nftItems, "this nft item not exist");
-        var nftItem = nftItems[0];
-        //get collection info
-        var tokenHolders = await EsIndex.GetTokenHolders(symbol, "");
-        var collectionInfos = await _tokenIndexerProvider.GetTokenDetailAsync("", nftItem.CollectionSymbol);
+        var searchTokenDetail = new TokenInfoIndex();
+        var tokenHolders = 0l;
+        var tasks = new List<Task>();
+        tasks.Add(EsIndex.SearchTokenDetail(symbol).ContinueWith(task => { searchTokenDetail = task.Result; }));
+        tasks.Add(EsIndex.GetTokenHolders(symbol, "").ContinueWith(task => { tokenHolders = task.Result; }));
+
+
+        await tasks.WhenAll();
+
+        var collectionInfos = await _tokenIndexerProvider.GetTokenDetailAsync("", searchTokenDetail.CollectionSymbol);
         AssertHelper.NotEmpty(collectionInfos, "this nft collection not exist");
         var collectionInfo = collectionInfos[0];
-        var nftItemDetailDto = _objectMapper.Map<IndexerTokenInfoDto, NftItemDetailDto>(nftItem);
+        var nftItemDetailDto = _objectMapper.Map<TokenInfoIndex, NftItemDetailDto>(searchTokenDetail);
 
-        nftItemDetailDto.Quantity = DecimalHelper.Divide(nftItem.Supply, nftItem.Decimals);
-        nftItemDetailDto.Item.ImageUrl = TokenInfoHelper.GetImageUrl(nftItem.ExternalInfo,
-            () => _tokenInfoProvider.BuildImageUrl(nftItem.Symbol));
+        nftItemDetailDto.Quantity = DecimalHelper.Divide(searchTokenDetail.Supply, searchTokenDetail.Decimals);
+        nftItemDetailDto.Item.ImageUrl = TokenInfoHelper.GetImageUrl(searchTokenDetail.ExternalInfo,
+            () => _tokenInfoProvider.BuildImageUrl(searchTokenDetail.Symbol));
         var marketInfo = _tokenInfoOptionsMonitor.CurrentValue.GetMarketInfo(CommonConstant.DefaultMarket);
         marketInfo.MarketUrl = string.Format(marketInfo.MarketUrl, symbol);
         nftItemDetailDto.MarketPlaces = marketInfo;
@@ -556,10 +560,8 @@ public class NftService : INftService, ISingletonDependency
         };
 
         nftItemDetailDto.Holders = tokenHolders;
-        foreach (var indexerTokenInfoDto in nftItems)
-        {
-            nftItemDetailDto.ChainIds.Add(indexerTokenInfoDto.Metadata.ChainId);
-        }
+        nftItemDetailDto.ChainIds = searchTokenDetail.ChainIds;
+
 
         return nftItemDetailDto;
     }
