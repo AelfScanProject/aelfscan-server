@@ -288,6 +288,29 @@ public class BlockChainAutoMapperProfile : Profile
                 m => m.MapFrom(u => BaseConverter.OfExternalInfoKeyValue(u.ExternalInfo, "Description")))
             .ReverseMap()
             ;
+
+
+        CreateMap<TokenInfoIndex, NftItemDetailDto>()
+            .ForPath(t => t.Item.Name, m => m.MapFrom(u => u.TokenName))
+            .ForPath(t => t.Item.Symbol, m => m.MapFrom(u => u.Symbol))
+            .ForPath(t => t.Item.Decimals, m => m.MapFrom(u => u.Decimals))
+            .ForMember(t => t.Holders, m => m.MapFrom(u => u.HolderCount))
+            .ForMember(t => t.Owner,
+                m => m.MapFrom(u =>
+                    string.IsNullOrEmpty(u.Owner) ? new List<string>() : new List<string> { u.Owner }))
+            .ForMember(t => t.Issuer,
+                m => m.MapFrom(u =>
+                    string.IsNullOrEmpty(u.Owner) ? new List<string>() : new List<string> { u.Issuer }))
+            .ForMember(t => t.TokenSymbol, m => m.MapFrom(u => u.Symbol))
+            .ForPath(t => t.SymbolToCreate,
+                m => m.MapFrom(u => BaseConverter.OfExternalInfoKeyValue(u.ExternalInfo, "__seed_owned_symbol")))
+            .ForPath(t => t.ExpireTime,
+                m => m.MapFrom(u => BaseConverter.OfExternalInfoKeyValue(u.ExternalInfo, "__seed_exp_time")))
+            .ForPath(t => t.Description,
+                m => m.MapFrom(u => BaseConverter.OfExternalInfoKeyValue(u.ExternalInfo, "Description")))
+            .ReverseMap()
+            ;
+
         CreateMap<NftItemHolderInfoInput, TokenHolderInput>();
         CreateMap<TokenCommonDto, TokenDetailDto>();
         CreateMap<NftItemActivityInput, GetActivitiesInput>();
