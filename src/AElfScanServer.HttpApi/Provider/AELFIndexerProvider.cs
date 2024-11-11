@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Options;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Dtos.Indexer;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.HttpClient;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
@@ -167,12 +170,14 @@ public class AELFIndexerProvider : ISingletonDependency
         return response;
     }
 
-
-    public async Task<List<TransactionIndex>> GetTransactionsAsync(string chainId, long startBlockHeight,
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTransactionsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTransactionsAsync), LogTargets = ["chainId","startBlockHeight","endBlockHeight","transactionId"])]
+    public virtual async Task<List<TransactionIndex>> GetTransactionsAsync(string chainId, long startBlockHeight,
         long endBlockHeight, string transactionId)
     {
-        try
-        {
+       
             var accessTokenAsync = GetAccessTokenAsync();
             var response =
                 await _httpProvider.PostAsync<List<TransactionIndex>>(
@@ -193,22 +198,17 @@ public class AELFIndexerProvider : ISingletonDependency
 
 
             return response;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e,
-                "get transaction list from AELFIndexer error:{chainId},startBlockHeight:{startBlockHeight},endBlockHeight:{endBlockHeight}",
-                chainId, startBlockHeight, endBlockHeight);
-            return new List<TransactionIndex>();
-        }
+    
     }
 
-
-    public async Task<List<TransactionData>> GetTransactionsDataAsync(string chainId, long startBlockHeight,
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTransactionsDataAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTransactionsDataAsync), LogTargets = ["chainId","startBlockHeight","endBlockHeight","transactionId"])]
+    public virtual async Task<List<TransactionData>> GetTransactionsDataAsync(string chainId, long startBlockHeight,
         long endBlockHeight, string transactionId)
     {
-        try
-        {
+       
             var accessTokenAsync = GetAccessTokenAsync();
             var response =
                 await _httpProvider.PostAsync<List<TransactionData>>(
@@ -229,46 +229,10 @@ public class AELFIndexerProvider : ISingletonDependency
 
 
             return response;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e,
-                "get transaction data list from AELFIndexer error:{c},startBlockHeight:{startBlockHeight},endBlockHeight:{endBlockHeight}",
-                chainId,  startBlockHeight, endBlockHeight);
-            return new List<TransactionData>();
-        }
+        
     }
 
 
-    public async Task<List<IndexerLogEventDto>> GetLogEventAsync(string chainId, long startBlockHeight,
-        long endBlockHeight)
-    {
-        try
-        {
-            var accessTokenAsync = GetAccessTokenAsync();
-            var response =
-                await _httpProvider.PostAsync<List<IndexerLogEventDto>>(
-                    _aelfIndexerOptions.AELFIndexerHost + AELFIndexerApi.GetLogEvent.Path,
-                    RequestMediaType.Json, new Dictionary<string, object>
-                    {
-                        ["chainId"] = chainId,
-                        ["startBlockHeight"] = startBlockHeight,
-                        ["endBlockHeight"] = endBlockHeight,
-                    },
-                    new Dictionary<string, string>
-                    {
-                        ["content-type"] = "application/json",
-                        ["accept"] = "application/json",
-                        ["Authorization"] = $"Bearer {accessTokenAsync.Result}"
-                    });
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("Get log err:{error}", e.ToString());
-        }
-
-        return null;
-    }
 
     public async Task<List<IndexerLogEventDto>> GetTokenCreatedLogEventAsync(string chainId, long startBlockHeight,
         long endBlockHeight)

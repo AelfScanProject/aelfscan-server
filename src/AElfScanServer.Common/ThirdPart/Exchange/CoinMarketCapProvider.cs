@@ -62,6 +62,8 @@ public class CoinMarketCapProvider
 
         var head = new Dictionary<string, string>();
         head["X-CMC_PRO_API_KEY"] = _secretOptions.CMCApiKey;
+        var key = _secretOptions.CMCApiKey + "-------";
+        _logger.LogInformation($"wuhaoxuan {key}");
         var response =
             await _httpProvider.InvokeAsync<CMCCryptoCurrency>(CMCDomain,
                 new ApiInfo(HttpMethod.Get, CMCUrl), header: head);

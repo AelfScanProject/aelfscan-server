@@ -46,6 +46,8 @@
         <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
         <PackageReference Include="AWSSDK.S3" Version="3.7.401.2" />
         <PackageReference Include="KubernetesClient" Version="13.0.11" />
+        <PackageReference Include="AElf.ExceptionHandler.ABP" Version="8.2.0" />
+        <PackageReference Include="AElf.ExceptionHandler" Version="1.8.2" />
     </ItemGroup>
 
     <ItemGroup>

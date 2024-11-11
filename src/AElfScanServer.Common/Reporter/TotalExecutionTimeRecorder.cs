@@ -13,11 +13,17 @@ public class TotalExecutionTimeRecorder: ISingletonDependency, IInterceptor
     private readonly Meter _meter;
     private readonly Dictionary<string, Histogram<long>> _histogramMapCache = new Dictionary<string, Histogram<long>>();
     private readonly Histogram<long> _totalHistogram;
+    private  readonly Counter<long> _apiTimeoutCounter;
 
     public TotalExecutionTimeRecorder(IInstrumentationProvider instrumentationProvider)
     {
         _meter = instrumentationProvider.Meter;
         _totalHistogram = _meter.CreateHistogram<long>("aelfScanTotal", "ms", "Histogram for total execution time");
+        _apiTimeoutCounter = _meter.CreateCounter<long>(
+        "aelfScanApiTimeoutCount", 
+        "counts", 
+        "The number of API timeouts"
+    );
     }
 
     public async Task InterceptAsync(string className, string methodName, Func<Task> invocation)
@@ -26,10 +32,16 @@ public class TotalExecutionTimeRecorder: ISingletonDependency, IInterceptor
         Stopwatch stopwatch = Stopwatch.StartNew();
         await invocation();
         stopwatch.Stop();
-        histogram.Record(stopwatch.ElapsedMilliseconds);
+        var stopwatchElapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+        histogram.Record(stopwatchElapsedMilliseconds);
         if (methodName.Contains("OnActionExecutionAsync"))
         {
-            _totalHistogram.Record(stopwatch.ElapsedMilliseconds);
+            _totalHistogram.Record(stopwatchElapsedMilliseconds);
+        }
+
+        if (stopwatchElapsedMilliseconds > 1000)
+        {
+            _apiTimeoutCounter.Add(1,new KeyValuePair<string, object>("methodName",className + methodName));
         }
     }
 

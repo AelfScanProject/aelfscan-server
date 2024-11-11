@@ -1,4 +1,5 @@
 using System.Globalization;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
@@ -9,6 +10,7 @@ using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
@@ -166,10 +168,12 @@ public class NftService : INftService, ISingletonDependency
         };
     }
 
-    public async Task<NftDetailDto> GetNftCollectionDetailAsync(string chainId, string collectionSymbol)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetNftCollectionDetailAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","collectionSymbol"])]
+    public virtual async Task<NftDetailDto> GetNftCollectionDetailAsync(string chainId, string collectionSymbol)
     {
-        try
-        {
             var getCollectionInfoTask = _tokenIndexerProvider.GetTokenDetailAsync(chainId, collectionSymbol);
             var nftCollectionInfoInput = new GetNftCollectionInfoInput
             {
@@ -226,13 +230,8 @@ public class NftService : INftService, ISingletonDependency
             }
 
             return nftDetailDto;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetNftCollectionDetailAsync error");
-        }
+    
 
-        return new NftDetailDto();
     }
 
 
@@ -746,7 +745,11 @@ public class NftService : INftService, ISingletonDependency
         return list;
     }
 
-    private async Task<List<NftInventoryDto>> ConvertIndexerNftInventoryDtoAsync(
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "ConvertIndexerNftInventoryDtoAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["tokenInfos","chainId"])]
+    public virtual async Task<List<NftInventoryDto>> ConvertIndexerNftInventoryDtoAsync(
         List<IndexerTokenInfoDto> tokenInfos, string chainId)
     {
         var list = new List<NftInventoryDto>();
@@ -754,9 +757,7 @@ public class NftService : INftService, ISingletonDependency
         {
             return list;
         }
-
-        try
-        {
+        
             var priceDict = new Dictionary<string, CommonTokenPriceDto>();
             var symbols = tokenInfos.Select(i => i.Symbol).Distinct().ToList();
             var itemInfosDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
@@ -802,17 +803,15 @@ public class NftService : INftService, ISingletonDependency
             }
 
             return list;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "ConvertIndexerNftInventoryDtoAsync error");
-        }
-
-        return list;
+            
     }
 
 
-    private async Task<List<NftInventoryDto>> ConvertMergeNftInventoryDtoAsync(
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "ConvertMergeNftInventoryDtoAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["tokenInfos"])]
+    public virtual async Task<List<NftInventoryDto>> ConvertMergeNftInventoryDtoAsync(
         List<TokenInfoIndex> tokenInfos)
     {
         var list = new List<NftInventoryDto>();
@@ -820,9 +819,7 @@ public class NftService : INftService, ISingletonDependency
         {
             return list;
         }
-
-        try
-        {
+        
             var priceDict = new Dictionary<string, CommonTokenPriceDto>();
             var symbols = tokenInfos.Select(i => i.Symbol).Distinct().ToList();
             var itemInfosDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
@@ -867,11 +864,7 @@ public class NftService : INftService, ISingletonDependency
                 nftInventoryDto.ChainIds = new List<string>() { _globalOptions.CurrentValue.SideChainId };
                 list.Add(nftInventoryDto);
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "ConvertMergeNftInventoryDtoAsync error");
-        }
+
 
         return list;
     }

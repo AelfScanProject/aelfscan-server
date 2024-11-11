@@ -25,6 +25,7 @@ public class GlobalOptions
     public long BlockchainStartTimestamp { get; set; }
     public List<string> SpecialSymbols { get; set; } = new();
 
+    public string CMCApiKey { get; set; }
 
     public Dictionary<string, List<string>> FixDailyData { get; set; }
 
@@ -33,7 +34,7 @@ public class GlobalOptions
     public bool InitRound { get; set; }
 
     public string AdminResetPwd { get; set; }
-
+    
     public string InitStakedStr { get; set; } = "500000";
 
     public double InitStaked { get; set; } = 500000;

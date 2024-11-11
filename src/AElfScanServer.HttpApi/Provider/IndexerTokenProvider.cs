@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.HttpApi.Dtos.address;
 using AElfScanServer.Common.Constant;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 
 using GraphQL;
@@ -42,10 +45,13 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
         _graphQlFactory = graphQlFactory;
     }
 
-    public async Task<List<AccountInfoDto>> GetAddressListAsync(string chainId, int skipCount, int maxResultCount)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAddressListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount"])]
+    public virtual async Task<List<AccountInfoDto>> GetAddressListAsync(string chainId, int skipCount, int maxResultCount)
     {
-        try
-        {
+      
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerAddressListDto>(
                 new GraphQLRequest
                 {
@@ -68,20 +74,19 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
                     }
                 });
             return result.AccountInfo;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query AccountInfo failed.");
-            return new List<AccountInfoDto>();
-        }
+    
     }
 
-    public async Task<List<AccountTokenDto>> GetAddressTokenListAsync(string chainId, string symbol,
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAddressTokenListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount","symbol","addressList"])]
+    public virtual async Task<List<AccountTokenDto>> GetAddressTokenListAsync(string chainId, string symbol,
         List<string> addressList, int skipCount,
         int maxResultCount)
     {
-        try
-        {
+     
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerAccountTokenDto>(
                 new GraphQLRequest
                 {
@@ -121,19 +126,18 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
                     }
                 });
             return result.AccountToken != null ? result.AccountToken.Items : new List<AccountTokenDto>();
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query AccountToken failed.");
-            return new List<AccountTokenDto>();
-        }
+      
     }
 
-    public async Task<List<AccountTokenDto>> GetAddressTokenListAsync(string chainId, string address, string symbol,
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAddressTokenListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount","symbol","address"])]
+    public virtual async Task<List<AccountTokenDto>> GetAddressTokenListAsync(string chainId, string address, string symbol,
         int skipCount, int maxResultCount)
     {
-        try
-        {
+      
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerAccountTokenDto>(
                 new GraphQLRequest
                 {
@@ -164,18 +168,18 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
                     }
                 });
             return result.AccountToken != null ? result.AccountToken.Items : new List<AccountTokenDto>();
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query AccountToken failed.");
-            return new List<AccountTokenDto>();
-        }
+       
     }
 
-    public async Task<long> GetAddressElfBalanceAsync(string chainId, string address)
+    
+        
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAddressElfBalanceAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetAddressElfBalanceAsync), LogTargets = ["chainId","address"])]
+    public virtual async Task<long> GetAddressElfBalanceAsync(string chainId, string address)
     {
-        try
-        {
+      
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerAccountTokenDto>(
                 new GraphQLRequest
                 {
@@ -193,19 +197,18 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
                     }
                 });
             return result.AccountToken.Items.Count > 0 ? result.AccountToken.Items[0].Amount : 0;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query Account ELF Balance failed.");
-            return 0;
-        }
+       
     }
 
-    public async Task<List<TransferInfoDto>> GetTransferInfoListAsync(string chainId, string address, int skipCount,
+    
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTransferInfoListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","address"])]
+    public virtual async Task<List<TransferInfoDto>> GetTransferInfoListAsync(string chainId, string address, int skipCount,
         int maxResultCount)
     {
-        try
-        {
+       
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerTransferInfoListDto>(
                 new GraphQLRequest
                 {
@@ -243,11 +246,6 @@ public class IndexerTokenProvider : IIndexerTokenProvider, ISingletonDependency
                     }
                 });
             return result.TransferInfo;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Query TransferInfo failed.");
-            return new List<TransferInfoDto>();
-        }
+       
     }
 }

@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.Domain.Common.Entities;
@@ -31,32 +34,28 @@ public class AwakenIndexerProvider : IAwakenIndexerProvider, ISingletonDependenc
         _logger = logger;
     }
 
-    public async Task<TotalValueLockedResultDto> GetAwakenTvl(string chainId, long timeStamp)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAwakenTvl err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), LogTargets = ["chainId","timeStamp"])]
+    public virtual async Task<TotalValueLockedResultDto> GetAwakenTvl(string chainId, long timeStamp)
     {
-        try
-        {
-            var graphQlHelper = _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.AwakenIndexer);
-            var result = await graphQlHelper.QueryAsync<TotalValueLockedResult>(
-                new GraphQLRequest
-                {
-                    Query =
-                        @"query($chainId:String!,$timestamp:Long!){
+        var graphQlHelper = _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.AwakenIndexer);
+        var result = await graphQlHelper.QueryAsync<TotalValueLockedResult>(
+            new GraphQLRequest
+            {
+                Query =
+                    @"query($chainId:String!,$timestamp:Long!){
                         totalValueLocked(dto: {chainId:$chainId,timestamp:$timestamp}){
                           value
                         }
                     }",
-                    Variables = new
-                    {
-                        chainId = chainId, timestamp = timeStamp
-                    }
-                });
+                Variables = new
+                {
+                    chainId = chainId, timestamp = timeStamp
+                }
+            });
 
-            return result.TotalValueLocked;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e,"GetAwakenTvl error");
-            return null;
-        }
+        return result.TotalValueLocked;
     }
 }

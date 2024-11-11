@@ -6,8 +6,10 @@ using AElf.CSharp.Core;
 using AElf.Types;
 using AElfScanServer.Common.Dtos;
 using Google.Protobuf;
+using GraphQL.Validation;
 using Nethereum.Util;
 using Newtonsoft.Json;
+using Polly;
 using Serilog;
 
 namespace AElfScanServer.Common.Helper;
@@ -16,20 +18,8 @@ public class CommomHelper
 {
     public static long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
     public const long InitialMiningRewardPerBlock = 12500000;
- 
-
-    public static bool IsValidAddress(string address)
-    {
-        try
-        {
-            AElf.Types.Address.FromBase58(address);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
+    public static long MainChainBlockchainStartTimestamp = 1607556204;
+    public static long SideChainBlockchainStartTimestamp = 1602905482;
 
     public static string GetNftImageKey()
     {
@@ -89,45 +79,6 @@ public static class LogEventHelper
         return logEvent;
     }
 
-    public static long ParseTransactionFees(Dictionary<string, string> extraProperties)
-    {
-        var result = 0l;
-        try
-        {
-            var feeMap = new Dictionary<string, long>();
-            if (extraProperties == null)
-            {
-                return 0;
-            }
-
-            if (extraProperties.TryGetValue("TransactionFee", out var transactionFee))
-            {
-                feeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(transactionFee) ??
-                         new Dictionary<string, long>();
-                if (feeMap.TryGetValue("ELF", out var fee))
-                {
-                    result += fee;
-                }
-            }
-
-            if (extraProperties.TryGetValue("ResourceFee", out var resourceFee))
-            {
-                var resourceFeeMap = JsonConvert.DeserializeObject<Dictionary<string, long>>(resourceFee) ??
-                                     new Dictionary<string, long>();
-                if (resourceFeeMap.TryGetValue("ELF", out var fee))
-                {
-                    result += fee;
-                }
-            }
-        }
-        catch (JsonSerializationException e)
-        {
-            // ignore test data
-            Log.Error(e, $"ParseTransactionFees error");
-        }
-
-        return result;
-    }
 
     public static long ParseBurnt(long amount, string address, string symbol, string chainId)
     {

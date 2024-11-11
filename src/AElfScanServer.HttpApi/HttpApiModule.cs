@@ -1,4 +1,5 @@
 using AElf.EntityMapping.Elasticsearch;
+using AElf.ExceptionHandler.ABP;
 using AElf.Indexing.Elasticsearch;
 using AElf.OpenTelemetry;
 using AElfScanServer.HttpApi.Options;
@@ -42,6 +43,7 @@ using Volo.Abp.TenantManagement;
 namespace AElfScanServer.HttpApi;
 
 [DependsOn(
+    typeof(AOPExceptionModule),
     typeof(AElfScanServerApplicationContractsModule),
     typeof(AbpAutoMapperModule),
     typeof(AbpAccountHttpApiModule),
@@ -99,6 +101,7 @@ public class HttpApiModule : AbpModule
         context.Services.AddTransient<IChartDataService, ChartDataService>();
         context.Services.AddTransient<IUserAppService, UserAppService>();
         context.Services.AddTransient<IAddressTypeService, AddressTypeService>();
+        context.Services.AddTransient<IOpenApiService, OpenApiService>();
         context.Services.AddSingleton<IDynamicTransactionService, DynamicTransactionService>();
         context.Services.AddSingleton<IOpenApiService, OpenApiService>();
         context.Services.AddSingleton<IContractVerifyService, ContractVerifyService>();

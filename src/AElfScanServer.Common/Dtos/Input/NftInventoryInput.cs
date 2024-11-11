@@ -1,3 +1,4 @@
+using AElf;
 using AElfScanServer.Common.Helper;
 using NUglify.Helpers;
 
@@ -11,6 +12,6 @@ public class NftInventoryInput : BaseInput
     
     public bool IsSearchAddress()
     {
-        return !Search.IsNullOrWhiteSpace() && CommomHelper.IsValidAddress(Search);
+        return !Search.IsNullOrWhiteSpace() && Base58CheckEncoding.Verify(Search);
     }
 }
