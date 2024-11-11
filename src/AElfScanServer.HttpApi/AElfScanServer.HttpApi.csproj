@@ -24,6 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="AElf.ExceptionHandler.ABP" Version="8.2.0" />
         <PackageReference Include="Portable.BouncyCastle" Version="1.9.0"/>
         <PackageReference Include="Volo.Abp.BackgroundWorkers" Version="8.2.0"/>
         <PackageReference Include="Volo.Abp.Caching" Version="8.2.0"/>
