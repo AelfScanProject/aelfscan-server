@@ -37,6 +37,7 @@ using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.DataStrategy;
@@ -84,6 +85,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     private IDistributedCache<TransactionDetailResponseDto> _transactionDetailCache;
     private readonly ILogger<HomePageService> _logger;
     private readonly IElasticClient _elasticClient;
+    private readonly ITokenPriceService _tokenPriceService;
     private readonly IObjectMapper _objectMapper;
     public const long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
     public const long InitialMiningRewardPerBlock = 12500000;
@@ -110,7 +112,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         _tokenInfoOptionsMonitor = tokenInfoOptions;
         _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _transactionDetailCache = transactionDetailCache;
-        _tokenInfoProvider = tokenInfoProvider;
         var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
         var connectionPool = new StaticConnectionPool(uris);
         var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();

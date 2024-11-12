@@ -35,6 +35,7 @@ using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.DataStrategy;
@@ -68,6 +69,7 @@ public class DynamicTransactionService : IDynamicTransactionService
     private readonly BlockChainDataProvider _blockChainProvider;
     private readonly LogEventProvider _logEventProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
+    private readonly ITokenPriceService _tokenPriceService;
     private readonly ITokenInfoProvider _tokenInfoProvider;
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptionsMonitor;
     private readonly DataStrategyContext<string, HomeOverviewResponseDto> _overviewDataStrategy;
@@ -82,7 +84,7 @@ public class DynamicTransactionService : IDynamicTransactionService
         BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
         ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         OverviewDataStrategy overviewDataStrategy,
-        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider)
+        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider,ITokenPriceService tokenPriceService)
     {
         _logger = logger;
         _globalOptions = blockChainOptions;
@@ -95,6 +97,7 @@ public class DynamicTransactionService : IDynamicTransactionService
         _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _transactionDetailCache = transactionDetailCache;
         _tokenInfoProvider = tokenInfoProvider;
+        _tokenPriceService = tokenPriceService;
     }
 
 
@@ -111,19 +114,23 @@ public class DynamicTransactionService : IDynamicTransactionService
             return transactionDetailResponseDto;
         }
 
-        
-            var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
-            if (detailResponseDto != null)
-            {
-                return detailResponseDto;
-            }
+
+        var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
+        if (detailResponseDto != null)
+        {
+            return detailResponseDto;
+        }
 
             var blockHeight = 0l;
             NodeTransactionDto transactionDto = new NodeTransactionDto();
             var tasks = new List<Task>();
             tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
             {
-                blockHeight = task.Result.BlockHeight;
+                if (task.Result != null)
+                {
+                    blockHeight = task.Result.BlockHeight;
+
+                }
             }));
 
 
@@ -295,7 +302,8 @@ public class DynamicTransactionService : IDynamicTransactionService
                             ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(transferred.Symbol,
                                 txnLogEvent.ChainId),
                             NowPrice = await _blockChainProvider.TransformTokenToUsdValueAsync(transferred.Symbol,
-                                transferred.Amount)
+                                transferred.Amount) 
+                            
                         };
 
 

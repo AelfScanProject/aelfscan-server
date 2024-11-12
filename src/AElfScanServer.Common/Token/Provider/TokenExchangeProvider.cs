@@ -14,9 +14,12 @@ using AElfScanServer.Common.ThirdPart.Exchange;
 using Aetherlink.PriceServer;
 using Aetherlink.PriceServer.Dtos;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
 
 namespace AElfScanServer.Common.Token.Provider;
@@ -39,14 +42,16 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
     private readonly SemaphoreSlim WriteLock = new SemaphoreSlim(1, 1);
     private readonly SemaphoreSlim HisWriteLock = new SemaphoreSlim(1, 1);
     private readonly IPriceServerProvider _priceServerProvider;
+    private readonly IDistributedCache<string> _priceCache;
 
 
     public TokenExchangeProvider(IOptions<RedisCacheOptions> optionsAccessor,
         IEnumerable<IExchangeProvider> exchangeProviders,
         IOptionsMonitor<ExchangeOptions> exchangeOptions,
-        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger,IPriceServerProvider priceServerProvider) :
+        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger,IPriceServerProvider priceServerProvider,IDistributedCache<string> priceCache) :
         base(optionsAccessor)
     {
+        _priceCache= priceCache;
         _priceServerProvider = priceServerProvider;
         _exchangeOptions = exchangeOptions;
         _netWorkReflectionOption = netWorkReflectionOption;
@@ -57,7 +62,17 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
 
     public async Task<decimal> GetTokenPriceAsync(string baseCoin, string quoteCoin)
     {
+        
         var pair = $"{baseCoin}-{quoteCoin}";
+        var key = "GetTokenPriceAsync" + pair;
+        var priceCache = await _priceCache.GetAsync(key);
+
+        if (!priceCache.IsNullOrEmpty())
+        {
+            return decimal.Parse(priceCache);
+        }
+        
+        
         var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
         {
             TokenPair =pair,
@@ -71,7 +86,12 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
         }
         
         var price = res.Data.Price / (decimal)Math.Pow(10, (double)res.Data.Decimal);
+        await _priceCache.SetAsync(key, price.ToString(), new DistributedCacheEntryOptions()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
 
+        });
+        
         return price;
     }
 

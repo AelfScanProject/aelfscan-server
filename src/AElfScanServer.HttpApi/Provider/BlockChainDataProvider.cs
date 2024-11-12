@@ -21,7 +21,9 @@ using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.HttpClient;
+using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using Binance.Spot;
 using Binance.Spot.Models;
 using Google.Protobuf;
@@ -50,7 +52,9 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     // private readonly IElasticClient _elasticClient;
 
     private ConcurrentDictionary<string, string> _contractAddressCache;
+    private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private Dictionary<string, string> _tokenImageUrlCache;
+    private  readonly ITokenPriceService _tokenPriceService;
     private readonly ILogger<BlockChainDataProvider> _logger;
 
     public BlockChainDataProvider(
@@ -59,7 +63,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor,
         IHttpProvider httpProvider,
-        IDistributedCache<string> tokenUsdPriceCache
+        IDistributedCache<string> tokenUsdPriceCache,ITokenIndexerProvider tokenIndexerProvider,ITokenPriceService tokenPriceService
     ) : base(optionsAccessor)
     {
         _logger = logger;
@@ -73,6 +77,8 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         _contractAddressCache = new ConcurrentDictionary<string, string>();
         _tokenUsdPriceCache = tokenUsdPriceCache;
         _tokenImageUrlCache = new Dictionary<string, string>();
+        _tokenIndexerProvider = tokenIndexerProvider;
+        _tokenPriceService = tokenPriceService;
     }
 
 
@@ -149,17 +155,13 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
     public async Task<string> TransformTokenToUsdValueAsync(string symbol, long amount)
     {
-        var tokenUsdPriceAsync = await GetTokenUsdPriceAsync(symbol);
-
-        if (tokenUsdPriceAsync.IsNullOrEmpty())
+        var tokenPriceAsync = await _tokenPriceService.GetTokenPriceAsync(symbol);
+        if (tokenPriceAsync==null)
         {
             return "0";
         }
-
-        var tokenDecimals = await GetTokenDecimals(symbol, "AELF");
-        var price = double.Parse(tokenUsdPriceAsync);
-
-        return (price * amount / Math.Pow(10, tokenDecimals)).ToString();
+        
+        return (tokenPriceAsync.Price * amount).ToString();
     }
 
 
@@ -183,16 +185,14 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         }
 
         var market = new Market(_globalOptions.BNBaseUrl);
-
-
        
             var usdPrice = await _tokenUsdPriceCache.GetAsync(symbol);
             if (!usdPrice.IsNullOrEmpty())
             {
                 return usdPrice;
             }
-
-
+        
+            
             var currentAveragePrice = await market.CurrentAveragePrice(symbol + "USDT");
             JObject jsonObject = JsonConvert.DeserializeObject<JObject>(currentAveragePrice);
             var price = jsonObject["price"].ToString();

@@ -16,7 +16,7 @@ namespace AElfScanServer.Common.Token;
 
 public interface ITokenPriceService
 {
-    Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin);
+    Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin="usdt");
 
     Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, long timestamp);
 }
@@ -39,7 +39,7 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenPriceAsync), LogTargets = ["baseCoin","quoteCoin"])]
     public virtual async Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin)
-    {
+    {       
             AssertHelper.IsTrue(!baseCoin.IsNullOrEmpty() && !quoteCoin.IsNullOrEmpty(),
                 "Get token price fail, baseCoin or quoteCoin is empty.");
             
