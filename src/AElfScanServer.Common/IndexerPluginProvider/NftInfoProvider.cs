@@ -42,6 +42,7 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
     private readonly IGraphQlFactory _graphQlFactory;
     private readonly IHttpProvider _httpProvider;
     private readonly IOptionsMonitor<ApiClientOption> _apiClientOptions;
+    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
     private static readonly JsonSerializerSettings JsonSerializerSettings = JsonSettingsBuilder.New()
         .IgnoreNullValue()
@@ -50,12 +51,13 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
         .Build();
 
     public NftInfoProvider(IGraphQlFactory graphQlFactory, ILogger<NftInfoProvider> logger, IHttpProvider httpProvider, 
-        IOptionsMonitor<ApiClientOption> apiClientOptions)
+        IOptionsMonitor<ApiClientOption> apiClientOptions,IOptionsMonitor<GlobalOptions> globalOptions)
     {
         _graphQlFactory = graphQlFactory;
         _logger = logger;
         _httpProvider = httpProvider;
         _apiClientOptions = apiClientOptions;
+        _globalOptions = globalOptions;
     }
     
     private IGraphQlHelper GetGraphQlHelper()
@@ -176,7 +178,7 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
 
             foreach (var symbol in symbols)
             {
-                var nftInfoId = IdGeneratorHelper.GetNftInfoId(chainId, symbol);
+                var nftInfoId = IdGeneratorHelper.GetNftInfoId(_globalOptions.CurrentValue.SideChainId, symbol);
                 var fieldName = symbol.Replace("-", "_"); // replace valid char
                 queries.Add($@"
             {fieldName}: nftActivityList(input: {{

@@ -23,6 +23,7 @@ public class AddressAssetCalcWorker : AsyncPeriodicBackgroundWorkerBase
         timer.Period = workerOptions.CurrentValue.GetWorkerPeriodMinutes(WorkerName) * 60 * 1000;
         _logger = logger;
         _workerOptions = workerOptions;
+        timer.RunOnStart = true;
         _tokenAssetProvider = tokenAssetProvider;
     }
 

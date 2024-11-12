@@ -260,8 +260,6 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         //Need to get Price Nft Symbols
         var getPriceNftSymbols = new HashSet<string>();
 
-        symbolPriceDict["ELF"] = 1;
-        return;
         foreach (var indexerTokenHolderInfoDto in tokenHolderInfos)
         {
             var token = indexerTokenHolderInfoDto.Token;
