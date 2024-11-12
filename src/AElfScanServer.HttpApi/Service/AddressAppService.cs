@@ -227,6 +227,7 @@ public class AddressAppService : IAddressAppService
 
     public async Task<GetAddressDetailResultDto> GetAccountDetailAsync(GetAddressDetailInput input)
     {
+        var accountChainIdsTask = GetAccountChainIdsAsync(input.Address, input.ChainId);
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
         var dailyAddressAssetTask =
@@ -265,7 +266,7 @@ public class AddressAppService : IAddressAppService
         var lastTransactionTask = _blockChainIndexerProvider.GetTransactionsAsync(lastTransactionInput);
 
 
-        await Task.WhenAll(priceDtoTask, holderInfoTask, dailyAddressAssetTask,
+        await Task.WhenAll(accountChainIdsTask, priceDtoTask, holderInfoTask, dailyAddressAssetTask,
             holderInfosTask, firstTransactionTask,
             lastTransactionTask, mainChainCurAddressAssetTask, sideChainCurAddressAssetTask);
 
@@ -277,6 +278,7 @@ public class AddressAppService : IAddressAppService
         var firstTransaction = await firstTransactionTask;
         var lastTransaction = await lastTransactionTask;
         var addressTypeList = await addressTypeTask;
+        var chainIds = await accountChainIdsTask;
 
 
         var mainChainCurAddressAsset = await mainChainCurAddressAssetTask;
@@ -313,7 +315,7 @@ public class AddressAppService : IAddressAppService
 
         result.Portfolio.Total.UsdValue = result.Portfolio.SideChain.UsdValue + result.Portfolio.MainChain.UsdValue;
 
-        result.ChainIds = new List<string>() { input.ChainId };
+        result.ChainIds = chainIds;
 
         return result;
     }
@@ -378,6 +380,28 @@ public class AddressAppService : IAddressAppService
         result.ChainIds = new List<string>() { input.ChainId };
 
         return result;
+    }
+
+    public async Task<List<string>> GetAccountChainIdsAsync(string address, string chainId)
+    {
+        var list = new List<string>() { chainId };
+        var needFindChainId = _globalOptions.SideChainId;
+        if (chainId != "AELF")
+        {
+            needFindChainId = "AELF";
+        }
+
+        var holderInput = new TokenHolderInput { ChainId = needFindChainId, Address = address, MaxResultCount = 1 };
+
+        var tokenHolderInfos = await _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
+
+        if (tokenHolderInfos != null && tokenHolderInfos.Items != null && tokenHolderInfos.Items.Count > 0)
+        {
+            list.Add(needFindChainId);
+            list = list.OrderBy(c => c).ToList();
+        }
+
+        return list;
     }
 
 

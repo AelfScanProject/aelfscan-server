@@ -75,6 +75,7 @@ public class SearchService : ISearchService, ISingletonDependency
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
     public virtual async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
     {
+    
         var searchResp = new SearchResponseDto();
       
             //Step 1: check param
@@ -82,7 +83,6 @@ public class SearchService : ISearchService, ISingletonDependency
             {
                 return searchResp;
             }
-            //Step 2: convert 
 
             //Step 3: execute query
             switch (request.FilterType)
@@ -139,8 +139,7 @@ public class SearchService : ISearchService, ISingletonDependency
             return;
         }
        
-
-
+        
         var contractAddressList = await FindContractAddress(request.ChainId, request.Keyword);
 
 
@@ -247,12 +246,12 @@ public class SearchService : ISearchService, ISingletonDependency
         }
 
         var priceDict = new Dictionary<string, CommonTokenPriceDto>();
-        var symbols = indexerTokenInfoList.Items.Select(i => i.Symbol).Distinct().ToList();
         //batch query nft price
         var lastSaleInfoDict = new Dictionary<string, NftActivityItem>();
         if (types.Contains(SymbolType.Nft))
         {
-            lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(request.ChainId, symbols);
+            var nftSymbols = indexerTokenInfoList.Items.Where(c=>c.Type==SymbolType.Nft).Select(i => i.Symbol).Distinct().ToList();
+            lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(_globalOptions.CurrentValue.SideChainId, nftSymbols);
         }
 
         var searchTokensDic = new Dictionary<string, SearchToken>();
