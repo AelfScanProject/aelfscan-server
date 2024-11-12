@@ -6,6 +6,8 @@ using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Token.Provider;
+using Aetherlink.PriceServer;
+using Aetherlink.PriceServer.Dtos;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
@@ -23,11 +25,13 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
 {
     private readonly ILogger<TokenPriceService> _logger;
     private readonly ITokenExchangeProvider _tokenExchangeProvider;
+    private readonly IPriceServerProvider _priceServerProvider;
 
-    public TokenPriceService(ILogger<TokenPriceService> logger, ITokenExchangeProvider tokenExchangeProvider)
+    public TokenPriceService(ILogger<TokenPriceService> logger, ITokenExchangeProvider tokenExchangeProvider,IPriceServerProvider priceServerProvide)
     {
         _logger = logger;
         _tokenExchangeProvider = tokenExchangeProvider;
+        _priceServerProvider=priceServerProvide;
     }
 
     [ExceptionHandler( typeof(Exception),
@@ -38,6 +42,7 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
     {
             AssertHelper.IsTrue(!baseCoin.IsNullOrEmpty() && !quoteCoin.IsNullOrEmpty(),
                 "Get token price fail, baseCoin or quoteCoin is empty.");
+            
             if (baseCoin.ToUpper().Equals(quoteCoin.ToUpper()))
             {
                 return new CommonTokenPriceDto { Price = 1.00m };
@@ -46,18 +51,15 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
             var result = new CommonTokenPriceDto
             {
             };
-            var exchange = await _tokenExchangeProvider.GetAsync(baseCoin, quoteCoin);
-            if (exchange != null)
-            {
-                var avgExchange = exchange.Values
-                    .Where(ex => ex.Exchange > 0)
-                    .Average(ex => ex.Exchange);
-                AssertHelper.IsTrue(avgExchange > 0, "Exchange amount error {avgExchange}", avgExchange);
-                result.Price = avgExchange;
-            }
 
-            return result;
-       
+            var tokenPriceAsync = await _tokenExchangeProvider.GetTokenPriceAsync(baseCoin, quoteCoin);
+            
+            return new CommonTokenPriceDto()
+            {
+                Price =  tokenPriceAsync
+            };
+      
+        
     }
 
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),

@@ -11,6 +11,9 @@ using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Redis;
 using AElfScanServer.Common.ThirdPart.Exchange;
+using Aetherlink.PriceServer;
+using Aetherlink.PriceServer.Dtos;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -21,7 +24,7 @@ namespace AElfScanServer.Common.Token.Provider;
 public interface ITokenExchangeProvider
 {
     Task<Dictionary<string, TokenExchangeDto>> GetAsync(string baseCoin, string quoteCoin);
-    
+    Task<decimal> GetTokenPriceAsync(string baseCoin, string quoteCoin);
     Task<Dictionary<string, TokenExchangeDto>> GetHistoryAsync(string baseCoin, string quoteCoin, long timestamp);
 }
 
@@ -32,23 +35,46 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
     private readonly Dictionary<string, IExchangeProvider> _exchangeProviders;
     private readonly IOptionsMonitor<ExchangeOptions> _exchangeOptions;
     private readonly IOptionsMonitor<NetWorkReflectionOptions> _netWorkReflectionOption;
+    
     private readonly SemaphoreSlim WriteLock = new SemaphoreSlim(1, 1);
     private readonly SemaphoreSlim HisWriteLock = new SemaphoreSlim(1, 1);
+    private readonly IPriceServerProvider _priceServerProvider;
 
 
     public TokenExchangeProvider(IOptions<RedisCacheOptions> optionsAccessor,
         IEnumerable<IExchangeProvider> exchangeProviders,
         IOptionsMonitor<ExchangeOptions> exchangeOptions,
-        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger) :
+        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger,IPriceServerProvider priceServerProvider) :
         base(optionsAccessor)
     {
+        _priceServerProvider = priceServerProvider;
         _exchangeOptions = exchangeOptions;
         _netWorkReflectionOption = netWorkReflectionOption;
         _logger = logger;
         _exchangeProviders = exchangeProviders.GroupBy(p => p.Name()).ToDictionary( g => g.Key.ToString(), g => g.First());
     }
-    
-    
+
+
+    public async Task<decimal> GetTokenPriceAsync(string baseCoin, string quoteCoin)
+    {
+        var pair = $"{baseCoin}-{quoteCoin}";
+        var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
+        {
+            TokenPair =pair,
+            TimeStamp =  DateTime.Now.ToString("yyyyMMdd")
+        });
+
+        if (res == null || res.Data == null)
+        {
+            _logger.LogError($"GetExchangeAsync err,pair:{pair}");
+            return 0;
+        }
+        
+        var price = res.Data.Price / (decimal)Math.Pow(10, (double)res.Data.Decimal);
+
+        return price;
+    }
+
     public async Task<Dictionary<string, TokenExchangeDto>> GetAsync(string baseCoin, string quoteCoin)
     {
         await ConnectAsync();
@@ -59,6 +85,8 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
         {
             return value;
         }
+        
+
 
         // Wait to acquire the lock before proceeding with the update
         await WriteLock.WaitAsync();
