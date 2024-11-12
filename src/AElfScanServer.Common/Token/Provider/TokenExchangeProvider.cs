@@ -21,6 +21,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Threading;
 
 namespace AElfScanServer.Common.Token.Provider;
 
@@ -43,12 +44,13 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
     private readonly SemaphoreSlim HisWriteLock = new SemaphoreSlim(1, 1);
     private readonly IPriceServerProvider _priceServerProvider;
     private readonly IDistributedCache<string> _priceCache;
+    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
 
     public TokenExchangeProvider(IOptions<RedisCacheOptions> optionsAccessor,
         IEnumerable<IExchangeProvider> exchangeProviders,
         IOptionsMonitor<ExchangeOptions> exchangeOptions,
-        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger,IPriceServerProvider priceServerProvider,IDistributedCache<string> priceCache) :
+        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger,IPriceServerProvider priceServerProvider,IDistributedCache<string> priceCache,IOptionsMonitor<GlobalOptions> globalOptions) :
         base(optionsAccessor)
     {
         _priceCache= priceCache;
@@ -56,43 +58,59 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
         _exchangeOptions = exchangeOptions;
         _netWorkReflectionOption = netWorkReflectionOption;
         _logger = logger;
+        _globalOptions = globalOptions;
         _exchangeProviders = exchangeProviders.GroupBy(p => p.Name()).ToDictionary( g => g.Key.ToString(), g => g.First());
     }
 
 
     public async Task<decimal> GetTokenPriceAsync(string baseCoin, string quoteCoin)
     {
-        
-        var pair = $"{baseCoin}-{quoteCoin}";
-        var key = "GetTokenPriceAsync" + pair;
-        var priceCache = await _priceCache.GetAsync(key);
-
-        if (!priceCache.IsNullOrEmpty())
+        try
         {
-            return decimal.Parse(priceCache);
+            if (_globalOptions.CurrentValue.NftSymbolConvert.TryGetValue(baseCoin,out var s))
+            {
+                baseCoin = s;
+            };
+            var pair = $"{baseCoin}-{quoteCoin}";
+            var key = "GetTokenPriceAsync" + pair;
+            var priceCache = await _priceCache.GetAsync(key);
+
+            if (!priceCache.IsNullOrEmpty())
+            {
+                return decimal.Parse(priceCache);
+            }
+        
+        
+            var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
+            {
+                TokenPair =pair,
+                TimeStamp =  DateTime.Now.ToString("yyyyMMdd")
+            });
+
+            if (res == null || res.Data == null)
+            {
+                _logger.LogError($"GetExchangeAsync err,pair:{pair}");
+                return 0;
+            }
+        
+            var price = res.Data.Price / (decimal)Math.Pow(10, (double)res.Data.Decimal);
+            await _priceCache.SetAsync(key, price.ToString(), new DistributedCacheEntryOptions()
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+
+            });
+        
+            _logger.LogInformation($"GetExchangeAsync success,pair:{baseCoin},price:{res.Data.Price}");
+            return price;
+        }
+        catch (Exception e)
+        {
+            
+            _logger.LogError(e, $"GetExchangeAsync err,pair:{baseCoin}");
+            throw;
         }
         
-        
-        var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
-        {
-            TokenPair =pair,
-            TimeStamp =  DateTime.Now.ToString("yyyyMMdd")
-        });
-
-        if (res == null || res.Data == null)
-        {
-            _logger.LogError($"GetExchangeAsync err,pair:{pair}");
-            return 0;
-        }
-        
-        var price = res.Data.Price / (decimal)Math.Pow(10, (double)res.Data.Decimal);
-        await _priceCache.SetAsync(key, price.ToString(), new DistributedCacheEntryOptions()
-        {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
-
-        });
-        
-        return price;
+      
     }
 
     public async Task<Dictionary<string, TokenExchangeDto>> GetAsync(string baseCoin, string quoteCoin)

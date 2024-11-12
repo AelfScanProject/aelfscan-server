@@ -155,6 +155,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
     public async Task<string> TransformTokenToUsdValueAsync(string symbol, long amount)
     {
+        
         var tokenPriceAsync = await _tokenPriceService.GetTokenPriceAsync(symbol);
         if (tokenPriceAsync==null)
         {

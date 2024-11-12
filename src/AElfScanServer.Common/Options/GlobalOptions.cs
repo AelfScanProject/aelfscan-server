@@ -14,6 +14,7 @@ public class GlobalOptions
     public bool SwitchMergeAddress { get; set; }
     public string AddressStartDate { get; set; }
 
+    public Dictionary<string, string> NftSymbolConvert { get; set; }
     public Dictionary<string, string> Images { get; set; }
     public string S3ServiceURL { get; set; }
 
@@ -34,7 +35,7 @@ public class GlobalOptions
     public bool InitRound { get; set; }
 
     public string AdminResetPwd { get; set; }
-    
+
     public string InitStakedStr { get; set; } = "500000";
 
     public double InitStaked { get; set; } = 500000;
