@@ -117,7 +117,7 @@ public class SearchService : ISearchService, ISingletonDependency
 
             stopwatch.Stop();
             
-            _logger.LogInformation($"search:{request.Keyword}  time:{stopwatch.Elapsed.TotalSeconds} s");
+            _logger.LogInformation($"search:{request.Keyword}  time:{stopwatch.Elapsed.TotalMilliseconds} ");
             return searchResp;
        
     }
