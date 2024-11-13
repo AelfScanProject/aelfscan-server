@@ -354,8 +354,8 @@ public class SearchService : ISearchService, ISingletonDependency
             }
         }
 
-        start2.Stop();
-        _logger.LogInformation($"search:{request.Keyword}   set costTime:{start2.Elapsed.TotalSeconds}");
+        start3.Stop();
+        _logger.LogInformation($"search:{request.Keyword}   set costTime:{start3.Elapsed.TotalSeconds}");
 
         searchResponseDto.Tokens.AddRange(searchTokensDic.Values);
         searchResponseDto.Nfts.AddRange(searchTNftsDic.Values);
