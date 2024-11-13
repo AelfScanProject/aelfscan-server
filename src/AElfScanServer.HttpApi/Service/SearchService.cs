@@ -246,7 +246,7 @@ public class SearchService : ISearchService, ISingletonDependency
 
         input.SetDefaultSort();
         var startNew = Stopwatch.StartNew();
-        var indexerTokenInfoList = await _tokenIndexerProvider.GetTokenListAsync(input);
+        var indexerTokenInfoList = await _tokenIndexerProvider.GetTokenListWhenSearchAsync(input);
         startNew.Stop();
         _logger.LogInformation($"search:{request.Keyword}   GetTokenListAsync costTime:{startNew.Elapsed.TotalSeconds}");
         if (indexerTokenInfoList.Items.IsNullOrEmpty())
