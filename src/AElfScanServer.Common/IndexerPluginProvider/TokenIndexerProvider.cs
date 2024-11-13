@@ -34,7 +34,6 @@ public interface ITokenIndexerProvider
 {
     public Task<IndexerTokenInfoListDto> GetTokenListAsync(TokenListInput input);
     
-    public Task<IndexerTokenInfoListDto> GetTokenListWhenSearchAsync(TokenListInput input);
     public Task<List<IndexerTokenInfoDto>> GetAllTokenInfosAsync(TokenListInput input);
     public Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol);
     public Task<IndexerTokenTransferListDto> GetTokenTransferInfoAsync(TokenTransferInput input);
@@ -196,41 +195,6 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
     }
     
     
-    public async Task<IndexerTokenInfoListDto> GetTokenListWhenSearchAsync(TokenListInput input)
-    {
-        var graphQlHelper = GetGraphQlHelper();
-
-        var indexerResult = await graphQlHelper.QueryAsync<IndexerTokenInfosDto>(new GraphQLRequest
-        {
-            Query =
-                @"query($chainId:String,$skipCount:Int!,$maxResultCount:Int!,$search:String,
-                        $types:[SymbolType!],$symbols:[String!],$collectionSymbols:[String!],$beginBlockTime:DateTime,
-                        $sort:String,$orderBy:String,$exactSearch:String,$fuzzySearch:String,$searchAfter:[String]){
-                    tokenInfo(input: {chainId:$chainId,skipCount:$skipCount,maxResultCount:$maxResultCount,search:$search,types:$types,
-                        symbols:$symbols,collectionSymbols:$collectionSymbols,beginBlockTime:$beginBlockTime,sort:$sort,orderBy:$orderBy,
-                        exactSearch:$exactSearch,fuzzySearch:$fuzzySearch,searchAfter:$searchAfter})
-                {
-                   totalCount,
-                   items{
-                        tokenName,
-                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
-                        symbol,
-    					type,
-                        metadata{chainId},
-                  }
-                }
-            }",
-            Variables = new
-            {
-                chainId = input.ChainId, types = input.Types, symbols = input.Symbols, skipCount = input.SkipCount,
-                maxResultCount = input.MaxResultCount, collectionSymbols = input.CollectionSymbols,
-                beginBlockTime = input.BeginBlockTime,
-                search = input.Search, sort = input.Sort, orderBy = input.OrderBy,
-                exactSearch = input.ExactSearch, fuzzySearch = input.FuzzySearch, searchAfter = input.SearchAfter
-            }
-        });
-        return indexerResult?.TokenInfo ?? new IndexerTokenInfoListDto();
-    }
 
     public async Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol)
     {

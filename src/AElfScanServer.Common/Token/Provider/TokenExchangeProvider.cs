@@ -71,7 +71,7 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
             {
                 baseCoin = s;
             };
-            var pair = $"{baseCoin}-{quoteCoin}";
+            var pair = $"{baseCoin}-{quoteCoin.ToLower()}";
             var key = "GetTokenPriceAsync" + pair;
             var priceCache = await _priceCache.GetAsync(key);
 

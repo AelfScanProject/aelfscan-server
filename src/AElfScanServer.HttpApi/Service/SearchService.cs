@@ -77,7 +77,6 @@ public class SearchService : ISearchService, ISingletonDependency
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
     public virtual async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
     {
-        var stopwatch=Stopwatch.StartNew();
 
         var searchResp = new SearchResponseDto();
       
@@ -115,9 +114,7 @@ public class SearchService : ISearchService, ISingletonDependency
                     break;
             }
 
-            stopwatch.Stop();
-            
-            _logger.LogInformation($"search:{request.Keyword}  time:{stopwatch.Elapsed.TotalMilliseconds} ");
+           
             return searchResp;
        
     }
@@ -250,7 +247,7 @@ public class SearchService : ISearchService, ISingletonDependency
 
         input.SetDefaultSort();
         var startNew = Stopwatch.StartNew();
-        var indexerTokenInfoList = await _tokenIndexerProvider.GetTokenListWhenSearchAsync(input);
+        var indexerTokenInfoList = await _tokenIndexerProvider.GetTokenListAsync(input);
         startNew.Stop();
         _logger.LogInformation($"search:{request.Keyword}   GetTokenListAsync costTime:{startNew.Elapsed.TotalSeconds}");
         if (indexerTokenInfoList.Items.IsNullOrEmpty())
@@ -262,26 +259,19 @@ public class SearchService : ISearchService, ISingletonDependency
         //batch query nft price
         var lastSaleInfoDict = new Dictionary<string, NftActivityItem>();
         
-        var start1 = Stopwatch.StartNew();
         if (types.Contains(SymbolType.Nft))
         {
             var nftSymbols = indexerTokenInfoList.Items.Where(c=>c.Type==SymbolType.Nft).Select(i => i.Symbol).Distinct().ToList();
             lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(_globalOptions.CurrentValue.SideChainId, nftSymbols);
         }
         
-        start1.Stop();
-        _logger.LogInformation($"search:{request.Keyword}   GetLatestPriceAsync costTime:{start1.Elapsed.TotalSeconds}");
-
 
         var searchTokensDic = new Dictionary<string, SearchToken>();
         var searchTNftsDic = new Dictionary<string, SearchToken>();
       
-        var start2 = Stopwatch.StartNew();
         var elfOfUsdPriceTask = GetTokenOfUsdPriceAsync(priceDict, CurrencyConstant.ElfCurrency);
-        start2.Stop();
-        _logger.LogInformation($"search:{request.Keyword}   GetTokenOfUsdPriceAsync costTime:{start2.Elapsed.TotalSeconds}");
+
         
-        var start3 = Stopwatch.StartNew();
         foreach (var tokenInfo in indexerTokenInfoList.Items)
         {
             var searchToken = new SearchToken
@@ -358,8 +348,6 @@ public class SearchService : ISearchService, ISingletonDependency
             }
         }
 
-        start3.Stop();
-        _logger.LogInformation($"search:{request.Keyword}   set costTime:{start3.Elapsed.TotalSeconds}");
 
         searchResponseDto.Tokens.AddRange(searchTokensDic.Values);
         searchResponseDto.Nfts.AddRange(searchTNftsDic.Values);
