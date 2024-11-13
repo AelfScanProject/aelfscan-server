@@ -75,13 +75,13 @@ public class K8sProvider : IK8sProvider
                                 new V1NodeSelectorRequirement
                                 {
                                     Key = "resource",
-                                    OperatorProperty = "In", // Use string values for Operator
+                                    OperatorProperty = "In", 
                                     Values = new List<string> { "aelfscan" }
                                 },
                                 new V1NodeSelectorRequirement
                                 {
                                     Key = "app",
-                                    OperatorProperty = "In", // Use string values for Operator
+                                    OperatorProperty = "In", 
                                     Values = new List<string> { "aelfscan-complier" }
                                 }
                             }
