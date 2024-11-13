@@ -65,10 +65,10 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
         return _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.ForestIndexer);
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler( typeof(Exception),
         Message = "GetNftListingsAsync err",
         TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","timeStamp"])]
+        MethodName = nameof(ExceptionHandlingService.AlarmNftException),LogTargets = ["chainId"])]
     public virtual async Task<IndexerNftListingInfoDto> GetNftListingsAsync(GetNFTListingsDto input)
     {
         var graphQlHelper = GetGraphQlHelper();
@@ -119,6 +119,10 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
        
     }
 
+    [ExceptionHandler( typeof(Exception),
+        Message = "GetNftListingsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.AlarmNftException),LogTargets = ["NftInfoId"])]
     public async Task<IndexerNftActivityInfo> GetNftActivityListAsync(GetActivitiesInput input)
     {
         var graphQlHelper = GetGraphQlHelper();
