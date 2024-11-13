@@ -352,7 +352,7 @@ public class NftService : INftService, ISingletonDependency
         var list = new List<TokenHolderInfoDto>();
         var totalCount = 0L;
 
-        tasks.Add(EsIndex.SearchMergeAccountList(input).ContinueWith(task =>
+        tasks.Add(EsIndex.SearchAccountList(input).ContinueWith(task =>
         {
             accountTokenIndices = task.Result.list;
             totalCount = task.Result.totalCount;
@@ -654,7 +654,7 @@ public class NftService : INftService, ISingletonDependency
         TokenInfoIndex tokenInfoIndex = new();
         var tasks = new List<Task>();
 
-        tasks.Add(EsIndex.SearchMergeAccountList(tokenHolderInput).ContinueWith(task =>
+        tasks.Add(EsIndex.SearchAccountList(tokenHolderInput).ContinueWith(task =>
         {
             accountTokenIndexList = task.Result.list;
             total = task.Result.totalCount;

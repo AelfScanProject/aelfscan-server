@@ -158,7 +158,7 @@ public class AddressAppService : IAddressAppService
         List<IndexerTokenInfoDto> tokenInfoList = new List<IndexerTokenInfoDto>();
         long totalCount = 0;
 
-        tasks.Add(EsIndex.SearchMergeAccountList(input).ContinueWith(task =>
+        tasks.Add(EsIndex.SearchAccountList(input).ContinueWith(task =>
         {
             accountList.AddRange(task.Result.list);
             totalCount = task.Result.totalCount;

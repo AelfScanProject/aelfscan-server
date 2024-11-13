@@ -144,10 +144,8 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
                 input.SearchAfter = new List<string> { searchAfterId };
             }
 
-
-            var searchMergeAccountList = await EsIndex.SearchMergeAccountList(input);
+            var searchMergeAccountList = await EsIndex.SearchAccountList(input);
             
-          
             var indexerTokenHolderInfo = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
             _logger.LogInformation(
                 "GetTokenHolderInfoAsync for chainId: {chainId} input:{input} totalCount:{totalCount}, count: {count}",

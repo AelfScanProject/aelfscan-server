@@ -334,7 +334,7 @@ public class TokenService : ITokenService, ISingletonDependency
         var list = new List<TokenHolderInfoDto>();
         var totalCount = 0L;
 
-        tasks.Add(EsIndex.SearchMergeAccountList(input).ContinueWith(task =>
+        tasks.Add(EsIndex.SearchAccountList(input).ContinueWith(task =>
         {
             accountTokenIndices = task.Result.list;
             totalCount = task.Result.totalCount;
