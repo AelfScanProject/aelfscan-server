@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -51,11 +52,56 @@ public class K8sProvider : IK8sProvider
         string logPrefix =
             $"[ChainId:{chainId}-ContractAddress:{contractAddress}-ContractName:{contractName}-Version:{version}]";
         var jobName = "example-job-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-        var jobNamespace = "aelfscan-complier-testnet";
+        var jobNamespace = _globalOptions.CurrentValue.K8sNamespace;
 
         _logger.LogInformation($"{logPrefix} Creating job '{jobName}' with image '{image}'.");
 
         var job = CreateJobSpec(jobName, image, chainId, contractAddress, contractName, version);
+
+        // Add serviceAccountName, affinity, and tolerations to the job spec
+        job.Spec.Template.Spec.ServiceAccountName = "aelfscan-complier-sa";
+        job.Spec.Template.Spec.Affinity = new V1Affinity
+        {
+            NodeAffinity = new V1NodeAffinity
+            {
+                RequiredDuringSchedulingIgnoredDuringExecution = new V1NodeSelector
+                {
+                    NodeSelectorTerms = new List<V1NodeSelectorTerm>
+                    {
+                        new V1NodeSelectorTerm
+                        {
+                            MatchExpressions = new List<V1NodeSelectorRequirement>
+                            {
+                                new V1NodeSelectorRequirement
+                                {
+                                    Key = "resource",
+                                    OperatorProperty = "In", // Use string values for Operator
+                                    Values = new List<string> { "aelfscan" }
+                                },
+                                new V1NodeSelectorRequirement
+                                {
+                                    Key = "app",
+                                    OperatorProperty = "In", // Use string values for Operator
+                                    Values = new List<string> { "aelfscan-complier" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        job.Spec.Template.Spec.Tolerations = new List<V1Toleration>
+        {
+            new V1Toleration
+            {
+                Key = "sandbox.gke.io/runtime",
+                OperatorProperty = "Equal", // Use string values for Operator
+                Value = "gvisor",
+                Effect = "NoSchedule" // Use string values for Effect
+            }
+        };
+
         var createdJob = await _client.CreateNamespacedJobAsync(job, jobNamespace);
 
         _logger.LogInformation($"{logPrefix} Job '{createdJob.Metadata.Name}' created.");

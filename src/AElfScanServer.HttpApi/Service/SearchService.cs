@@ -77,7 +77,7 @@ public class SearchService : ISearchService, ISingletonDependency
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
     public virtual async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
     {
-        var stopwatch = new Stopwatch();
+        var stopwatch=Stopwatch.StartNew();
 
         var searchResp = new SearchResponseDto();
       
