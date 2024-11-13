@@ -144,12 +144,19 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
                 input.SearchAfter = new List<string> { searchAfterId };
             }
 
+
+            var searchMergeAccountList = await EsIndex.SearchMergeAccountList(input);
+            
+          
             var indexerTokenHolderInfo = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
             _logger.LogInformation(
                 "GetTokenHolderInfoAsync for chainId: {chainId} input:{input} totalCount:{totalCount}, count: {count}",
                 chainId.IsNullOrEmpty() ? "merge" : chainId,
                 JsonConvert.SerializeObject(input), indexerTokenHolderInfo.TotalCount,
                 indexerTokenHolderInfo.Items.Count);
+            
+            _logger.LogInformation($"get token list {input.Address},--{searchMergeAccountList.list.Count}--{indexerTokenHolderInfo.Items.Count}");
+            
             if (indexerTokenHolderInfo.Items.Count == 0)
             {
                 break;
