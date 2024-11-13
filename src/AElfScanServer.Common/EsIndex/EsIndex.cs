@@ -225,17 +225,6 @@ public class EsIndex
             GreaterThan = 0
         });
 
-        if (!string.IsNullOrEmpty(input.Address))
-        {
-            filterQueries.Add(new TermQuery { Field = "address", Value = input.Address });
-        }
-
-        if (!string.IsNullOrEmpty(input.ChainId))
-        {
-            filterQueries.Add(new TermQuery { Field = "chainId", Value = input.ChainId });
-        }
-
-
         var searchRequest = new SearchRequest("accounttokenindex")
         {
             Size = (int)input.MaxResultCount,
@@ -251,6 +240,81 @@ public class EsIndex
             SearchAfter = input.SearchAfter != null && !input.SearchAfter.IsNullOrEmpty()
                 ? new List<object> { input.SearchAfter[0], input.SearchAfter[1] }
                 : null,
+            TrackTotalHits = true
+        };
+
+        var response = esClient.Search<AccountTokenIndex>(searchRequest);
+
+        if (!response.IsValid)
+        {
+            throw new Exception($"Error occurred: {response.OriginalException.Message}");
+        }
+
+        var results = response.Documents;
+        var total = response.Total;
+
+        return (new List<AccountTokenIndex>(results), total);
+    }
+
+
+    public static async Task<(List<AccountTokenIndex> list, long totalCount)> SearchAccountIndexList(
+        TokenHolderInput input)
+    {
+        var sortOrder = SortOrder.Descending;
+
+        if (input.OrderInfos != null && !input.OrderInfos.IsNullOrEmpty())
+        {
+            if (input.OrderInfos.First().Sort == "Asc")
+            {
+                sortOrder = SortOrder.Ascending;
+            }
+        }
+
+        var filterQueries = new List<QueryContainer>();
+
+        if (!string.IsNullOrEmpty(input.Symbol))
+        {
+            filterQueries.Add(new TermQuery { Field = "token.symbol", Value = input.Symbol });
+        }
+
+        if (!input.Types.IsNullOrEmpty())
+        {
+            filterQueries.Add(new TermsQuery
+            {
+                Field = "token.type",
+                Terms = input.Types.Cast<object>()
+            });
+        }
+
+        filterQueries.Add(new NumericRangeQuery
+        {
+            Field = "formatAmount",
+            GreaterThan = 0
+        });
+
+        if (!string.IsNullOrEmpty(input.Address))
+        {
+            filterQueries.Add(new TermQuery { Field = "address", Value = input.Address });
+        }
+
+        if (!string.IsNullOrEmpty(input.ChainId))
+        {
+            filterQueries.Add(new TermQuery { Field = "chainId", Value = input.ChainId });
+        }
+
+        var searchRequest = new SearchRequest("accounttokenindex")
+        {
+            From = (int)input.SkipCount,
+            Size = (int)input.MaxResultCount,
+            Sort = new List<ISort>
+            {
+                new FieldSort { Field = "formatAmount", Order = sortOrder },
+                new FieldSort { Field = "address", Order = sortOrder }
+            },
+            Query = new BoolQuery
+            {
+                Filter = filterQueries
+            },
             TrackTotalHits = true
         };
 

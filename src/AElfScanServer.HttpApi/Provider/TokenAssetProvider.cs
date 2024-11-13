@@ -119,75 +119,64 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
     /**
      * if address is null, return the last address asset info
      */
-    private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type, string chainId = "",
-        string address = null)
+private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type, string chainId = "", string address = null)
+{
+    var stopwatch = Stopwatch.StartNew();
+    var lastAddressProcessed = new AddressAssetDto();
+    var symbolPriceDict = new Dictionary<string, decimal>();
+    int skipCount = 0;
+
+    while (true)
     {
-        var stopwatch = Stopwatch.StartNew();
-        const int maxResultCount = CommonConstant.DefaultMaxResultCount;
-        var lastAddressProcessed = new AddressAssetDto();
-        //The price unit of symbol is ELF
-        var symbolPriceDict = new Dictionary<string, decimal>();
-        string searchAfterId = null;
-        while (true)
+        var input = new TokenHolderInput
         {
-            //The address must be used for sorting. When the last address is the last one, submit it.
-            //Address holder's Id = chainId + address + symbol, so we can sort by 'Id'
-            var input = new TokenHolderInput
+            ChainId = chainId,
+            Address = address,
+            MaxResultCount = 1000,
+            SkipCount = skipCount,
+            Types = new List<SymbolType> { SymbolType.Token, SymbolType.Nft },
+        };
+
+        var searchMergeAccountList = await EsIndex.SearchAccountIndexList(input);
+        
+        if (searchMergeAccountList.list.Count == 0)
+        {
+            _logger.LogInformation("HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
+            break;
+        }
+        
+        var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
+
+        foreach (var (valueAddress, assetDto) in valuesDict)
+        {
+            if (lastAddressProcessed.Address.IsNullOrEmpty())
             {
-                ChainId = chainId,
-                Address = address,
-                MaxResultCount = maxResultCount,
-                Types = new List<SymbolType> { SymbolType.Token, SymbolType.Nft },
-            };
-            input.OfOrderInfos((SortField.Id, SortDirection.Desc));
-            if (!searchAfterId.IsNullOrEmpty())
-            {
-                input.SearchAfter = new List<string> { searchAfterId };
+                lastAddressProcessed = assetDto;
+                continue;
             }
 
-            var searchMergeAccountList = await EsIndex.SearchAccountList(input);
-            
-            if (searchMergeAccountList.list.Count == 0)
+            if (lastAddressProcessed.Address == valueAddress)
             {
-                _logger.LogInformation("HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
-                break;
+                lastAddressProcessed.Accumulate(assetDto);
             }
-            
-
-            //address is null, need to update redis, for daily calc total value
-            var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
-
-            foreach (var (valueAddress, assetDto) in valuesDict)
+            else
             {
-                if (lastAddressProcessed.Address.IsNullOrEmpty())
-                {
-                    lastAddressProcessed = assetDto;
-                    continue;
-                }
-
-                if (lastAddressProcessed.Address == valueAddress)
-                {
-                    //Need to accumulate
-                    lastAddressProcessed.Accumulate(assetDto);
-                }
-                else
-                {
-                    //To submit lastAddressProcessed
-                    await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
-                    lastAddressProcessed = assetDto;
-                }
+                await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
+                lastAddressProcessed = assetDto;
             }
         }
 
-        //the end to submit lastAddressProcessed
-        await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
-        _logger.LogInformation(
-            "LastAddressProcessed chainId:{chainId} addressAssetDto: {totalNftValueOfElf}", chainId,
-            JsonConvert.SerializeObject(lastAddressProcessed));
-        _logger.LogInformation("It took {Elapsed} ms to execute handle token values for chainId: {chainId}",
-            stopwatch.ElapsedMilliseconds, chainId);
-        return address.IsNullOrEmpty() ? null : lastAddressProcessed;
+        skipCount += 1000;
     }
+
+    await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
+
+    _logger.LogInformation("LastAddressProcessed chainId:{chainId} addressAssetDto: {totalNftValueOfElf}", chainId, JsonConvert.SerializeObject(lastAddressProcessed));
+    _logger.LogInformation("It took {Elapsed} ms to execute handle token values for chainId: {chainId}", stopwatch.ElapsedMilliseconds, chainId);
+
+    return address.IsNullOrEmpty() ? null : lastAddressProcessed;
+}
+
 
     /**
      * return OrderedDictionary, Guaranteed order of returned addresses
