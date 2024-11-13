@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElfScanServer.Common.Dtos;
@@ -31,5 +32,19 @@ public class CommonAddressHelper
 
 
         return addressDto;
+    }
+
+    public static bool IsAddress(string address)
+    {
+        try
+        {
+            AElf.Types.Address.FromBase58(address);
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+
+        return true;
     }
 }

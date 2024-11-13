@@ -8,6 +8,7 @@ using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.ExceptionHandler;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Constant;
@@ -133,12 +134,12 @@ public class SearchService : ISearchService, ISingletonDependency
     public virtual async Task AssemblySearchAddressAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
     {
 
-        if (!Base58CheckEncoding.Verify(request.Keyword))
+        if (CommonAddressHelper.IsAddress(request.Keyword))
         {
-            _logger.LogWarning( "address is invalid,{keyword}", request.Keyword);
-            return;
+             _logger.LogWarning( "address is invalid,{keyword}", request.Keyword);
+                        return;
         }
-       
+    
         
         var contractAddressList = await FindContractAddress(request.ChainId, request.Keyword);
 

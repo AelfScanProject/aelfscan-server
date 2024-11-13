@@ -1,4 +1,5 @@
 using AElf;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Helper;
 using NUglify.Helpers;
 
@@ -10,8 +11,10 @@ public class NftInventoryInput : BaseInput
     
     public string CollectionSymbol { get; set; }
     
+ 
+        
     public bool IsSearchAddress()
     {
-        return !Search.IsNullOrWhiteSpace() && Base58CheckEncoding.Verify(Search);
+        return !Search.IsNullOrWhiteSpace() && CommonAddressHelper.IsAddress(Search);
     }
 }
