@@ -139,7 +139,7 @@ public class SearchService : ISearchService, ISingletonDependency
     public virtual async Task AssemblySearchAddressAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
     {
 
-        if (CommonAddressHelper.IsAddress(request.Keyword))
+        if (!CommonAddressHelper.IsAddress(request.Keyword))
         {
              _logger.LogWarning( "address is invalid,{keyword}", request.Keyword);
                         return;
@@ -234,6 +234,10 @@ public class SearchService : ISearchService, ISingletonDependency
     private async Task AssemblySearchTokenAsync(SearchResponseDto searchResponseDto, SearchRequestDto request,
         List<SymbolType> types)
     {
+        if (request.Keyword.Length > 10)
+        {
+            return;
+        }
         var input = new TokenListInput { ChainId = request.ChainId, Types = types };
         if (request.SearchType == SearchTypes.ExactSearch)
         {

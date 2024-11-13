@@ -212,6 +212,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 {
                    totalCount,
                    items{
+                        tokenName,
+                        metadata{chainId,block{blockHash,blockTime,blockHeight}},
                         symbol,
     					type,
                         metadata{chainId},
