@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -76,7 +77,8 @@ public class SearchService : ISearchService, ISingletonDependency
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
     public virtual async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
     {
-    
+        var stopwatch = new Stopwatch();
+
         var searchResp = new SearchResponseDto();
       
             //Step 1: check param
@@ -113,6 +115,9 @@ public class SearchService : ISearchService, ISingletonDependency
                     break;
             }
 
+            stopwatch.Stop();
+            
+            _logger.LogInformation($"search:{request.Keyword}  time:{stopwatch.Elapsed.TotalSeconds} s");
             return searchResp;
        
     }
