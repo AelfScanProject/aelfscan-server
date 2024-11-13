@@ -11,6 +11,7 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.ExceptionHandling;
@@ -146,24 +147,15 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
 
             var searchMergeAccountList = await EsIndex.SearchAccountList(input);
             
-            var indexerTokenHolderInfo = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
-            _logger.LogInformation(
-                "GetTokenHolderInfoAsync for chainId: {chainId} input:{input} totalCount:{totalCount}, count: {count}",
-                chainId.IsNullOrEmpty() ? "merge" : chainId,
-                JsonConvert.SerializeObject(input), indexerTokenHolderInfo.TotalCount,
-                indexerTokenHolderInfo.Items.Count);
-            
-            _logger.LogInformation($"get token list {input.Address},--{searchMergeAccountList.list.Count}--{indexerTokenHolderInfo.Items.Count}");
-            
-            if (indexerTokenHolderInfo.Items.Count == 0)
+            if (searchMergeAccountList.list.Count == 0)
             {
+                _logger.LogInformation("HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
                 break;
             }
-
-            searchAfterId = indexerTokenHolderInfo.Items.Last().Id;
+            
 
             //address is null, need to update redis, for daily calc total value
-            var valuesDict = await CalculateTokenValuesAsync(chainId, indexerTokenHolderInfo.Items, symbolPriceDict);
+            var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
 
             foreach (var (valueAddress, assetDto) in valuesDict)
             {
@@ -201,11 +193,9 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
      * return OrderedDictionary, Guaranteed order of returned addresses
      */
     private async Task<OrderedDictionary<string, AddressAssetDto>> CalculateTokenValuesAsync(string chainId,
-        List<IndexerTokenHolderInfoDto> tokenHolderInfos,
+        List<AccountTokenIndex> validTokenHolderInfos,
         Dictionary<string, decimal> symbolPriceDict)
     {
-        // Step 1: Filter out items with FormatAmount > 0
-        var validTokenHolderInfos = tokenHolderInfos.Where(t => t.FormatAmount > 0).ToList();
 
         // Step 2: Pre process symbol price
         await PreProcessSymbolPriceAsync(chainId, symbolPriceDict, validTokenHolderInfos);
@@ -260,7 +250,7 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
     }
 
     private async Task PreProcessSymbolPriceAsync(string chainId, Dictionary<string, decimal> symbolPriceDict,
-        List<IndexerTokenHolderInfoDto> tokenHolderInfos)
+        List<AccountTokenIndex> tokenHolderInfos)
     {
         //Need to get Price Nft Symbols
         var getPriceNftSymbols = new HashSet<string>();
