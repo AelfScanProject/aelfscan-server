@@ -15,6 +15,7 @@ public class ExceptionHandlingService
 {
     private static IServiceProvider _serviceProvider;
     private static Histogram<long> _exceptionHistogram;
+    private static Counter<long> _alarmCounter;
 
     public static void Initialize(IServiceProvider serviceProvider)
     {
@@ -204,5 +205,40 @@ public class ExceptionHandlingService
             ExceptionHandlingStrategy = ExceptionHandlingStrategy.Return,
             ReturnValue = false
         };
+    }
+    
+    public static  async Task<FlowBehavior> AlarmNftException(Exception ex)
+    {
+        SetExceptionCount();
+        AlarmException("NFT");
+        return new FlowBehavior()
+        {
+            ExceptionHandlingStrategy = ExceptionHandlingStrategy.Return
+        };
+    }
+    
+    public static  async Task<FlowBehavior> AlarmException(Exception ex)
+    {
+        SetExceptionCount();
+        AlarmException(ex.Message);
+        return new FlowBehavior()
+        {
+            ExceptionHandlingStrategy = ExceptionHandlingStrategy.Return
+        };
+    }
+
+    private static void AlarmException(string type)
+    {
+        if (_alarmCounter == null)
+        {
+            _alarmCounter = _serviceProvider.GetRequiredService<IInstrumentationProvider>().Meter.
+                CreateCounter<long>(
+                    "aelfScanAlarmCount", 
+                    "counts", 
+                    "The number of Alarm"
+                );        
+        }
+
+        _alarmCounter.Add(1,new KeyValuePair<string, object>("alarmType",type));
     }
 }
