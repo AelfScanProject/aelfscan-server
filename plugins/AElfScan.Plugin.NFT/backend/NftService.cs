@@ -579,7 +579,7 @@ public class NftService : INftService, ISingletonDependency
 
         var nftActivityInfo = await _nftInfoProvider.GetNftActivityListAsync(activitiesInput);
 
-        if (nftActivityInfo.Items.IsNullOrEmpty())
+        if (nftActivityInfo==null || nftActivityInfo.Items.IsNullOrEmpty())
         {
             return new ListResponseDto<NftItemActivityDto>();
         }
