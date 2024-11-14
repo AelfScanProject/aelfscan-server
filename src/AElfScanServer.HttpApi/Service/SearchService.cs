@@ -71,7 +71,8 @@ public class SearchService : ISearchService, ISingletonDependency
         _indexerGenesisProvider = indexerGenesisProvider;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+
+    [ExceptionHandler(typeof(Exception),
         Message = "SearchAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]

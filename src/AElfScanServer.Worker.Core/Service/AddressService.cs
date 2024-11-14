@@ -252,7 +252,7 @@ public class AddressService : IAddressService, ISingletonDependency
         symbolList[symbol] = addressList;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "AddCreatedTokenList err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["beginBlockTime"])]
@@ -301,7 +301,7 @@ public class AddressService : IAddressService, ISingletonDependency
     }
 
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "SaveMergeTokenList err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["symbolList"])]
@@ -380,7 +380,7 @@ public class AddressService : IAddressService, ISingletonDependency
         }
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "SaveTokenHolderAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["symbol","addressList"])]

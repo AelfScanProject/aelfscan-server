@@ -85,7 +85,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
     }
     
   
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetBlockchainOverviewAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
@@ -141,7 +141,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             return overviewResp;
     }
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetTokens err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","symbolType","specialSymbols"])]
@@ -185,7 +185,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             return total;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetMarketCap err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
@@ -240,7 +240,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
     }
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "QueryMergeChainData err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]

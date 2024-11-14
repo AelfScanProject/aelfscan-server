@@ -120,7 +120,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         return transactionPerMinuteResp;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetBlockchainOverviewAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["req"])]
@@ -190,7 +190,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetLatestBlocksAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]

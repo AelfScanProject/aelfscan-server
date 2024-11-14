@@ -86,7 +86,7 @@ public class TokenService : ITokenService, ISingletonDependency
         _globalOptions = globalOptions;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetTokenListAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["input"])]
@@ -174,7 +174,7 @@ public class TokenService : ITokenService, ISingletonDependency
         public List<string> ChainIds { get; set; }
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetTokenDetailAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenDetailAsync),LogTargets = ["chainId","symbol"])]

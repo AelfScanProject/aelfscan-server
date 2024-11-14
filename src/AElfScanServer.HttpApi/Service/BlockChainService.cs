@@ -121,7 +121,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetTransactionDetailAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
@@ -643,7 +643,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     }
 
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetBlocksAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
@@ -790,7 +790,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     }
 
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetTransactionsAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]

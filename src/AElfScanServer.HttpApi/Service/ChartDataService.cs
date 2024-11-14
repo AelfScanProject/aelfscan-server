@@ -2068,7 +2068,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return round;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetElfPrice err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["date"])]

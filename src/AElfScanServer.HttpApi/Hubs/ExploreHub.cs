@@ -94,7 +94,7 @@ public class ExploreHub : AbpHub
             HubGroupHelper.GetBpProduceGroupName(request.ChainId));
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "PushRequestBpProduceAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
@@ -174,14 +174,14 @@ public class ExploreHub : AbpHub
         await Clients.Caller.SendAsync("ReceiveMergeBlockInfo", resp);
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetTopTokens err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
     public virtual async Task<List<TopTokenDto>> GetTopTokens()
     {
         var key = "TopTokens";
-            var list = await _cache.GetAsync(key);
+        var list = await _cache.GetAsync(key);
         if (!list.IsNullOrEmpty())
         {
             return list;
@@ -207,13 +207,13 @@ public class ExploreHub : AbpHub
         }
 
         await _cache.SetAsync(key, topTokenDtos, new DistributedCacheEntryOptions()
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
-            });
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
+        });
         return topTokenDtos;
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "PushMergeBlockInfoAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
@@ -298,7 +298,7 @@ public class ExploreHub : AbpHub
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "PushBlockOverViewAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
@@ -382,7 +382,7 @@ public class ExploreHub : AbpHub
             HubGroupHelper.GetTransactionCountPerMinuteGroupName(request.ChainId));
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "PushTransactionCountPerMinuteAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,

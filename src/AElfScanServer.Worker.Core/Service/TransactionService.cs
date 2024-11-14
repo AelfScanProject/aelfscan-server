@@ -284,7 +284,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "MergeAddress err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
@@ -591,7 +591,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "UpdateMonthlyActiveAddress err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
@@ -691,7 +691,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "GetMonthlyActiveAddressCount err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","month"])]
@@ -719,7 +719,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "BatchPullBlockSize err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
@@ -835,7 +835,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+    [ExceptionHandler(typeof(Exception),
         Message = "UpdateElfPrice err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
@@ -945,7 +945,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "FixDailyDataByStartBlockHeight err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","startBlockHeight"])]
@@ -996,7 +996,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         }
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "BatchParseLogEventJob err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
@@ -1082,7 +1082,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "BatchPullTransaction err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","lastBlockHeight"])]
@@ -1659,7 +1659,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         }
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "ParseTransactionFees err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["extraProperties"])]
@@ -1889,7 +1889,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
     
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "GetWithDrawVotedAmount err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","voteIds"])]
@@ -1924,7 +1924,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
        
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "UpdateDailyNetwork err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
@@ -2134,7 +2134,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "UpdateRound err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
@@ -2426,7 +2426,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "UpdateTransactionRatePerMinuteTaskAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
@@ -2537,7 +2537,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     }
 
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "ParseToTransactionChartDataAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["key","list"])]
@@ -2598,7 +2598,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
       
     }
 
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+     [ExceptionHandler(typeof(Exception),
         Message = "GetElfPrice err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["date"])]
