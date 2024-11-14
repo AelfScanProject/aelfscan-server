@@ -79,7 +79,7 @@ public class ContractAppService : IContractAppService
         _logger.LogInformation("GetContractListAsync");
         var result = new GetContractListResultDto { List = new List<ContractDto>() };
 
-        var key = IdGeneratorHelper.GenerateId("GetContractListAsync", input.SkipCount, input.MaxResultCount,
+        var key = IdGeneratorHelper.GenerateId("GetContractList", input.SkipCount, input.MaxResultCount,
             input.ChainId);
         var contractDtos =
             await _contractListCache.GetAsync(key);

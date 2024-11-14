@@ -11,7 +11,6 @@ using Volo.Abp.AspNetCore.Mvc;
 
 namespace AElfScanServer.HttpApi.Controllers;
 
-[AggregateExecutionTime]
 [RemoteService]
 [Area("app")]
 [ControllerName("contractVerify")]

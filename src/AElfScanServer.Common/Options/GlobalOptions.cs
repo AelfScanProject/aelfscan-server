@@ -9,11 +9,13 @@ public class GlobalOptions
     public const string PrivateKey = "09da44778f8db2e602fb484334f37df19e221c84c4582ce5b7770ccfbc3ddbef";
     public int MaxResultCount { get; set; }
 
+    public string K8sNamespace { get; set; }
     public bool NeedInitLastHeight { get; set; }
 
     public bool SwitchMergeAddress { get; set; }
     public string AddressStartDate { get; set; }
 
+    public Dictionary<string, string> NftSymbolConvert { get; set; }
     public Dictionary<string, string> Images { get; set; }
     public string S3ServiceURL { get; set; }
 
@@ -25,6 +27,7 @@ public class GlobalOptions
     public long BlockchainStartTimestamp { get; set; }
     public List<string> SpecialSymbols { get; set; } = new();
 
+    public string CMCApiKey { get; set; }
 
     public Dictionary<string, List<string>> FixDailyData { get; set; }
 

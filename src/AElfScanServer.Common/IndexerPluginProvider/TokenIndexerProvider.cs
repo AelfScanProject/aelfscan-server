@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf;
@@ -8,11 +9,13 @@ using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.Contracts.MultiToken;
 using AElfScanServer.Common.Commons;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
@@ -30,6 +33,7 @@ namespace AElfScanServer.Common.IndexerPluginProvider;
 public interface ITokenIndexerProvider
 {
     public Task<IndexerTokenInfoListDto> GetTokenListAsync(TokenListInput input);
+    
     public Task<List<IndexerTokenInfoDto>> GetAllTokenInfosAsync(TokenListInput input);
     public Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol);
     public Task<IndexerTokenTransferListDto> GetTokenTransferInfoAsync(TokenTransferInput input);
@@ -189,6 +193,8 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         });
         return indexerResult?.TokenInfo ?? new IndexerTokenInfoListDto();
     }
+    
+    
 
     public async Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol)
     {
@@ -351,11 +357,13 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         return indexerResult == null ? new IndexerTokenHolderInfoListDto() : indexerResult.AccountCollection;
     }
 
-    public async Task<string> GetTokenImageAsync(string symbol, string chainId,
+    [ExceptionHandler(typeof(IOException),typeof(TimeoutException),typeof(Exception), Message = "GetTokenImageAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenImageAsync), LogTargets = ["symbol","chainId"])]
+    public virtual async Task<string> GetTokenImageAsync(string symbol, string chainId,
         List<ExternalInfoDto> externalInfo = null)
     {
-        try
-        {
+       
             var imageUrl = "";
             if (_tokenImageUrlCache.TryGetValue(symbol, out imageUrl))
             {
@@ -399,14 +407,9 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 _tokenImageUrlCache.Add(symbol, imageUrl);
                 return imageUrl;
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "get token:{symbol} image", symbol);
-        }
 
 
-        return "";
+            return "";
     }
 
     private IGraphQlHelper GetGraphQlHelper()

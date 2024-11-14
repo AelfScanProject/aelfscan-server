@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.HttpClient;
@@ -39,6 +42,7 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
     private readonly IGraphQlFactory _graphQlFactory;
     private readonly IHttpProvider _httpProvider;
     private readonly IOptionsMonitor<ApiClientOption> _apiClientOptions;
+    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
     private static readonly JsonSerializerSettings JsonSerializerSettings = JsonSettingsBuilder.New()
         .IgnoreNullValue()
@@ -47,12 +51,13 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
         .Build();
 
     public NftInfoProvider(IGraphQlFactory graphQlFactory, ILogger<NftInfoProvider> logger, IHttpProvider httpProvider, 
-        IOptionsMonitor<ApiClientOption> apiClientOptions)
+        IOptionsMonitor<ApiClientOption> apiClientOptions,IOptionsMonitor<GlobalOptions> globalOptions)
     {
         _graphQlFactory = graphQlFactory;
         _logger = logger;
         _httpProvider = httpProvider;
         _apiClientOptions = apiClientOptions;
+        _globalOptions = globalOptions;
     }
     
     private IGraphQlHelper GetGraphQlHelper()
@@ -60,11 +65,14 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
         return _graphQlFactory.GetGraphQlHelper(AElfIndexerConstant.ForestIndexer);
     }
 
-    public async Task<IndexerNftListingInfoDto> GetNftListingsAsync(GetNFTListingsDto input)
+    [ExceptionHandler( typeof(Exception),
+        Message = "GetNftListingsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.AlarmNftException),LogTargets = ["chainId"])]
+    public virtual async Task<IndexerNftListingInfoDto> GetNftListingsAsync(GetNFTListingsDto input)
     {
         var graphQlHelper = GetGraphQlHelper();
-        try
-        {
+       
             var res = await graphQlHelper.QueryAsync<IndexerNftListingInfos>(new GraphQLRequest
             {
                 Query = @"query (
@@ -108,14 +116,13 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
                 }
             });
             return res?.NftListingInfo ?? new IndexerNftListingInfoDto();
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetNFTListingsAsync query GraphQL error");
-            throw;
-        }
+       
     }
 
+    [ExceptionHandler( typeof(Exception),
+        Message = "GetNftListingsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.AlarmNftException),LogTargets = ["NftInfoId"])]
     public async Task<IndexerNftActivityInfo> GetNftActivityListAsync(GetActivitiesInput input)
     {
         var graphQlHelper = GetGraphQlHelper();
@@ -157,10 +164,13 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
         return indexerResult?.NftActivityList ?? new IndexerNftActivityInfo();
     }
 
-    public async Task<Dictionary<string, NftActivityItem>> GetLatestPriceAsync(string chainId, List<string> symbols)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetLatestPriceAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","symbols"])]
+    public virtual async Task<Dictionary<string, NftActivityItem>> GetLatestPriceAsync(string chainId, List<string> symbols)
     {
-        try
-        {
+       
             var graphQlHelper = GetGraphQlHelper();
             var queries = new List<string>();
             var variables = new Dictionary<string, object>
@@ -172,7 +182,7 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
 
             foreach (var symbol in symbols)
             {
-                var nftInfoId = IdGeneratorHelper.GetNftInfoId(chainId, symbol);
+                var nftInfoId = IdGeneratorHelper.GetNftInfoId(_globalOptions.CurrentValue.SideChainId, symbol);
                 var fieldName = symbol.Replace("-", "_"); // replace valid char
                 queries.Add($@"
             {fieldName}: nftActivityList(input: {{
@@ -230,19 +240,17 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
                 });
 
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestPrice error");
-            return new Dictionary<string, NftActivityItem>();
-        }
+       
     }
     
-    public async Task<Dictionary<string, NftCollectionInfoDto>> GetNftCollectionInfoAsync(
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetNftCollectionInfoAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","timeStamp"])]
+    public virtual async Task<Dictionary<string, NftCollectionInfoDto>> GetNftCollectionInfoAsync(
         GetNftCollectionInfoInput input)
     {
-        try
-        {
+       
             var resp = await _httpProvider.InvokeAsync<NftCollectionInfoResp>(
                 _apiClientOptions.CurrentValue.GetApiServer(ApiInfoConstant.ForestServer).Domain,
                 ApiInfoConstant.NftCollectionFloorPrice,
@@ -255,11 +263,6 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
             }
 
             return resp.Data?.Items.ToDictionary(i => i.Symbol, i => i);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetNftCollectionInfo get failed.");
-            return new Dictionary<string, NftCollectionInfoDto>();
-        }
+       
     }
 }

@@ -19,9 +19,9 @@ public class GetAddressDetailResultDto
     public long TokenHoldings { get; set; }
 
     public AddressType AddressType { get; set; } = AddressType.EoaAddress;
-    public decimal TotalValueOfUsd { get; set; }
-    public decimal TotalValueOfElf { get; set; }
-    public decimal TotalValueOfUsdChangeRate { get; set; }
+    // public decimal TotalValueOfUsd { get; set; }
+    // public decimal TotalValueOfElf { get; set; }
+    // public decimal TotalValueOfUsdChangeRate { get; set; }
     public List<string> AddressTypeList { get; set; }
 
     // only address type is caAddress|eocAddress
@@ -31,7 +31,7 @@ public class GetAddressDetailResultDto
     // only address type is contract
     public string ContractName { get; set; }
     public string Author { get; set; }
-    public string CodeHash { get; set; }
+    // public string CodeHash { get; set; }
     public string ContractTransactionHash { get; set; }
 
     public Portfolio Portfolio { get; set; } = new();
@@ -56,6 +56,6 @@ public class MergeTokenInfo
 public class TransactionInfoDto
 {
     public string TransactionId { get; set; }
-    public long BlockHeight { get; set; }
+    // public long BlockHeight { get; set; }
     public DateTime BlockTime { get; set; }
 }

@@ -1,8 +1,10 @@
 using AElf.Client.Service;
 using AElf.EntityMapping.Options;
+using AElf.ExceptionHandler.ABP;
 using AElf.OpenTelemetry;
 using AElfScanServer.Common.Address.Provider;
 using AElfScanServer.Common.Contract.Provider;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.HttpClient;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -27,7 +29,8 @@ namespace AElfScanServer.Common;
     typeof(AbpAutoMapperModule),
     typeof(AbpAutoMapperModule),
     typeof(AbpCachingStackExchangeRedisModule),
-    typeof(AetherlinkPriceServerModule)
+    typeof(AetherlinkPriceServerModule),
+    typeof(AOPExceptionModule)
 )]
 public class AElfScanCommonModule : AbpModule
 {
@@ -60,13 +63,13 @@ public class AElfScanCommonModule : AbpModule
         context.Services.AddTransient<CoinMarketCapProvider, CoinMarketCapProvider>();
         context.Services.AddSingleton<IBlockchainClientFactory<AElfClient>, AElfClientFactory>();
         context.Services.AddSingleton<IK8sProvider, K8sProvider>();
+        context.Services.AddSingleton<IPriceServerProvider, PriceServerProvider>();
         context.Services.AddHttpClient();
         context.Services.Replace(ServiceDescriptor.Singleton<IInterceptor, TotalExecutionTimeRecorder>());
-
+        ExceptionHandlingService.Initialize(context.Services.BuildServiceProvider());
     }
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-        var app = context.GetApplicationBuilder();
     }
 }

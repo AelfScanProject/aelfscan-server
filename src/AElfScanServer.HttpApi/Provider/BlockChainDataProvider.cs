@@ -10,6 +10,7 @@ using AElf;
 using AElf.Client.Dto;
 using AElf.Client.MultiToken;
 using AElf.Client.Service;
+using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElf.Standards.ACS10;
 using AElfScanServer.HttpApi.Dtos;
@@ -17,9 +18,12 @@ using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Options;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.HttpClient;
+using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using Binance.Spot;
 using Binance.Spot.Models;
 using Google.Protobuf;
@@ -48,7 +52,9 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     // private readonly IElasticClient _elasticClient;
 
     private ConcurrentDictionary<string, string> _contractAddressCache;
+    private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private Dictionary<string, string> _tokenImageUrlCache;
+    private  readonly ITokenPriceService _tokenPriceService;
     private readonly ILogger<BlockChainDataProvider> _logger;
 
     public BlockChainDataProvider(
@@ -57,7 +63,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor,
         IHttpProvider httpProvider,
-        IDistributedCache<string> tokenUsdPriceCache
+        IDistributedCache<string> tokenUsdPriceCache,ITokenIndexerProvider tokenIndexerProvider,ITokenPriceService tokenPriceService
     ) : base(optionsAccessor)
     {
         _logger = logger;
@@ -71,13 +77,18 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         _contractAddressCache = new ConcurrentDictionary<string, string>();
         _tokenUsdPriceCache = tokenUsdPriceCache;
         _tokenImageUrlCache = new Dictionary<string, string>();
+        _tokenIndexerProvider = tokenIndexerProvider;
+        _tokenPriceService = tokenPriceService;
     }
 
 
-    public async Task<string> GetBlockRewardAsync(long blockHeight, string chainId)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetBlockRewardAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["blockHeight","chainId"])]
+    public virtual async Task<string> GetBlockRewardAsync(long blockHeight, string chainId)
     {
-        try
-        {
+        
             await ConnectAsync();
             var redisValue = RedisDatabase.StringGet(RedisKeyHelper.BlockRewardKey(chainId, blockHeight));
             if (!redisValue.IsNullOrEmpty)
@@ -121,13 +132,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
             _logger.LogInformation($"time get block reward {stopwatch.Elapsed.TotalSeconds} ,{blockHeight}");
             return reward.ToString();
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("get reward error:{@e}", e);
-        }
-
-        return "0";
+     
     }
 
     public async Task<string> GetContractAddressAsync(string chainId, string contractName)
@@ -150,17 +155,14 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
     public async Task<string> TransformTokenToUsdValueAsync(string symbol, long amount)
     {
-        var tokenUsdPriceAsync = await GetTokenUsdPriceAsync(symbol);
-
-        if (tokenUsdPriceAsync.IsNullOrEmpty())
+        
+        var tokenPriceAsync = await _tokenPriceService.GetTokenPriceAsync(symbol);
+        if (tokenPriceAsync==null)
         {
             return "0";
         }
-
-        var tokenDecimals = await GetTokenDecimals(symbol, "AELF");
-        var price = double.Parse(tokenUsdPriceAsync);
-
-        return (price * amount / Math.Pow(10, tokenDecimals)).ToString();
+        
+        return (tokenPriceAsync.Price * amount).ToString();
     }
 
 
@@ -172,7 +174,11 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     }
 
 
-    public async Task<string> GetTokenUsdPriceAsync(string symbol)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTokenUsdPriceAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["symbol"])]
+    public virtual async Task<string> GetTokenUsdPriceAsync(string symbol)
     {
         if (symbol == "USDT")
         {
@@ -180,17 +186,14 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         }
 
         var market = new Market(_globalOptions.BNBaseUrl);
-
-
-        try
-        {
+       
             var usdPrice = await _tokenUsdPriceCache.GetAsync(symbol);
             if (!usdPrice.IsNullOrEmpty())
             {
                 return usdPrice;
             }
-
-
+        
+            
             var currentAveragePrice = await market.CurrentAveragePrice(symbol + "USDT");
             JObject jsonObject = JsonConvert.DeserializeObject<JObject>(currentAveragePrice);
             var price = jsonObject["price"].ToString();
@@ -201,22 +204,19 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
             });
 
             return price;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError("get token usd price error:{@e}", e);
-        }
-
-        return "";
+      
     }
 
-    public async Task<BinancePriceDto> GetTokenUsd24ChangeAsync(string symbol)
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetTokenUsd24ChangeAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenUsd24ChangeAsync), LogTargets = ["symbol"])]
+    public virtual async Task<BinancePriceDto> GetTokenUsd24ChangeAsync(string symbol)
     {
         // var market = new Market(_blockChainOptions.BNBaseUrl, _blockChainOptions.BNApiKey,
         //     _blockChainOptions.BNSecretKey);
 
-        try
-        {
+     
             _logger.LogInformation("[TokenPriceProvider] [Binance] Start.");
             var market = new Market();
 
@@ -231,12 +231,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
             var binancePriceDto = JsonConvert.DeserializeObject<BinancePriceDto>(symbolPriceTicker);
             // await RedisDatabase.StringSetAsync(symbol, _serializer.Serialize(binancePriceDto), TimeSpan.FromHours(2));
             return binancePriceDto;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "[TokenPriceProvider] [Binance] Parse response error.");
-            return new BinancePriceDto();
-        }
+    
     }
 
 

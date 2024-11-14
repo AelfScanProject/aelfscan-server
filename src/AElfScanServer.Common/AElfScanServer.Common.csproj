@@ -45,6 +45,9 @@
         <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
         <PackageReference Include="Volo.Abp.Account.Application.Contracts" Version="8.2.0" />
         <PackageReference Include="Volo.Abp.Identity.Application" Version="8.2.0" />
+        <PackageReference Include="AElf.ExceptionHandler.ABP" Version="8.2.0" />
+        <PackageReference Include="AElf.ExceptionHandler" Version="1.8.2" />
+
         <PackageReference Include="AWSSDK.S3" Version="3.7.401.2" />
         <PackageReference Include="DotNetZip" Version="1.16.0" />
         <PackageReference Include="SharpZipLib" Version="1.4.2" />

@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
+using AElf.ExceptionHandler;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Constant;
@@ -13,7 +18,7 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
-using AElfScanServer.Common.Helper;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.NodeProvider;
 using AElfScanServer.Common.Options;
@@ -23,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using Volo.Abp.DependencyInjection;
+using BlockHelper = AElfScanServer.Common.Helper.BlockHelper;
 
 namespace AElfScanServer.HttpApi.Service;
 
@@ -65,17 +71,21 @@ public class SearchService : ISearchService, ISingletonDependency
         _indexerGenesisProvider = indexerGenesisProvider;
     }
 
-    public async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
+
+    [ExceptionHandler(typeof(Exception),
+        Message = "SearchAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
+    public virtual async Task<SearchResponseDto> SearchAsync(SearchRequestDto request)
     {
+
         var searchResp = new SearchResponseDto();
-        try
-        {
+      
             //Step 1: check param
             if (!ValidParam(request.ChainId, request.Keyword))
             {
                 return searchResp;
             }
-            //Step 2: convert 
 
             //Step 3: execute query
             switch (request.FilterType)
@@ -105,13 +115,9 @@ public class SearchService : ISearchService, ISingletonDependency
                     break;
             }
 
+           
             return searchResp;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Execute search error.");
-            return searchResp;
-        }
+       
     }
 
     private bool ValidParam(string chainId, string keyword)
@@ -127,20 +133,17 @@ public class SearchService : ISearchService, ISingletonDependency
         }
     }
 
-
-    private async Task AssemblySearchAddressAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
+ 
+    public virtual async Task AssemblySearchAddressAsync(SearchResponseDto searchResponseDto, SearchRequestDto request)
     {
-        try
-        {
-            AElf.Types.Address.FromBase58(request.Keyword);
-        }
-        catch (Exception e)
-        {
-            _logger.LogWarning(e, "address is invalid,{keyword}", request.Keyword);
-            return;
-        }
 
-
+        if (!CommonAddressHelper.IsAddress(request.Keyword))
+        {
+             _logger.LogWarning( "address is invalid,{keyword}", request.Keyword);
+                        return;
+        }
+    
+        
         var contractAddressList = await FindContractAddress(request.ChainId, request.Keyword);
 
 
@@ -229,6 +232,10 @@ public class SearchService : ISearchService, ISingletonDependency
     private async Task AssemblySearchTokenAsync(SearchResponseDto searchResponseDto, SearchRequestDto request,
         List<SymbolType> types)
     {
+        if (request.Keyword.Length > 10)
+        {
+            return;
+        }
         var input = new TokenListInput { ChainId = request.ChainId, Types = types };
         if (request.SearchType == SearchTypes.ExactSearch)
         {
@@ -240,25 +247,32 @@ public class SearchService : ISearchService, ISingletonDependency
         }
 
         input.SetDefaultSort();
+        var startNew = Stopwatch.StartNew();
         var indexerTokenInfoList = await _tokenIndexerProvider.GetTokenListAsync(input);
+        startNew.Stop();
+        _logger.LogInformation($"search:{request.Keyword}   GetTokenListAsync costTime:{startNew.Elapsed.TotalSeconds}");
         if (indexerTokenInfoList.Items.IsNullOrEmpty())
         {
             return;
         }
 
         var priceDict = new Dictionary<string, CommonTokenPriceDto>();
-        var symbols = indexerTokenInfoList.Items.Select(i => i.Symbol).Distinct().ToList();
         //batch query nft price
         var lastSaleInfoDict = new Dictionary<string, NftActivityItem>();
+        
         if (types.Contains(SymbolType.Nft))
         {
-            lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(request.ChainId, symbols);
+            var nftSymbols = indexerTokenInfoList.Items.Where(c=>c.Type==SymbolType.Nft).Select(i => i.Symbol).Distinct().ToList();
+            lastSaleInfoDict = await _nftInfoProvider.GetLatestPriceAsync(_globalOptions.CurrentValue.SideChainId, nftSymbols);
         }
+        
 
         var searchTokensDic = new Dictionary<string, SearchToken>();
         var searchTNftsDic = new Dictionary<string, SearchToken>();
-
+      
         var elfOfUsdPriceTask = GetTokenOfUsdPriceAsync(priceDict, CurrencyConstant.ElfCurrency);
+
+        
         foreach (var tokenInfo in indexerTokenInfoList.Items)
         {
             var searchToken = new SearchToken
@@ -299,12 +313,21 @@ public class SearchService : ISearchService, ISingletonDependency
                     else
                     {
                         var elfOfUsdPrice = await elfOfUsdPriceTask;
-                        var elfPrice = lastSaleInfoDict.TryGetValue(tokenInfo.Symbol, out var priceDto)
-                            ? priceDto.Price
-                            : 0;
-                        searchToken.Price = Math.Round(elfPrice * elfOfUsdPrice, CommonConstant.UsdPriceValueDecimals);
+                       
                         searchToken.ChainIds.Add(tokenInfo.Metadata.ChainId);
                         searchTNftsDic[tokenInfo.Symbol] = searchToken;
+                        if (_globalOptions.CurrentValue.NftSymbolConvert.TryGetValue(tokenInfo.Symbol, out var s))
+                        {
+                            var price = await GetTokenOfUsdPriceAsync(priceDict, tokenInfo.Symbol);
+                            searchToken.Price = Math.Round(price, CommonConstant.UsdPriceValueDecimals);
+                        }
+                        else
+                        {
+                            var elfPrice = lastSaleInfoDict.TryGetValue(tokenInfo.Symbol, out var priceDto)
+                                ? priceDto.Price
+                                : 0;
+                            searchToken.Price = Math.Round(elfPrice * elfOfUsdPrice, CommonConstant.UsdPriceValueDecimals);
+                        }
                     }
 
                     break;
@@ -325,6 +348,7 @@ public class SearchService : ISearchService, ISingletonDependency
                 }
             }
         }
+
 
         searchResponseDto.Tokens.AddRange(searchTokensDic.Values);
         searchResponseDto.Nfts.AddRange(searchTNftsDic.Values);

@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
+using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Provider;
@@ -75,12 +78,22 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         _mergeAddressRepository = mergeAddressRepository;
     }
 
+
     public override async Task<HomeOverviewResponseDto> QueryData(string chainId)
+    {
+        return await ExecuteQueryData(chainId);
+    }
+    
+  
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetBlockchainOverviewAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
+    public virtual async Task<HomeOverviewResponseDto> ExecuteQueryData(string chainId)
     {
         DataStrategyLogger.LogInformation("GetBlockchainOverviewAsync:{chainId}", chainId);
         var overviewResp = new HomeOverviewResponseDto();
-        try
-        {
+      
             if (chainId.IsNullOrEmpty())
             {
                 var queryMergeChainData = await QueryMergeChainData();
@@ -123,20 +136,18 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
 
             DataStrategyLogger.LogInformation("Set home page overview success:{chainId}", chainId);
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "get home page overview err,chainId:{chainId}", chainId);
-        }
 
-        return overviewResp;
+
+            return overviewResp;
     }
-
-
-    public async Task<long> GetTokens(string chainId, SymbolType symbolType, List<string> specialSymbols = null)
+    
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetTokens err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","symbolType","specialSymbols"])]
+    public virtual async Task<long> GetTokens(string chainId, SymbolType symbolType, List<string> specialSymbols = null)
     {
-        try
-        {
+       
             var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
                 .Index("tokeninfoindex")
                 .Size(0).TrackTotalHits()
@@ -172,42 +183,35 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             DataStrategyLogger.LogInformation("GetTokens: chain:{chainId},{total},{symbolType}",
                 string.IsNullOrEmpty(chainId) ? "Merge" : chainId, total, symbolType);
             return total;
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "get token count err");
-        }
-
-        return 0;
     }
 
-
-    public async Task<string> GetMarketCap()
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetMarketCap err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task<string> GetMarketCap()
     {
         var marketCap = await _cache.GetAsync("MarketCap");
         if (marketCap.IsNullOrEmpty())
         {
-            try
-            {
+           
                 var marketCapInfo = await _chartDataService.GetDailyMarketCapRespAsync();
                 marketCap = marketCapInfo.List.Last().TotalMarketCap;
                 await _cache.SetAsync("MarketCap", marketCap);
-            }
-            catch (Exception e)
-            {
-                DataStrategyLogger.LogError(e, "get market cap err");
-            }
+          
         }
 
         return marketCap;
     }
     
-
+    [ExceptionHandler( typeof(Exception),
+        Message = "GetMergeTotalAccount err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
     public async Task<long> GetMergeTotalAccount(string chainId)
     {
-        var totalCount = 0;
-        try
-        {
+         var totalCount = 0;
+       
             var key = "MergeTotalAccount" + chainId;
             var count = await _cache.GetAsync(key);
             count = "";
@@ -232,21 +236,18 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
 
 
             return long.Parse(count);
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "get total account err");
-        }
+      
 
-        return totalCount;
     }
-
-
-    public async Task<HomeOverviewResponseDto> QueryMergeChainData()
+    
+    [ExceptionHandler(typeof(Exception),
+        Message = "QueryMergeChainData err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
+    public virtual async Task<HomeOverviewResponseDto> QueryMergeChainData()
     {
         var overviewResp = new HomeOverviewResponseDto();
-        try
-        {
+       
             decimal mainChainTps = 0;
             decimal sideChainTps = 0;
 
@@ -330,11 +331,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
             overviewResp.MergeAccounts.Total =
                 overviewResp.MergeAccounts.MainChain + overviewResp.MergeAccounts.SideChain;
             DataStrategyLogger.LogInformation("Set home page overview success: merge chain");
-        }
-        catch (Exception e)
-        {
-            DataStrategyLogger.LogError(e, "get home page overview err,chainId:merge chain");
-        }
+       
 
         return overviewResp;
     }

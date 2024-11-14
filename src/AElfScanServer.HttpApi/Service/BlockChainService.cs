@@ -22,6 +22,7 @@ using Nest;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
+using AElf.ExceptionHandler;
 using AElf.OpenTelemetry;
 using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos.Indexer;
@@ -31,10 +32,12 @@ using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.EsIndex;
+using AElfScanServer.Common.ExceptionHandling;
 using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.DataStrategy;
@@ -82,7 +85,10 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     private IDistributedCache<TransactionDetailResponseDto> _transactionDetailCache;
     private readonly ILogger<HomePageService> _logger;
     private readonly IElasticClient _elasticClient;
+    private readonly ITokenPriceService _tokenPriceService;
     private readonly IObjectMapper _objectMapper;
+    public const long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
+    public const long InitialMiningRewardPerBlock = 12500000;
 
     public BlockChainService(
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
@@ -106,7 +112,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         _tokenInfoOptionsMonitor = tokenInfoOptions;
         _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _transactionDetailCache = transactionDetailCache;
-        _tokenInfoProvider = tokenInfoProvider;
         var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
         var connectionPool = new StaticConnectionPool(uris);
         var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
@@ -116,7 +121,11 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     }
 
 
-    public async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetTransactionDetailAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
+    public virtual async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
     {
         var transactionDetailResponseDto = new TransactionDetailResponseDto();
         if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == request.ChainId))
@@ -124,8 +133,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             return transactionDetailResponseDto;
         }
 
-        try
-        {
+      
             var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
             if (detailResponseDto != null)
             {
@@ -176,14 +184,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             };
             await _transactionDetailCache.SetAsync(request.TransactionId, result);
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTransactionDetailAsync error ");
-        }
-
-
-        return transactionDetailResponseDto;
+      
     }
 
 
@@ -641,16 +642,21 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         return result;
     }
 
-    public async Task<BlocksResponseDto> GetBlocksAsync(BlocksRequestDto requestDto)
+    
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetBlocksAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
+    public virtual async Task<BlocksResponseDto> GetBlocksAsync(BlocksRequestDto requestDto)
     {
+
         if (requestDto.ChainId.IsNullOrEmpty())
         {
             return await GetMergeBlocksAsync(requestDto);
         }
 
         var result = new BlocksResponseDto() { };
-        try
-        {
+       
             Stopwatch stopwatch1 = new Stopwatch();
             stopwatch1.Start();
             var summariesList = await _aelfIndexerProvider.GetLatestSummariesAsync(requestDto.ChainId);
@@ -744,15 +750,9 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             stopwatch3.Stop();
             _logger.LogInformation($"Cost time by parse block raw data:{stopwatch3.Elapsed.TotalSeconds}");
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestBlocksAsync error");
-        }
-
-        return result;
+      
     }
-
+    
 
     public async Task<string> GetBpNameAsync(string chainId, string address)
     {
@@ -767,12 +767,15 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         return "";
     }
 
-    public async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
+    [ExceptionHandler(typeof(IOException),  typeof(Exception),
+        Message = "ParseBlockBurntAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionParseBlockBurntAsync), LogTargets = ["chainId","startBlockHeight","endBlockHeight"])]
+    public virtual async Task<Dictionary<long, long>> ParseBlockBurntAsync(string chainId, long startBlockHeight,
         long endBlockHeight)
     {
         var result = new Dictionary<long, long>();
-        try
-        {
+      
             var blockBurntFeeListAsync =
                 await _tokenIndexerProvider.GetBlockBurntFeeListAsync(chainId, startBlockHeight, endBlockHeight);
 
@@ -781,23 +784,22 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             {
                 result.Add(blockBurnFeeDto.BlockHeight, blockBurnFeeDto.Amount);
             }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError($"ParseBlockBurntAsync error:{e}");
-        }
-
+     
 
         return result;
     }
 
-    public async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
+    
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetTransactionsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
+    public virtual async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
     {
         var result = new TransactionsResponseDto();
         result.Transactions = new List<TransactionResponseDto>();
 
-        try
-        {
+      
             var indexerTransactionList = await _blockChainIndexerProvider.GetTransactionsAsync(requestDto);
 
 
@@ -826,12 +828,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
                 .ToList();
 
             result.Total = indexerTransactionList.TotalCount;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestTransactionsAsync error");
-            return result;
-        }
+       
 
         return result;
     }
@@ -954,38 +951,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         transaction.TransactionFee = fee.ToString();
     }
 
-
-    public async Task SetBlockBurntFee(List<BlockRespDto> list, string chainId)
-    {
-        try
-        {
-            var longs = list.Select(a => a.BlockHeight).ToList();
-            var mustQuery = new List<Func<QueryContainerDescriptor<BlockExtraIndex>, QueryContainer>>();
-            mustQuery.Add(q => q.Terms(t => t.Field(f => f.BlockHeight).Terms(longs)));
-            QueryContainer Filter(QueryContainerDescriptor<BlockExtraIndex> f) => f.Bool(b => b.Must(mustQuery));
-            var result = await _blockExtraIndexRepository.GetListAsync(Filter, skip: 0, limit: 10000,
-                index: BlockChainIndexNameHelper.GenerateBlockExtraIndexName(chainId));
-            if (result.Item2.IsNullOrEmpty())
-            {
-                return;
-            }
-
-            Dictionary<long, long> myDictionary = result.Item2.ToDictionary(x => x.BlockHeight, x => x.BurntFee);
-
-            foreach (var blockDto in list)
-            {
-                if (myDictionary.TryGetValue(blockDto.BlockHeight, out var value))
-                {
-                    blockDto.BurntFees = value.ToString();
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "SetBlockBurntFee err");
-            throw;
-        }
-    }
 
     private CommonAddressDto ConvertAddress(string address, string chainId)
     {

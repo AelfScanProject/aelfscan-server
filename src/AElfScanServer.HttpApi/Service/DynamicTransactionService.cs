@@ -22,6 +22,7 @@ using Nest;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
+using AElf.ExceptionHandler;
 using AElf.OpenTelemetry;
 using AElf.OpenTelemetry.ExecutionTime;
 using AElfScanServer.HttpApi.Dtos.Indexer;
@@ -29,10 +30,12 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Enums;
+using AElfScanServer.Common.ExceptionHandling;
 using Castle.Components.DictionaryAdapter.Xml;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.DataStrategy;
@@ -66,6 +69,7 @@ public class DynamicTransactionService : IDynamicTransactionService
     private readonly BlockChainDataProvider _blockChainProvider;
     private readonly LogEventProvider _logEventProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
+    private readonly ITokenPriceService _tokenPriceService;
     private readonly ITokenInfoProvider _tokenInfoProvider;
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptionsMonitor;
     private readonly DataStrategyContext<string, HomeOverviewResponseDto> _overviewDataStrategy;
@@ -80,7 +84,7 @@ public class DynamicTransactionService : IDynamicTransactionService
         BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
         ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         OverviewDataStrategy overviewDataStrategy,
-        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider)
+        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider,ITokenPriceService tokenPriceService)
     {
         _logger = logger;
         _globalOptions = blockChainOptions;
@@ -93,10 +97,16 @@ public class DynamicTransactionService : IDynamicTransactionService
         _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _transactionDetailCache = transactionDetailCache;
         _tokenInfoProvider = tokenInfoProvider;
+        _tokenPriceService = tokenPriceService;
     }
 
 
-    public async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
+    
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetTransactionDetailAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["request"])]
+    public virtual async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request)
     {
         var transactionDetailResponseDto = new TransactionDetailResponseDto();
         if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == request.ChainId))
@@ -104,20 +114,23 @@ public class DynamicTransactionService : IDynamicTransactionService
             return transactionDetailResponseDto;
         }
 
-        try
+
+        var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
+        if (detailResponseDto != null)
         {
-            var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
-            if (detailResponseDto != null)
-            {
-                return detailResponseDto;
-            }
+            return detailResponseDto;
+        }
 
             var blockHeight = 0l;
             NodeTransactionDto transactionDto = new NodeTransactionDto();
             var tasks = new List<Task>();
             tasks.Add(_overviewDataStrategy.DisplayData(request.ChainId).ContinueWith(task =>
             {
-                blockHeight = task.Result.BlockHeight;
+                if (task.Result != null)
+                {
+                    blockHeight = task.Result.BlockHeight;
+
+                }
             }));
 
 
@@ -156,14 +169,7 @@ public class DynamicTransactionService : IDynamicTransactionService
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
             });
             return result;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetTransactionDetailAsync error ");
-        }
-
-
-        return transactionDetailResponseDto;
+            
     }
 
 
@@ -296,7 +302,8 @@ public class DynamicTransactionService : IDynamicTransactionService
                             ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(transferred.Symbol,
                                 txnLogEvent.ChainId),
                             NowPrice = await _blockChainProvider.TransformTokenToUsdValueAsync(transferred.Symbol,
-                                transferred.Amount)
+                                transferred.Amount) 
+                            
                         };
 
 
@@ -498,13 +505,17 @@ public class DynamicTransactionService : IDynamicTransactionService
         }
     }
 
-    public async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
+    
+    [ExceptionHandler(typeof(Exception),
+        Message = "GetTransactionsAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
+    public virtual async Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestDto)
     {
         var result = new TransactionsResponseDto();
         result.Transactions = new List<TransactionResponseDto>();
 
-        try
-        {
+      
             requestDto.SetDefaultSort();
             var indexerTransactionList = await _blockChainIndexerProvider.GetTransactionsAsync(requestDto);
 
@@ -536,12 +547,6 @@ public class DynamicTransactionService : IDynamicTransactionService
                 .ToList();
 
             result.Total = indexerTransactionList.TotalCount;
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "GetLatestTransactionsAsync error");
-            return result;
-        }
 
         return result;
     }
