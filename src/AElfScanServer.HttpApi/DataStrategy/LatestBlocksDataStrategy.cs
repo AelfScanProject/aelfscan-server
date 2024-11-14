@@ -156,10 +156,6 @@ public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseD
     }
     
     
-    public async Task Finally1(CommonAddressDto input)
-    {
-       DataStrategyLogger.LogInformation($"test 1   {input.Address}");
-    }
    
     public override string DisplayKey(string chainId)
     {
