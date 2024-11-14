@@ -21,6 +21,7 @@ using GraphQL;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 
 namespace AElfScanServer.Common.IndexerPluginProvider;
@@ -125,6 +126,7 @@ public class NftInfoProvider : INftInfoProvider, ISingletonDependency
         MethodName = nameof(ExceptionHandlingService.AlarmNftException),LogTargets = ["NftInfoId"])]
     public async Task<IndexerNftActivityInfo> GetNftActivityListAsync(GetActivitiesInput input)
     {
+        throw new UserFriendlyException("test");
         var graphQlHelper = GetGraphQlHelper();
 
         var indexerResult = await graphQlHelper.QueryAsync<IndexerNftActivityInfos>(new GraphQLRequest
