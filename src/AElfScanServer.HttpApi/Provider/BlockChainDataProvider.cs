@@ -166,12 +166,10 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
             return "0";
         }
         
-        var tokenDecimals = await GetTokenDecimals(symbol, "AELF");
-        // var price = double.Parse(tokenPriceAsync);
+        var tokenDecimals = await GetTokenDecimals(symbol, symbol);
 
-        return (tokenPriceAsync.Price * amount / Math.Pow(10, tokenDecimals)).ToString();
+        return (tokenPriceAsync.Price * amount /(decimal) Math.Pow(10, tokenDecimals)).ToString();
         
-        // return (tokenPriceAsync.Price * amount).ToString();
     }
 
 
@@ -254,8 +252,13 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
             return int.Parse(decimalStr);
         }
         
-        var tokenDetailAsync = await _tokenIndexerProvider.GetTokenDetailAsync(chainId,symbol);
-
+        var tokenDetailAsync = await _tokenIndexerProvider.GetTokenDetailAsync(chainId,symbol); 
+        
+        if(tokenDetailAsync ==null ||tokenDetailAsync.IsNullOrEmpty())
+        {
+            _logger.LogError($"can not find token detail for {symbol}");
+            return 0;
+        }
         var decimals = tokenDetailAsync.First().Decimals;
         await _tokenDecimalsCache.SetAsync(key,decimals.ToString());
 
