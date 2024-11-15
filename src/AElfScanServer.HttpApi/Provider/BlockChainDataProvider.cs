@@ -168,6 +168,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         
         var tokenDecimals = await GetTokenDecimals(symbol, symbol);
 
+        _logger.LogInformation($"TransformTokenToUsdValueAsync token price:{tokenPriceAsync.Price}");
         return (tokenPriceAsync.Price * amount /(decimal) Math.Pow(10, tokenDecimals)).ToString();
         
     }
@@ -245,7 +246,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     public async Task<int> GetTokenDecimals(string symbol, string chainId)
     {
 
-        var key = "tokenDecimal:" + symbol + chainId;
+        var key = "token-Decimal:" + symbol + chainId;
         var decimalStr = await _tokenDecimalsCache.GetAsync(key);
         if (!decimalStr.IsNullOrEmpty())
         {
@@ -260,6 +261,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
             return 0;
         }
         var decimals = tokenDetailAsync.First().Decimals;
+        _logger.LogInformation($"GetTokenDecimals decimal:{decimals}");
         await _tokenDecimalsCache.SetAsync(key,decimals.ToString());
 
 

@@ -72,14 +72,14 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
                 baseCoin = s;
             };
             var pair = $"{baseCoin}-{quoteCoin.ToLower()}";
-            var key = "GetTokenPriceAsync" + pair;
-            // var priceCache = await _priceCache.GetAsync(key);
-            //
-            // if (!priceCache.IsNullOrEmpty())
-            // {
-            //     return decimal.Parse(priceCache);
-            // }
-            //
+            var key = "GetTokenPrice" + pair;
+            var priceCache = await _priceCache.GetAsync(key);
+            
+            if (!priceCache.IsNullOrEmpty())
+            {
+                return decimal.Parse(priceCache);
+            }
+            
         
             var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
             {
@@ -100,7 +100,7 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
 
             });
         
-            _logger.LogInformation($"GetExchangeAsync success,pair:{baseCoin},price:{res.Data.Price},decimal:{res.Data.Decimal}");
+            _logger.LogInformation($"GetExchangeAsync success,pair:{baseCoin},price:{price},decimal:{res.Data.Decimal}");
             return price;
         }
         catch (Exception e)
