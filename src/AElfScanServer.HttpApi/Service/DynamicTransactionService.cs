@@ -160,6 +160,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             await AnalysisExtraPropertiesAsync(detailDto, transactionIndex);
             await AnalysisTransferredAsync(detailDto, transactionIndex);
             await AnalysisLogEventAsync(detailDto, transactionIndex);
+            
             var result = new TransactionDetailResponseDto()
             {
                 List = new List<TransactionDetailDto>() { detailDto }
@@ -302,7 +303,7 @@ public class DynamicTransactionService : IDynamicTransactionService
                             ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(transferred.Symbol,
                                 txnLogEvent.ChainId),
                             NowPrice = await _blockChainProvider.TransformTokenToUsdValueAsync(transferred.Symbol,
-                                transferred.Amount) 
+                                transferred.Amount,txnLogEvent.ChainId) 
                             
                         };
 
@@ -407,7 +408,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             var valueAmount = valueInfoDto.Value.Amount;
             valueInfoDto.Value.NowPrice =
                 await _blockChainProvider.TransformTokenToUsdValueAsync(valueSymbol,
-                    valueAmount);
+                    valueAmount,transactionIndex.ChainId);
             valueInfoDto.Value.AmountString =
                 await _blockChainProvider.GetDecimalAmountAsync(valueSymbol, valueAmount, transactionIndex.ChainId);
         }
@@ -418,7 +419,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             var valueAmount = valueInfoDto.Value.Amount;
             valueInfoDto.Value.NowPrice =
                 await _blockChainProvider.TransformTokenToUsdValueAsync(valueSymbol,
-                    valueAmount);
+                    valueAmount,transactionIndex.ChainId);
             valueInfoDto.Value.AmountString =
                 await _blockChainProvider.GetDecimalAmountAsync(valueSymbol, valueAmount, transactionIndex.ChainId);
         }
@@ -430,7 +431,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             var valueAmount = valueInfoDto.Value.Amount;
             valueInfoDto.Value.NowPrice =
                 await _blockChainProvider.TransformTokenToUsdValueAsync(valueSymbol,
-                    valueAmount);
+                    valueAmount,transactionIndex.ChainId);
             valueInfoDto.Value.AmountString =
                 await _blockChainProvider.GetDecimalAmountAsync(valueSymbol, valueAmount, transactionIndex.ChainId);
         }
@@ -462,7 +463,7 @@ public class DynamicTransactionService : IDynamicTransactionService
                 ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(symbol,
                     chainId),
                 NowPrice = await _blockChainProvider.TransformTokenToUsdValueAsync(symbol,
-                    amount)
+                    amount,chainId)
             };
 
 
