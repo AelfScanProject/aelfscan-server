@@ -41,6 +41,7 @@ using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.DataStrategy;
+using Amazon.Auth.AccessControlPolicy.ActionIdentifiers;
 using Newtonsoft.Json;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
@@ -464,7 +465,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
 
         var burntFees = new Dictionary<string, ValueInfoDto>();
-
+        var chainId = transactionIndex.ChainId;
 
         foreach (var txnLogEvent in transactionIndex.LogEvents)
         {
@@ -511,7 +512,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
                             ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(transferred.Symbol,
                                 txnLogEvent.ChainId),
                             NowPrice = await _blockChainProvider.TransformTokenToUsdValueAsync(transferred.Symbol,
-                                transferred.Amount)
+                                transferred.Amount,chainId)
                         };
 
 
@@ -574,7 +575,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             var valueAmount = valueInfoDto.Value.Amount;
             valueInfoDto.Value.NowPrice =
                 await _blockChainProvider.TransformTokenToUsdValueAsync(valueSymbol,
-                    valueAmount);
+                    valueAmount,chainId);
             valueInfoDto.Value.AmountString =
                 await _blockChainProvider.GetDecimalAmountAsync(valueSymbol, valueAmount, transactionIndex.ChainId);
         }
@@ -585,7 +586,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             var valueAmount = valueInfoDto.Value.Amount;
             valueInfoDto.Value.NowPrice =
                 await _blockChainProvider.TransformTokenToUsdValueAsync(valueSymbol,
-                    valueAmount);
+                    valueAmount,chainId);
             valueInfoDto.Value.AmountString =
                 await _blockChainProvider.GetDecimalAmountAsync(valueSymbol, valueAmount, transactionIndex.ChainId);
         }
@@ -597,7 +598,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             var valueAmount = valueInfoDto.Value.Amount;
             valueInfoDto.Value.NowPrice =
                 await _blockChainProvider.TransformTokenToUsdValueAsync(valueSymbol,
-                    valueAmount);
+                    valueAmount,chainId);
             valueInfoDto.Value.AmountString =
                 await _blockChainProvider.GetDecimalAmountAsync(valueSymbol, valueAmount, transactionIndex.ChainId);
         }
