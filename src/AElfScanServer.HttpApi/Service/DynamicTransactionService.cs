@@ -160,6 +160,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             await AnalysisExtraPropertiesAsync(detailDto, transactionIndex);
             await AnalysisTransferredAsync(detailDto, transactionIndex);
             await AnalysisLogEventAsync(detailDto, transactionIndex);
+            
             var result = new TransactionDetailResponseDto()
             {
                 List = new List<TransactionDetailDto>() { detailDto }
