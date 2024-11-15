@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -55,6 +56,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private Dictionary<string, string> _tokenImageUrlCache;
     private  readonly ITokenPriceService _tokenPriceService;
+    private readonly IDistributedCache<string> _tokenDecimalsCache;
     private readonly ILogger<BlockChainDataProvider> _logger;
 
     public BlockChainDataProvider(
@@ -63,7 +65,8 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor,
         IHttpProvider httpProvider,
-        IDistributedCache<string> tokenUsdPriceCache,ITokenIndexerProvider tokenIndexerProvider,ITokenPriceService tokenPriceService
+        IDistributedCache<string> tokenUsdPriceCache,ITokenIndexerProvider tokenIndexerProvider,ITokenPriceService tokenPriceService,
+        IDistributedCache<string> tokenDecimalsCache
     ) : base(optionsAccessor)
     {
         _logger = logger;
@@ -79,6 +82,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         _tokenImageUrlCache = new Dictionary<string, string>();
         _tokenIndexerProvider = tokenIndexerProvider;
         _tokenPriceService = tokenPriceService;
+        _tokenDecimalsCache = tokenDecimalsCache;
     }
 
 
@@ -162,7 +166,12 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
             return "0";
         }
         
-        return (tokenPriceAsync.Price * amount).ToString();
+        var tokenDecimals = await GetTokenDecimals(symbol, "AELF");
+        // var price = double.Parse(tokenPriceAsync);
+
+        return (tokenPriceAsync.Price * amount / Math.Pow(10, tokenDecimals)).ToString();
+        
+        // return (tokenPriceAsync.Price * amount).ToString();
     }
 
 
@@ -237,38 +246,22 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
     public async Task<int> GetTokenDecimals(string symbol, string chainId)
     {
-        await ConnectAsync();
-        var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TokenInfoKey(chainId, symbol));
-        if (!redisValue.IsNullOrEmpty)
+
+        var key = "tokenDecimal:" + symbol + chainId;
+        var decimalStr = await _tokenDecimalsCache.GetAsync(key);
+        if (!decimalStr.IsNullOrEmpty())
         {
-            return Convert.ToInt32(redisValue);
+            return int.Parse(decimalStr);
         }
+        
+        var tokenDetailAsync = await _tokenIndexerProvider.GetTokenDetailAsync(chainId,symbol);
+
+        var decimals = tokenDetailAsync.First().Decimals;
+        await _tokenDecimalsCache.SetAsync(key,decimals.ToString());
 
 
-        var elfClient = new AElfClient(_globalOptions.ChainNodeHosts[chainId]);
-        var address = (await elfClient.GetContractAddressByNameAsync(
-            HashHelper.ComputeFrom("AElf.ContractNames.Token"))).ToBase58();
-        var paramGetBalance = new GetTokenInfoInput
-        {
-            Symbol = symbol
-        };
-
-
-        var transactionGetToken =
-            await elfClient.GenerateTransactionAsync(elfClient.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
-                address,
-                "GetTokenInfo",
-                paramGetBalance);
-        var txWithSignGetToken = elfClient.SignTransaction(GlobalOptions.PrivateKey, transactionGetToken);
-        var transactionGetTokenResult = await elfClient.ExecuteTransactionAsync(new ExecuteTransactionDto
-        {
-            RawTransaction = txWithSignGetToken.ToByteArray().ToHex()
-        });
-        var tokeninfo = AElf.Client.MultiToken.TokenInfo.Parser.ParseFrom(
-            ByteArrayHelper.HexStringToByteArray(transactionGetTokenResult));
-
-        RedisDatabase.StringSet(RedisKeyHelper.TokenInfoKey(chainId, symbol), tokeninfo.Decimals);
-        return tokeninfo.Decimals;
+        return decimals;
+       
     }
 
     public async Task<BlockDetailDto> GetBlockDetailAsync(string chainId, long blockHeight)
