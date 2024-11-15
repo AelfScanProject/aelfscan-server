@@ -41,7 +41,6 @@ using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.DataStrategy;
-using Amazon.Auth.AccessControlPolicy.ActionIdentifiers;
 using Newtonsoft.Json;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
