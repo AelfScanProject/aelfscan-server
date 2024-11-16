@@ -31,6 +31,7 @@ public class TwitterProvider : ITwitterProvider, ISingletonDependency
 
         string url = $"https://api.twitter.com/2/users/{userId}/tweets"; 
         int maxResults = 5; 
+        _logger.LogDebug($"bearerToken = {bearerToken}, userId = {userId},sinceTweetId = {sinceTweetId}");
 
         using (var client = new HttpClient())
         {
