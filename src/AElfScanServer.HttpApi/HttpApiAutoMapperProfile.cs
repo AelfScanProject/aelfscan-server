@@ -14,6 +14,7 @@ using AElfScanServer.Common.Helper;
 using AElfScanServer.Grains.State.Ads;
 using AElfScanServer.HttpApi.Dtos.AdsData;
 using AElfScanServer.HttpApi.Dtos.ChartData;
+using AElfScanServer.Worker.Core.Dtos;
 using AutoMapper;
 using AddressIndex = AElfScanServer.HttpApi.Dtos.AddressIndex;
 
@@ -331,5 +332,6 @@ public class BlockChainAutoMapperProfile : Profile
             .ForPath(t => t.Item.Symbol, m => m.MapFrom(u => u.Symbol))
             .ForPath(t => t.Item.ImageUrl, m => m.MapFrom(u => u.SymbolImageUrl))
             ;
+        CreateMap<Tweet, TwitterIndex>();
     }
 }

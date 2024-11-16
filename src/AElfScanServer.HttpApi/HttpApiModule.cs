@@ -115,6 +115,7 @@ public class HttpApiModule : AbpModule
         Configure<SecretOptions>(configuration.GetSection("Secret"));
         Configure<GlobalOptions>(configuration.GetSection("BlockChain"));
         Configure<ElasticsearchOptions>(configuration.GetSection("Elasticsearch"));
+        Configure<TwitterOptions>(configuration.GetSection("Twitter"));
         ConfigureGraphQl(context, configuration);
 
 

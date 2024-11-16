@@ -98,4 +98,11 @@ public class AdsController : AbpController
     {
         return await _adsService.GetAdsBannerList(req);
     }
+    
+    [HttpGet]
+    [Route("LatestTwitter")]
+    public async Task<List<TwitterIndex>> GetLatestTwitterListAsync(int maxResultCount)
+    {
+        return await  _adsService.GetLatestTwitterListAsync(maxResultCount);
+    }
 }

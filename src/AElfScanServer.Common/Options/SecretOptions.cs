@@ -10,4 +10,6 @@ public class SecretOptions
     public string S3AccessKey { get; set; }
 
     public string S3SecretKey { get; set; }
+    
+    public string TwitterBearToken { get; set; }
 }
