@@ -13,20 +13,9 @@ public class GetAddressDetailInput : GetDetailBasicDto
 
 public class GetAddressDetailResultDto
 {
-    public decimal ElfBalance { get; set; }
-    public decimal ElfBalanceOfUsd { get; set; }
-    public decimal ElfPriceInUsd { get; set; }
-    public long TokenHoldings { get; set; }
-
     public AddressType AddressType { get; set; } = AddressType.EoaAddress;
-
     public List<string> AddressTypeList { get; set; }
 
-    // only address type is caAddress|eocAddress
-    public TransactionInfoDto FirstTransactionSend { get; set; }
-    public TransactionInfoDto LastTransactionSend { get; set; }
-
-    // only address type is contract
     public string ContractName { get; set; }
 
     public string Author { get; set; }
