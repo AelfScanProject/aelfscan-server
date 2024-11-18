@@ -119,13 +119,19 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
     /**
      * if address is null, return the last address asset info
      */
-private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type, string chainId = "", string address = null)
+private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type, string chainId = "", string address = null,
+        List<SymbolType> symbolTypes=null)
 {
     var stopwatch = Stopwatch.StartNew();
     var lastAddressProcessed = new AddressAssetDto();
     var symbolPriceDict = new Dictionary<string, decimal>();
     int skipCount = 0;
 
+    var types = new List<SymbolType>(){SymbolType.Token, SymbolType.Nft};
+    if (symbolTypes != null)
+    {
+        types = symbolTypes;
+    }
     while (true)
     {
         var input = new TokenHolderInput
@@ -134,7 +140,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
             Address = address,
             MaxResultCount = 1000,
             SkipCount = skipCount,
-            Types = new List<SymbolType> { SymbolType.Token, SymbolType.Nft },
+            Types = types,
         };
 
         var searchMergeAccountList = await EsIndex.SearchAccountIndexList(input);
