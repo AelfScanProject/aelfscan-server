@@ -49,11 +49,12 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptions;
     private readonly IAddressInfoProvider _addressInfoProvider;
     private readonly IAbpDistributedLock _distributedLock;
+    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
     public TokenAssetProvider(ITokenPriceService tokenPriceService, ILogger<TokenAssetProvider> logger,
         ITokenIndexerProvider tokenIndexerProvider, INftInfoProvider nftInfoProvider,
         IOptionsMonitor<TokenInfoOptions> tokenInfoOptions, IOptions<RedisCacheOptions> optionsAccessor,
-        IAddressInfoProvider addressInfoProvider, IAbpDistributedLock distributedLock) : base(optionsAccessor)
+        IAddressInfoProvider addressInfoProvider, IAbpDistributedLock distributedLock,IOptionsMonitor<GlobalOptions> globalOptions) : base(optionsAccessor)
     {
         _tokenPriceService = tokenPriceService;
         _logger = logger;
@@ -62,6 +63,7 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         _tokenInfoOptions = tokenInfoOptions;
         _addressInfoProvider = addressInfoProvider;
         _distributedLock = distributedLock;
+        _globalOptions = globalOptions;
     }
 
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
@@ -145,7 +147,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
             Types = types,
         };
 
-        var searchMergeAccountList = await EsIndex.SearchAccountIndexList(input);
+        var searchMergeAccountList = await EsIndex.SearchAccountIndexList(input,_globalOptions.CurrentValue.SpecialSymbols);
         
         if (searchMergeAccountList.list.Count == 0)
         {

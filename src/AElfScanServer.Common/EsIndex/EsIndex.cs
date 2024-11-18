@@ -258,7 +258,7 @@ public class EsIndex
 
 
     public static async Task<(List<AccountTokenIndex> list, long totalCount)> SearchAccountIndexList(
-        TokenHolderInput input, List<string> specialSymbols)
+        TokenHolderInput input, List<string> specialSymbols = null)
     {
         var sortOrder = SortOrder.Descending;
 
