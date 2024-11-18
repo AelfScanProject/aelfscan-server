@@ -723,113 +723,116 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         Message = "BatchPullBlockSize err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId"])]
-    public virtual async Task BatchPullBlockSize(string chainId)
+   public virtual async Task BatchPullBlockSize(string chainId)
+{
+    _logger.LogInformation("BatchPullBlockSize start");
+    var blockSizeIndicesDictionary = new Dictionary<string, DailyAvgBlockSizeIndex>();
+    await ConnectAsync();
+
+    var redisValue = RedisDatabase.StringGet(RedisKeyHelper.BlockSizeLastBlockHeight(chainId));
+    var lastBlockHeight = redisValue.IsNullOrEmpty ? 0 : long.Parse(redisValue);
+    _logger.LogInformation("BatchPullBlockSize LastBlockHeight {lastBlockHeight}", lastBlockHeight);
+
+    const int maxFailures = 5;
+    int failureCount = 0;
+
+    while (true)
     {
-        _logger.LogInformation($"BatchPullBlockSize start");
-        var dic = new Dictionary<string, DailyAvgBlockSizeIndex>();
-        await ConnectAsync();
-        var redisValue = RedisDatabase.StringGet(RedisKeyHelper.BlockSizeLastBlockHeight(chainId));
-        var lastBlockHeight = redisValue.IsNullOrEmpty ? 0 : long.Parse(redisValue);
-        int failCount = 0;
-        while (true)
+        var blockSizeIndices = new List<BlockSizeDto>();
+        var tasks = Enumerable.Range(0, BlockSizeInterval)
+            .Select(async i =>
+            {
+                long blockHeight = Interlocked.Increment(ref lastBlockHeight);
+                var blockSize = await _nodeProvider.GetBlockSize(chainId, blockHeight).ConfigureAwait(false);
+                if (blockSize != null)
+                {
+                    lock (blockSizeIndices)
+                    {
+                        blockSizeIndices.Add(blockSize);
+                    }
+                }
+            }).ToList();
+
+        await Task.WhenAll(tasks);
+
+        foreach (var blockSize in blockSizeIndices)
         {
-            _logger.LogInformation($"BatchPullBlockSize {lastBlockHeight}");
-            var tasks = new List<Task>();
-            var blockSizeIndices = new List<BlockSizeDto>();
-            var _lock = new object();
-            var startNew = Stopwatch.StartNew();
-         
-                for (int i = 0; i < BlockSizeInterval; i++)
-                {
-                    lastBlockHeight++;
-                    tasks.Add(_nodeProvider.GetBlockSize(chainId, lastBlockHeight).ContinueWith(task =>
-                    {
-                        lock (_lock)
-                        {
-                            if (task.Result != null)
-                            {
-                                blockSizeIndices.Add(task.Result);
-                            }
-                        }
-                    }));
-                }
-         
-
-            await tasks.WhenAll();
-            foreach (var blockSize in blockSizeIndices)
+            if (blockSize.Header == null)
             {
-                if (blockSize.Header == null)
+                _logger.LogInformation("Block size index header is null for chainId: {chainId}", chainId);
+                if (++failureCount >= maxFailures)
                 {
-                    _logger.LogInformation("Block size index header is null:{chainId}", chainId);
-                    failCount++;
-                    if (failCount == 5)
-                    {
-                        return;
-                    }
-                    continue;
+                    return;
                 }
-                failCount = 0;
-                string date = "";
-                if (long.Parse(blockSize.Header.Height) == 1)
-                {
-                    date = _globalOptions.CurrentValue.OneBlockTime[chainId];
-                }
-                else
-                {
-                    date = DateTimeHelper.FormatDateStr(blockSize.Header.Time);
+                continue;
+            }
+            failureCount = 0;
 
-                    if (date == DateTimeHelper.GetDateStr(DateTime.UtcNow))
-                    {
-                        break;
-                    }
-                }
-
-                if (dic.TryGetValue(date, out var v))
-                {
-                    v.TotalSize += blockSize.BlockSize;
-                    v.EndBlockHeight = Math.Max(int.Parse(blockSize.Header.Height), v.EndBlockHeight);
-                    v.StartBlockHeight = Math.Min(int.Parse(blockSize.Header.Height), v.StartBlockHeight);
-                    v.BlockCount++;
-                }
-                else
-                {
-                    dic[date] = new DailyAvgBlockSizeIndex()
-                    {
-                        ChainId = chainId,
-                        DateStr = date,
-                        TotalSize = blockSize.BlockSize,
-                        StartBlockHeight = int.Parse(blockSize.Header.Height),
-                        StartTime = DateTime.UtcNow,
-                        EndBlockHeight = int.Parse(blockSize.Header.Height),
-                        BlockCount = 1
-                    };
-                }
+            string date = GetDateString(blockSize, chainId);
+            if (date == DateTimeHelper.GetDateStr(DateTime.UtcNow))
+            {
+                await PersistBlockSizeData(blockSizeIndicesDictionary, chainId);
+                return;
             }
 
-            startNew.Stop();
-            _logger.LogInformation(
-                "BatchPullBlockSize :{chainId},count:{count},time:{costTime},startBlockHeight:{startBlockHeight},endBlockHeight:{endBlockHeight}",
-                chainId, blockSizeIndices.Count, startNew.Elapsed.TotalSeconds, lastBlockHeight - BlockSizeInterval,
-                lastBlockHeight);
-           
+            UpdateBlockSizeDictionary(blockSizeIndicesDictionary, blockSize, chainId, date);
+        }
 
-            if (dic.Count >= 2)
-            {
-                var sizeIndices = dic.Values.OrderBy(c => c.DateStr).ToList();
-
-                var blockSizeIndex = sizeIndices[0];
-                blockSizeIndex.AvgBlockSize = (blockSizeIndex.TotalSize / blockSizeIndex.BlockCount).ToString();
-                blockSizeIndex.EndTime = DateTime.UtcNow;
-                blockSizeIndex.Date = DateTimeHelper.ConvertYYMMDD(blockSizeIndex.DateStr);
-                await _blockSizeRepository.AddOrUpdateAsync(sizeIndices[0]);
-                RedisDatabase.StringSet(RedisKeyHelper.BlockSizeLastBlockHeight(chainId),
-                    sizeIndices[0].EndBlockHeight);
-                dic.Remove(blockSizeIndex.DateStr);
-            }
-
-            lastBlockHeight++;
+        _logger.LogInformation(
+            "BatchPullBlockSize :{chainId}, count:{count}, startBlockHeight:{startBlockHeight}, endBlockHeight:{endBlockHeight}",
+            chainId, blockSizeIndices.Count, lastBlockHeight - BlockSizeInterval, lastBlockHeight);
+        if (blockSizeIndicesDictionary.Count >= 2)
+        {
+            await PersistBlockSizeData(blockSizeIndicesDictionary, chainId);
         }
     }
+}
+
+private string GetDateString(BlockSizeDto blockSize, string chainId)
+{
+    return long.Parse(blockSize.Header.Height) == 1
+        ? _globalOptions.CurrentValue.OneBlockTime[chainId]
+        : DateTimeHelper.FormatDateStr(blockSize.Header.Time);
+}
+
+private void UpdateBlockSizeDictionary(Dictionary<string, DailyAvgBlockSizeIndex> dictionary, BlockSizeDto blockSize, string chainId, string date)
+{
+    if (dictionary.TryGetValue(date, out var dailyIndex))
+    {
+        dailyIndex.TotalSize += blockSize.BlockSize;
+        dailyIndex.EndBlockHeight = Math.Max(int.Parse(blockSize.Header.Height), dailyIndex.EndBlockHeight);
+        dailyIndex.StartBlockHeight = Math.Min(int.Parse(blockSize.Header.Height), dailyIndex.StartBlockHeight);
+        dailyIndex.BlockCount++;
+    }
+    else
+    {
+        dictionary[date] = new DailyAvgBlockSizeIndex
+        {
+            ChainId = chainId,
+            DateStr = date,
+            TotalSize = blockSize.BlockSize,
+            StartBlockHeight = int.Parse(blockSize.Header.Height),
+            StartTime = DateTime.UtcNow,
+            EndBlockHeight = int.Parse(blockSize.Header.Height),
+            BlockCount = 1
+        };
+    }
+}
+
+private async Task PersistBlockSizeData(Dictionary<string, DailyAvgBlockSizeIndex> dictionary, string chainId)
+{
+    if (! dictionary.IsNullOrEmpty())
+    {
+        var sortedIndices = dictionary.Values.OrderBy(c => c.DateStr).First();
+        sortedIndices.AvgBlockSize = (sortedIndices.TotalSize / sortedIndices.BlockCount).ToString();
+        sortedIndices.EndTime = DateTime.UtcNow;
+        sortedIndices.Date = DateTimeHelper.ConvertYYMMDD(sortedIndices.DateStr);
+
+        await _blockSizeRepository.AddOrUpdateAsync(sortedIndices);
+        RedisDatabase.StringSet(RedisKeyHelper.BlockSizeLastBlockHeight(chainId), sortedIndices.EndBlockHeight);
+        dictionary.Remove(sortedIndices.DateStr);
+    }
+}
 
 
     [ExceptionHandler(typeof(Exception),
