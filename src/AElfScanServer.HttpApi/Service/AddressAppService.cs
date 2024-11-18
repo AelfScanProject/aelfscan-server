@@ -27,6 +27,7 @@ using AElfScanServer.HttpApi.Provider;
 using Elasticsearch.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Nest;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
@@ -226,102 +227,6 @@ public class AddressAppService : IAddressAppService
     }
 
 
-    public async Task<GetAddressDetailResultDto> GetAccountDetailAsync(GetAddressDetailInput input)
-    {
-        var accountChainIdsTask = GetAccountChainIdsAsync(input.Address, input.ChainId);
-        var priceDtoTask =
-            _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
-        var dailyAddressAssetTask =
-            _addressInfoProvider.GetAddressAssetAsync(AddressAssetType.Daily, input.ChainId, input.Address);
-        var holderInfoTask =
-            _tokenIndexerProvider.GetHolderInfoAsync(input.ChainId, CurrencyConstant.ElfCurrency, input.Address);
-        var holderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync(input.ChainId, input.Address,
-            new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
-        var transferInput = new TokenTransferInput { ChainId = input.ChainId, Address = input.Address };
-        transferInput.OfOrderInfos((SortField.BlockHeight, SortDirection.Desc));
-        var addressTypeTask = _addressTypeService.GetAddressTypeList(input.ChainId, input.Address);
-
-        var mainChainCurAddressAssetTask = _tokenAssetProvider.GetTokenValuesAsync("AELF", input.Address);
-        var sideChainCurAddressAssetTask =
-            _tokenAssetProvider.GetTokenValuesAsync(_globalOptions.SideChainId, input.Address);
-
-        var firstTransactionInput = new TransactionsRequestDto()
-        {
-            ChainId = input.ChainId,
-            Address = input.Address,
-            SkipCount = 0,
-            MaxResultCount = 1,
-        };
-        firstTransactionInput.SetFirstTransactionSort();
-        var firstTransactionTask = _blockChainIndexerProvider.GetTransactionsAsync(firstTransactionInput);
-
-        var lastTransactionInput = new TransactionsRequestDto()
-        {
-            ChainId = input.ChainId,
-            Address = input.Address,
-            SkipCount = 0,
-            MaxResultCount = 1,
-        };
-
-        lastTransactionInput.SetLastTransactionSort();
-        var lastTransactionTask = _blockChainIndexerProvider.GetTransactionsAsync(lastTransactionInput);
-
-
-        await Task.WhenAll(accountChainIdsTask, priceDtoTask, holderInfoTask, dailyAddressAssetTask,
-            holderInfosTask, firstTransactionTask,
-            lastTransactionTask, mainChainCurAddressAssetTask, sideChainCurAddressAssetTask);
-
-        var holderInfo = await holderInfoTask;
-        var priceDto = await priceDtoTask;
-
-        var dailyAddressAsset = await dailyAddressAssetTask;
-        var holderInfos = await holderInfosTask;
-        var firstTransaction = await firstTransactionTask;
-        var lastTransaction = await lastTransactionTask;
-        var addressTypeList = await addressTypeTask;
-        var chainIds = await accountChainIdsTask;
-
-
-        var mainChainCurAddressAsset = await mainChainCurAddressAssetTask;
-        var sideChainCurAddressAsset = await sideChainCurAddressAssetTask;
-
-        _logger.LogInformation("GetAddressDetail chainId: {chainId}, dailyAddressAsset: {dailyAddressAsset}",
-            input.ChainId, JsonConvert.SerializeObject(dailyAddressAsset));
-        var result = new GetAddressDetailResultDto();
-
-        result.ElfBalance = holderInfo.Balance;
-        result.ElfPriceInUsd = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
-        result.ElfBalanceOfUsd = Math.Round(holderInfo.Balance * priceDto.Price, CommonConstant.UsdValueDecimals);
-        result.AddressTypeList = addressTypeList;
-        result.TokenHoldings = holderInfos.Count;
-
-        if (lastTransaction != null && !lastTransaction.Items.IsNullOrEmpty())
-        {
-            result.LastTransactionSend = OfTransactionInfo(lastTransaction.Items.First());
-        }
-
-        if (firstTransaction != null && !firstTransaction.Items.IsNullOrEmpty())
-        {
-            result.FirstTransactionSend = OfTransactionInfo(firstTransaction.Items.First());
-        }
-
-
-        result.Portfolio.MainChain.UsdValue =
-            Math.Round(new decimal(mainChainCurAddressAsset.GetTotalValueOfElf()) * priceDto.Price,
-                CommonConstant.UsdValueDecimals);
-
-        result.Portfolio.SideChain.UsdValue =
-            Math.Round(new decimal(sideChainCurAddressAsset.GetTotalValueOfElf()) * priceDto.Price,
-                CommonConstant.UsdValueDecimals);
-
-        result.Portfolio.Total.UsdValue = result.Portfolio.SideChain.UsdValue + result.Portfolio.MainChain.UsdValue;
-
-        result.ChainIds = chainIds;
-
-        return result;
-    }
-
-
     public async Task<GetAddressDetailResultDto> GetAddressDetailAsync(GetAddressDetailInput input)
     {
         var contractInfo =
@@ -338,72 +243,21 @@ public class AddressAppService : IAddressAppService
 
 
         return await GetMergeAddressDetailAsync(input, author, contractChainId);
-
-
     }
 
 
-    public async Task<GetAddressDetailResultDto> GetContractAddressDetailAsync(GetAddressDetailInput input,
-        IndexerContractListResultDto contractInfo)
+    public async Task<string> GetAccountChainIdAsync(string address, string chainId)
     {
-        var priceDtoTask =
-            _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
-        var curAddressAssetTask = _tokenAssetProvider.GetTokenValuesAsync(input.ChainId, input.Address);
-        var dailyAddressAssetTask =
-            _addressInfoProvider.GetAddressAssetAsync(AddressAssetType.Daily, input.ChainId, input.Address);
-        var holderInfoTask =
-            _tokenIndexerProvider.GetHolderInfoAsync(input.ChainId, CurrencyConstant.ElfCurrency, input.Address);
-        var holderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync(input.ChainId, input.Address,
-            new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
-        var addressTypeTask = _addressTypeService.GetAddressTypeList(input.ChainId, input.Address);
-
-        await Task.WhenAll(priceDtoTask, holderInfoTask, curAddressAssetTask, dailyAddressAssetTask,
-            holderInfosTask);
-
-        var holderInfo = await holderInfoTask;
-        var priceDto = await priceDtoTask;
-        var dailyAddressAsset = await dailyAddressAssetTask;
-        var holderInfos = await holderInfosTask;
-        var addressTypeList = await addressTypeTask;
-
-        _logger.LogInformation("GetAddressDetail chainId: {chainId}, dailyAddressAsset: {dailyAddressAsset}",
-            input.ChainId, JsonConvert.SerializeObject(dailyAddressAsset));
-        var result = new GetAddressDetailResultDto();
-
-        result = _objectMapper.Map<ContractInfoDto, GetAddressDetailResultDto>(contractInfo.ContractList.Items[0]);
-        result.ContractName = _globalOptions.GetContractName(input.ChainId, input.Address);
-        result.Author = contractInfo.ContractList.Items[0].Author;
-        result.AddressType = AddressType.ContractAddress;
-        result.ElfBalance = holderInfo.Balance;
-        result.ElfPriceInUsd = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
-        result.ElfBalanceOfUsd = Math.Round(holderInfo.Balance * priceDto.Price, CommonConstant.UsdValueDecimals);
-        result.AddressTypeList = addressTypeList;
-        result.TokenHoldings = holderInfos.Count;
-        result.ChainIds = new List<string>() { input.ChainId };
-
-        return result;
-    }
-
-    public async Task<List<string>> GetAccountChainIdsAsync(string address, string chainId)
-    {
-        var list = new List<string>() { chainId };
-        var needFindChainId = _globalOptions.SideChainId;
-        if (chainId != "AELF")
-        {
-            needFindChainId = "AELF";
-        }
-
-        var holderInput = new TokenHolderInput { ChainId = needFindChainId, Address = address, MaxResultCount = 1 };
+        var holderInput = new TokenHolderInput { ChainId = chainId, Address = address, MaxResultCount = 1 };
 
         var tokenHolderInfos = await _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
 
         if (tokenHolderInfos != null && tokenHolderInfos.Items != null && tokenHolderInfos.Items.Count > 0)
         {
-            list.Add(needFindChainId);
-            list = list.OrderBy(c => c).ToList();
+            return chainId;
         }
 
-        return list;
+        return "";
     }
 
 
@@ -412,7 +266,13 @@ public class AddressAppService : IAddressAppService
     {
         var hashSet = new HashSet<string>();
 
+        if (!contractChainId.IsNullOrEmpty())
+        {
+            hashSet.Add(contractChainId);
+        }
 
+        var mainChainIdTask = GetAccountChainIdAsync(input.Address, "AELF");
+        var sideChainIdTask = GetAccountChainIdAsync(input.Address, _globalOptions.SideChainId);
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
 
@@ -440,7 +300,7 @@ public class AddressAppService : IAddressAppService
 
         await Task.WhenAll(mainChainCurAddressAssetTokenTask, priceDtoTask,
             sideChainCurAddressAssetTokenTask, mainChainCurAddressAssetNftTask,
-            sideChainCurAddressAssetNftTask);
+            sideChainCurAddressAssetNftTask, mainChainIdTask, sideChainIdTask);
 
         var addressTypeList = await addressTypeTask;
 
@@ -450,6 +310,19 @@ public class AddressAppService : IAddressAppService
 
         var mainChainCurAddressAssetNft = await mainChainCurAddressAssetNftTask;
         var sideChainCurAddressAssetNft = await sideChainCurAddressAssetNftTask;
+        var mainChainId = await mainChainIdTask;
+        var sideChainId = await sideChainIdTask;
+
+        if (!mainChainId.IsNullOrEmpty())
+        {
+            hashSet.Add(mainChainId);
+        }
+
+
+        if (!sideChainId.IsNullOrEmpty())
+        {
+            hashSet.Add(sideChainId);
+        }
 
         var priceDto = await priceDtoTask;
         var result = new GetAddressDetailResultDto();
