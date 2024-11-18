@@ -230,7 +230,7 @@ public class AddressAppService : IAddressAppService
     {
         var test = await _tokenAssetProvider.GetTokenValuesAsync("tDVW", input.Address);
 
-        
+
         var accountChainIdsTask = GetAccountChainIdsAsync(input.Address, input.ChainId);
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
@@ -430,8 +430,7 @@ public class AddressAppService : IAddressAppService
 
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
-        var holderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync(input.ChainId, input.Address,
-            new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
+
         var addressTypeTask = _addressTypeService.GetAddressTypeList(input.ChainId, input.Address);
 
 
@@ -454,23 +453,15 @@ public class AddressAppService : IAddressAppService
             });
 
 
-        var mainChainHolderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync("AELF", input.Address,
-            new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
-        var sideChainHolderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync(_globalOptions.SideChainId,
-            input.Address,
-            new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
-
         // var tokenCountTask = EsIndex.GetTokenTypeHolders("AELF", new List<SymbolType>() { SymbolType.Token });
         // var nftCountTask =
         //     EsIndex.GetTokenTypeHolders(_globalOptions.SideChainId, new List<SymbolType>() { SymbolType.Token });
-        await Task.WhenAll(mainChainCurAddressAssetTokenTask, holderInfosTask, priceDtoTask,
+        await Task.WhenAll(mainChainCurAddressAssetTokenTask, priceDtoTask,
             sideChainCurAddressAssetTokenTask, mainChainCurAddressAssetNftTask,
             sideChainCurAddressAssetNftTask);
 
         var addressTypeList = await addressTypeTask;
 
-        var mainChainHolderInfos = await mainChainHolderInfosTask;
-        var sideChainHolderInfos = await sideChainHolderInfosTask;
 
         var mainChainCurAddressAssetToken = await mainChainCurAddressAssetTokenTask;
         var sideChainCurAddressAssetToken = await sideChainCurAddressAssetTokenTask;
@@ -480,20 +471,9 @@ public class AddressAppService : IAddressAppService
         var sideChainCurAddressAssetNft = await sideChainCurAddressAssetNftTask;
 
         var priceDto = await priceDtoTask;
-        var holderInfos = await holderInfosTask;
         // var tokenCount = await tokenCountTask;
         // var nftCount = await nftCountTask;
         var result = new GetAddressDetailResultDto();
-
-        foreach (var mainChainHolderInfo in mainChainHolderInfos)
-        {
-            hashSet.Add(mainChainHolderInfo.ChainId);
-        }
-
-        foreach (var sideChainHolderInfo in sideChainHolderInfos)
-        {
-            hashSet.Add(sideChainHolderInfo.ChainId);
-        }
 
 
         result.AddressTypeList = addressTypeList;

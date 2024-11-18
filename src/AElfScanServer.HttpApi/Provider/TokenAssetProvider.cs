@@ -153,7 +153,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
             break;
         }
 
-        totalCount = searchMergeAccountList.list.Count;
+        totalCount += searchMergeAccountList.list.Count;
         var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
 
         foreach (var (valueAddress, assetDto) in valuesDict)
