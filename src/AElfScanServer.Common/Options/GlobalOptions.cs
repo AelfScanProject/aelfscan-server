@@ -113,6 +113,11 @@ public class GlobalOptions
 
     public string GetContractName(string chainId, string address)
     {
+        if (chainId.IsNullOrEmpty())
+        {
+            return "";
+        }
+
         if (!ContractNames.TryGetValue(chainId, out var contractNames))
         {
             return null;

@@ -336,23 +336,10 @@ public class AddressAppService : IAddressAppService
             author = contractInfo.ContractList.Items.First().Author;
         }
 
-        if (input.ChainId.IsNullOrEmpty())
-        {
-            return await GetMergeAddressDetailAsync(input, author, contractChainId);
-        }
 
-        if (!contractChainId.IsNullOrEmpty())
-        {
-            return await GetContractAddressDetailAsync(input, contractInfo);
-        }
+        return await GetMergeAddressDetailAsync(input, author, contractChainId);
 
-        if (contractInfo != null && contractInfo.ContractList != null && contractInfo.ContractList.Items != null &&
-            contractInfo.ContractList.Items.Count > 0)
-        {
-            return await GetContractAddressDetailAsync(input, contractInfo);
-        }
 
-        return await GetAccountDetailAsync(input);
     }
 
 
@@ -424,8 +411,6 @@ public class AddressAppService : IAddressAppService
         string author, string contractChainId)
     {
         var hashSet = new HashSet<string>();
-
-        var test = await _tokenAssetProvider.GetTokenValuesAsync("tDVW", input.Address);
 
 
         var priceDtoTask =

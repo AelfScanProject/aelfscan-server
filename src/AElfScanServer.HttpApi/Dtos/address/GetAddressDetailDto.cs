@@ -19,7 +19,7 @@ public class GetAddressDetailResultDto
     public long TokenHoldings { get; set; }
 
     public AddressType AddressType { get; set; } = AddressType.EoaAddress;
-    
+
     public List<string> AddressTypeList { get; set; }
 
     // only address type is caAddress|eocAddress
@@ -48,16 +48,6 @@ public class Portfolio
     public decimal MainTokenValue { get; set; }
     public decimal SideTokenValue { get; set; }
     public decimal TotalTokenValue { get; set; }
-    public MergeTokenInfo Total { get; set; } = new();
-    public MergeTokenInfo MainChain { get; set; } = new();
-    public MergeTokenInfo SideChain { get; set; } = new();
-}
-
-public class MergeTokenInfo
-{
-    public int Count { get; set; }
-    public decimal UsdValue { get; set; }
-    public decimal UsdValuePercentage { get; set; }
 }
 
 public class TransactionInfoDto
