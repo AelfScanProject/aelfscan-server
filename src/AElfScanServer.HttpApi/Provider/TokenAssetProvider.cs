@@ -136,6 +136,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
     }
     
     var totalCount = 0;
+    var symbolSet = new HashSet<string>();
     while (true)
     {
         var input = new TokenHolderInput
@@ -154,7 +155,11 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
             _logger.LogInformation($"HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
             break;
         }
-
+        
+        foreach (var accountTokenIndex in searchMergeAccountList.list)
+        {
+            symbolSet.Add(accountTokenIndex.Token.Symbol);
+        }
         totalCount += searchMergeAccountList.list.Count;
         var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
 
@@ -182,6 +187,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
 
     await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
     lastAddressProcessed.Count = totalCount;
+    lastAddressProcessed.SymbolSet = symbolSet;
 
     _logger.LogInformation("LastAddressProcessed chainId:{chainId} totalNftValueOfElf:{totalNftValueOfElf}, count:{count},symbolTypes:{symbolTypes}", 
         chainId, JsonConvert.SerializeObject(lastAddressProcessed),totalCount,symbolTypes);

@@ -329,7 +329,7 @@ public class AddressAppService : IAddressAppService
         result.AddressTypeList = addressTypeList;
 
         _logger.LogInformation(
-                $"GetMergeAddressDetailAsync: mainChainCurAddressAssetToken:{mainChainCurAddressAssetToken.GetTotalValueOfElf()}," +
+            $"GetMergeAddressDetailAsync: mainChainCurAddressAssetToken:{mainChainCurAddressAssetToken.GetTotalValueOfElf()}," +
             $"token count {mainChainCurAddressAssetToken.Count}," +
             $"sideChainCurAddressAssetToken:{sideChainCurAddressAssetToken.GetTotalValueOfElf()}," +
             $"count {sideChainCurAddressAssetToken.Count}," +
@@ -354,6 +354,11 @@ public class AddressAppService : IAddressAppService
         result.Author = author;
         result.ContractName = _globalOptions.GetContractName(contractChainId, input.Address);
 
+        mainChainCurAddressAssetNft.SymbolSet.UnionWith(sideChainCurAddressAssetNft.SymbolSet);
+        mainChainCurAddressAssetToken.SymbolSet.UnionWith(sideChainCurAddressAssetToken.SymbolSet);
+
+        result.Portfolio.TotalNftCount = mainChainCurAddressAssetNft.SymbolSet.Count;
+        result.Portfolio.TotalTokenCount = mainChainCurAddressAssetToken.SymbolSet.Count;
 
         result.ChainIds = hashSet.OrderByDescending(c => c).ToList();
 

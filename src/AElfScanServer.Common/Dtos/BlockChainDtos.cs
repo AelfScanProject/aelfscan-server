@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace AElfScanServer.Common.Dtos;
 
 public enum SymbolType
@@ -37,7 +39,8 @@ public class AddressAssetDto
     public double TotalNftValueOfElf { get; set; }
 
     public int Count { get; set; }
-
+    public HashSet<string> SymbolSet = new();
+    
     public double GetTotalValueOfElf()
     {
         return TotalTokenValueOfElf + TotalNftValueOfElf;

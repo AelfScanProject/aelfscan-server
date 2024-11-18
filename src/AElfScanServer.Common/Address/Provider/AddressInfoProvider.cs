@@ -15,7 +15,8 @@ namespace AElfScanServer.Common.Address.Provider;
 
 public interface IAddressInfoProvider
 {
-    Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset);
+    Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset,
+        List<SymbolType> symbolTypes = null);
 
     Task<AddressAssetDto> GetAddressAssetAsync(AddressAssetType type, string chainId, string address,
         List<SymbolType> symbolTypes = null);
@@ -25,8 +26,8 @@ public interface IAddressInfoProvider
 
 public class AddressInfoProvider : RedisCacheExtension, IAddressInfoProvider, ISingletonDependency
 {
-    private const string AddressAssetCacheKeyPrefix = "AddressAsset";
-    private const string AddressInfoCacheKeyPrefix = "AddressInfo";
+    private const string AddressAssetCacheKeyPrefix = "AddressAsset:";
+    private const string AddressInfoCacheKeyPrefix = "AddressInfo:";
 
     private readonly IOptionsMonitor<AddressAssetOptions> _addressAssetOptions;
 
@@ -36,11 +37,18 @@ public class AddressInfoProvider : RedisCacheExtension, IAddressInfoProvider, IS
         _addressAssetOptions = addressAssetOptions;
     }
 
-    public async Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset)
+    public async Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset,
+        List<SymbolType> symbolTypes = null)
     {
         await ConnectAsync();
 
-        var key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, addressAsset.Address);
+        var symbolStr = "";
+        if (!symbolTypes.IsNullOrEmpty())
+        {
+            symbolStr = string.Join("-", symbolTypes);
+        }
+
+        var key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, addressAsset.Address, symbolStr);
 
         await SetObjectAsync(key, addressAsset,
             TimeSpan.FromSeconds(_addressAssetOptions.CurrentValue.GetExpireSeconds(type)));

@@ -20,8 +20,6 @@ public class GetAddressDetailResultDto
 
     public string Author { get; set; }
 
-    // public string CodeHash { get; set; }
-    public string ContractTransactionHash { get; set; }
 
     public Portfolio Portfolio { get; set; } = new();
 
@@ -36,6 +34,8 @@ public class Portfolio
     public long SideNftCount { get; set; }
     public decimal MainTokenValue { get; set; }
     public decimal SideTokenValue { get; set; }
+    public long TotalTokenCount { get; set; }
+    public long TotalNftCount { get; set; }
 
     public decimal TotalTokenValue
     {
