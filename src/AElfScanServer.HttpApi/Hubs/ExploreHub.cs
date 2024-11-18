@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using AElf.ExceptionHandler;
+using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -24,6 +25,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using Volo.Abp.AspNetCore.SignalR;
 using Volo.Abp.Caching;
+using Volo.Abp.ObjectMapping;
 using Timer = System.Timers.Timer;
 
 namespace AElfScanServer.HttpApi.Hubs;
@@ -43,6 +45,8 @@ public class ExploreHub : AbpHub
     private readonly IChartDataService _chartDataService;
     private readonly IDistributedCache<List<TopTokenDto>> _cache;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
+    private readonly IObjectMapper _objectMapper;
+
 
     private static readonly ConcurrentDictionary<string, bool>
         _isPushRunning = new ConcurrentDictionary<string, bool>();
@@ -54,7 +58,8 @@ public class ExploreHub : AbpHub
         CurrentBpProduceDataStrategy bpDataStrategy,
         LatestBlocksDataStrategy latestBlocksDataStrategy, IOptionsMonitor<GlobalOptions> globalOptions,
         IChartDataService chartDataService,
-        IDistributedCache<List<TopTokenDto>> cache, ITokenIndexerProvider tokenIndexerProvider)
+        IDistributedCache<List<TopTokenDto>> cache, ITokenIndexerProvider tokenIndexerProvider,
+        IObjectMapper objectMapper)
     {
         _HomePageService = homePageService;
         _logger = logger;
@@ -70,6 +75,7 @@ public class ExploreHub : AbpHub
         _chartDataService = chartDataService;
         _cache = cache;
         _tokenIndexerProvider = tokenIndexerProvider;
+        _objectMapper = objectMapper;
     }
 
 
@@ -160,18 +166,33 @@ public class ExploreHub : AbpHub
         PushMergeBlockInfoAsync(request.ChainId);
     }
 
+
     public async Task RequestMergeChainInfo()
     {
         var transactions = await _latestTransactionsDataStrategy.DisplayData("");
+        var blocks = await GetLatestBlocks();
+
         var resp = new WebSocketMergeBlockInfoDto()
         {
             LatestTransactions = transactions,
+            LatestBlocks = blocks,
             TopTokens = await GetTopTokens()
         };
 
         await Groups.AddToGroupAsync(Context.ConnectionId,
             HubGroupHelper.GetMergeBlockInfoGroupName());
         await Clients.Caller.SendAsync("ReceiveMergeBlockInfo", resp);
+    }
+
+
+    public async Task<BlocksResponseDto> GetLatestBlocks()
+    {
+        var result = new BlocksResponseDto() { };
+        var searchMergeBlockList = EsIndex.SearchMergeBlockList(0, 10);
+        result.Blocks = _objectMapper.Map<List<BlockIndex>, List<BlockRespDto>>(searchMergeBlockList.Result.list);
+        result.Total = searchMergeBlockList.Result.totalCount;
+
+        return result;
     }
 
     [ExceptionHandler(typeof(Exception),
