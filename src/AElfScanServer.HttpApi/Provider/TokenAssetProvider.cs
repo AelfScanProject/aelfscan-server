@@ -128,7 +128,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
     int skipCount = 0;
 
     var types = new List<SymbolType>(){SymbolType.Token, SymbolType.Nft};
-    if (symbolTypes != null)
+    if (symbolTypes!= null)
     {
         types = symbolTypes;
     }

@@ -228,6 +228,9 @@ public class AddressAppService : IAddressAppService
 
     public async Task<GetAddressDetailResultDto> GetAccountDetailAsync(GetAddressDetailInput input)
     {
+        var test = await _tokenAssetProvider.GetTokenValuesAsync("tDVW", input.Address);
+
+        
         var accountChainIdsTask = GetAccountChainIdsAsync(input.Address, input.ChainId);
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);

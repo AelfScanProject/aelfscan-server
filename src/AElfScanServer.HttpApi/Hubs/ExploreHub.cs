@@ -176,7 +176,6 @@ public class ExploreHub : AbpHub
         {
             LatestTransactions = transactions,
             LatestBlocks = blocks,
-            TopTokens = await GetTopTokens()
         };
 
         await Groups.AddToGroupAsync(Context.ConnectionId,
@@ -252,11 +251,10 @@ public class ExploreHub : AbpHub
             await Task.Delay(2000);
             if (chainId.IsNullOrEmpty())
             {
-                var transactions = await _latestTransactionsDataStrategy.DisplayData("");
                 var resp = new WebSocketMergeBlockInfoDto()
                 {
-                    LatestTransactions = transactions,
-                    TopTokens = await GetTopTokens()
+                    LatestTransactions = await _latestTransactionsDataStrategy.DisplayData(""),
+                    LatestBlocks = await GetLatestBlocks()
                 };
                 await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
                     .SendAsync("ReceiveMergeBlockInfo", resp);
