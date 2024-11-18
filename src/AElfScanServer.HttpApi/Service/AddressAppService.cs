@@ -422,8 +422,12 @@ public class AddressAppService : IAddressAppService
         var sideChainHolderInfosTask = _tokenIndexerProvider.GetHolderInfoAsync(_globalOptions.SideChainId,
             input.Address,
             new List<SymbolType> { SymbolType.Token, SymbolType.Nft });
+
+        var tokenCountTask = EsIndex.GetTokenTypeHolders("AELF", new List<SymbolType>() { SymbolType.Token });
+        var nftCountTask =
+            EsIndex.GetTokenTypeHolders(_globalOptions.SideChainId, new List<SymbolType>() { SymbolType.Token });
         await Task.WhenAll(mainChainCurAddressAssetTask, holderInfosTask, priceDtoTask,
-            sideChainCurAddressAssetTask);
+            sideChainCurAddressAssetTask, tokenCountTask, nftCountTask);
 
         var addressTypeList = await addressTypeTask;
 
@@ -433,6 +437,8 @@ public class AddressAppService : IAddressAppService
         var sideChainCurAddressAsset = await sideChainCurAddressAssetTask;
         var priceDto = await priceDtoTask;
         var holderInfos = await holderInfosTask;
+        var tokenCount = await tokenCountTask;
+        var nftCount = await nftCountTask;
         var result = new GetAddressDetailResultDto();
 
         foreach (var mainChainHolderInfo in mainChainHolderInfos)
@@ -450,6 +456,8 @@ public class AddressAppService : IAddressAppService
         result.TokenHoldings = holderInfos.Count;
         result.Portfolio.MainChain.Count = mainChainHolderInfos.Count;
         result.Portfolio.SideChain.Count = sideChainHolderInfos.Count;
+        result.TokenCount = tokenCountTask.Result;
+        result.NftCount = nftCountTask.Result;
         result.Portfolio.Total.Count = await GetMergeTokens(mainChainHolderInfos, sideChainHolderInfos);
 
         result.Portfolio.MainChain.UsdValue =
