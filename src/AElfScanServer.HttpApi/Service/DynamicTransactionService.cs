@@ -545,7 +545,7 @@ public class DynamicTransactionService : IDynamicTransactionService
             }
 
 
-            if (requestDto.OrderInfos.IsNullOrEmpty() && requestDto.OrderInfos.Count > 1)
+            if (!requestDto.OrderInfos.IsNullOrEmpty() && requestDto.OrderInfos.Count > 1)
             {
 
                 var primarySortOrder = requestDto.OrderInfos[0].Sort.ToLower() == "desc"

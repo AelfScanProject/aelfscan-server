@@ -228,9 +228,6 @@ public class AddressAppService : IAddressAppService
 
     public async Task<GetAddressDetailResultDto> GetAccountDetailAsync(GetAddressDetailInput input)
     {
-        var test = await _tokenAssetProvider.GetTokenValuesAsync("tDVW", input.Address);
-
-
         var accountChainIdsTask = GetAccountChainIdsAsync(input.Address, input.ChainId);
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
@@ -428,6 +425,9 @@ public class AddressAppService : IAddressAppService
     {
         var hashSet = new HashSet<string>();
 
+        var test = await _tokenAssetProvider.GetTokenValuesAsync("tDVW", input.Address);
+
+
         var priceDtoTask =
             _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
 
@@ -453,9 +453,6 @@ public class AddressAppService : IAddressAppService
             });
 
 
-        // var tokenCountTask = EsIndex.GetTokenTypeHolders("AELF", new List<SymbolType>() { SymbolType.Token });
-        // var nftCountTask =
-        //     EsIndex.GetTokenTypeHolders(_globalOptions.SideChainId, new List<SymbolType>() { SymbolType.Token });
         await Task.WhenAll(mainChainCurAddressAssetTokenTask, priceDtoTask,
             sideChainCurAddressAssetTokenTask, mainChainCurAddressAssetNftTask,
             sideChainCurAddressAssetNftTask);
@@ -471,20 +468,19 @@ public class AddressAppService : IAddressAppService
         var sideChainCurAddressAssetNft = await sideChainCurAddressAssetNftTask;
 
         var priceDto = await priceDtoTask;
-        // var tokenCount = await tokenCountTask;
-        // var nftCount = await nftCountTask;
         var result = new GetAddressDetailResultDto();
-
-
         result.AddressTypeList = addressTypeList;
-        // result.TokenHoldings = holderInfos.Count;
-        // result.Portfolio.MainChain.Count = mainChainHolderInfos.Count;
-        // result.Portfolio.SideChain.Count = sideChainHolderInfos.Count;
-        // result.TokenCount = tokenCount;
-        // result.NftCount = nftCount;
-        // result.Portfolio.Total.Count = await GetMergeTokens(mainChainHolderInfos, sideChainHolderInfos);
 
-
+        _logger.LogInformation(
+            $"GetMergeAddressDetailAsync: mainChainCurAddressAssetToken:{mainChainCurAddressAssetToken.GetTotalValueOfElf()}," +
+            $"token count {mainChainCurAddressAssetToken.Count}," +
+            $"sideChainCurAddressAssetToken:{sideChainCurAddressAssetToken.GetTotalValueOfElf()}," +
+            $"count {sideChainCurAddressAssetToken.Count}," +
+            $"mainChainCurAddressAssetNft:{mainChainCurAddressAssetNft.GetTotalValueOfElf()}" +
+            $"count {mainChainCurAddressAssetNft.Count} " +
+            $"sideChainCurAddressAssetNft:{sideChainCurAddressAssetNft.GetTotalValueOfElf()} " +
+            $"count {sideChainCurAddressAssetNft.Count}");
+        
         result.Portfolio.MainTokenValue = Math.Round(
             new decimal(mainChainCurAddressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
             CommonConstant.UsdValueDecimals);
@@ -502,32 +498,6 @@ public class AddressAppService : IAddressAppService
 
         result.Author = author;
         result.ContractName = _globalOptions.GetContractName(contractChainId, input.Address);
-
-        // result.Portfolio.MainNftCount =
-        //     result.Portfolio.MainChain.UsdValue =
-        //         Math.Round(new decimal(mainChainCurAddressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
-        //             CommonConstant.UsdValueDecimals);
-        //
-        // result.Portfolio.SideChain.UsdValue =
-        //     Math.Round(new decimal(sideChainCurAddressAssetNft.GetTotalValueOfElf()) * priceDto.Price,
-        //         CommonConstant.UsdValueDecimals);
-        //
-        // result.Portfolio.Total.UsdValue = result.Portfolio.SideChain.UsdValue + result.Portfolio.MainChain.UsdValue;
-
-        // if (result.Portfolio.Total.UsdValue > 0)
-        // {
-        //     if (result.Portfolio.MainChain.UsdValue > 0)
-        //     {
-        //         result.Portfolio.MainChain.UsdValuePercentage =
-        //             result.Portfolio.MainChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
-        //     }
-        //
-        //     if (result.Portfolio.SideChain.UsdValue > 0)
-        //     {
-        //         result.Portfolio.SideChain.UsdValuePercentage =
-        //             result.Portfolio.SideChain.UsdValue / result.Portfolio.Total.UsdValue * 100;
-        //     }
-        // }
 
 
         result.ChainIds = hashSet.OrderByDescending(c => c).ToList();

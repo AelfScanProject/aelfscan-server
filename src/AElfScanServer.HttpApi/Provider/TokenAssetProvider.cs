@@ -149,7 +149,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
         
         if (searchMergeAccountList.list.Count == 0)
         {
-            _logger.LogInformation("HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
+            _logger.LogInformation($"HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
             break;
         }
 
