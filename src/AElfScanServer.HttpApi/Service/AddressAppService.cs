@@ -459,7 +459,6 @@ public class AddressAppService : IAddressAppService
 
         var addressTypeList = await addressTypeTask;
 
-
         var mainChainCurAddressAssetToken = await mainChainCurAddressAssetTokenTask;
         var sideChainCurAddressAssetToken = await sideChainCurAddressAssetTokenTask;
 
@@ -480,15 +479,13 @@ public class AddressAppService : IAddressAppService
             $"count {mainChainCurAddressAssetNft.Count} " +
             $"sideChainCurAddressAssetNft:{sideChainCurAddressAssetNft.GetTotalValueOfElf()} " +
             $"count {sideChainCurAddressAssetNft.Count}");
-        
+
         result.Portfolio.MainTokenValue = Math.Round(
             new decimal(mainChainCurAddressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
             CommonConstant.UsdValueDecimals);
         result.Portfolio.SideTokenValue = Math.Round(
             new decimal(sideChainCurAddressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
             CommonConstant.UsdValueDecimals);
-        result.Portfolio.MainTokenValue = mainChainCurAddressAssetToken.Count;
-        result.Portfolio.SideTokenValue = sideChainCurAddressAssetToken.Count;
 
         result.Portfolio.MainNftCount = mainChainCurAddressAssetNft.Count;
         result.Portfolio.SideNftCount = sideChainCurAddressAssetNft.Count;
