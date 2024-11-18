@@ -181,7 +181,8 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
     await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
     lastAddressProcessed.Count = totalCount;
 
-    _logger.LogInformation("LastAddressProcessed chainId:{chainId} addressAssetDto: {totalNftValueOfElf}", chainId, JsonConvert.SerializeObject(lastAddressProcessed));
+    _logger.LogInformation("LastAddressProcessed chainId:{chainId} addressAssetDto: {totalNftValueOfElf}, count:{count},symbolTypes:{symbolTypes}", 
+        chainId, JsonConvert.SerializeObject(lastAddressProcessed),totalCount,symbolTypes);
     _logger.LogInformation("It took {Elapsed} ms to execute handle token values for chainId: {chainId}", stopwatch.ElapsedMilliseconds, chainId);
 
     return address.IsNullOrEmpty() ? null : lastAddressProcessed;
