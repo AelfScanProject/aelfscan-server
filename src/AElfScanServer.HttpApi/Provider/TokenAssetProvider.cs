@@ -34,7 +34,7 @@ public interface ITokenAssetProvider
 {
     public Task HandleDailyTokenValuesAsync(string chainId = "");
 
-    public Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address);
+    public Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address,List<SymbolType> symbolTypes=null);
 }
 
 [Ump]
@@ -99,11 +99,11 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         Message = "GetTokenValuesAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","address"])]
-    public virtual async Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address)
+    public virtual async Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address,List<SymbolType> symbolTypes)
     {
        
             var addressAsset =
-                await _addressInfoProvider.GetAddressAssetAsync(AddressAssetType.Current, chainId, address);
+                await _addressInfoProvider.GetAddressAssetAsync(AddressAssetType.Current, chainId, address,symbolTypes);
 
             if (addressAsset != null)
             {
@@ -112,7 +112,7 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
 
             await using var handle = await _distributedLock.TryAcquireAsync($"GetTokenValues-{address}");
 
-            return await HandleTokenValuesAsync(AddressAssetType.Current, chainId, address);
+            return await HandleTokenValuesAsync(AddressAssetType.Current, chainId, address,symbolTypes);
        
     }
 
@@ -132,6 +132,8 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
     {
         types = symbolTypes;
     }
+    
+    var totalCount = 0;
     while (true)
     {
         var input = new TokenHolderInput
@@ -150,7 +152,8 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
             _logger.LogInformation("HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
             break;
         }
-        
+
+        totalCount = searchMergeAccountList.list.Count;
         var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
 
         foreach (var (valueAddress, assetDto) in valuesDict)
@@ -176,6 +179,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
     }
 
     await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
+    lastAddressProcessed.Count = totalCount;
 
     _logger.LogInformation("LastAddressProcessed chainId:{chainId} addressAssetDto: {totalNftValueOfElf}", chainId, JsonConvert.SerializeObject(lastAddressProcessed));
     _logger.LogInformation("It took {Elapsed} ms to execute handle token values for chainId: {chainId}", stopwatch.ElapsedMilliseconds, chainId);

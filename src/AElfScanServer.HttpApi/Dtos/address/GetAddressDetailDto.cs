@@ -19,10 +19,7 @@ public class GetAddressDetailResultDto
     public long TokenHoldings { get; set; }
 
     public AddressType AddressType { get; set; } = AddressType.EoaAddress;
-
-    // public decimal TotalValueOfUsd { get; set; }
-    // public decimal TotalValueOfElf { get; set; }
-    // public decimal TotalValueOfUsdChangeRate { get; set; }
+    
     public List<string> AddressTypeList { get; set; }
 
     // only address type is caAddress|eocAddress
@@ -37,8 +34,6 @@ public class GetAddressDetailResultDto
     // public string CodeHash { get; set; }
     public string ContractTransactionHash { get; set; }
 
-    public long TokenCount { get; set; }
-    public long NftCount { get; set; }
     public Portfolio Portfolio { get; set; } = new();
 
     public List<string> ChainIds { get; set; } = new();
@@ -46,6 +41,13 @@ public class GetAddressDetailResultDto
 
 public class Portfolio
 {
+    public long MainTokenCount { get; set; }
+    public long SideTokenCount { get; set; }
+    public long MainNftCount { get; set; }
+    public long SideNftCount { get; set; }
+    public decimal MainTokenValue { get; set; }
+    public decimal SideTokenValue { get; set; }
+    public decimal TotalTokenValue { get; set; }
     public MergeTokenInfo Total { get; set; } = new();
     public MergeTokenInfo MainChain { get; set; } = new();
     public MergeTokenInfo SideChain { get; set; } = new();

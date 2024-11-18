@@ -6,6 +6,7 @@ public enum SymbolType
     Nft,
     Nft_Collection
 }
+
 public enum AddressType
 {
     EoaAddress,
@@ -30,10 +31,12 @@ public class CommonAddressDto
 public class AddressAssetDto
 {
     public string Address { get; set; }
-    
+
     public double TotalTokenValueOfElf { get; set; }
-    
+
     public double TotalNftValueOfElf { get; set; }
+
+    public int Count { get; set; }
 
     public double GetTotalValueOfElf()
     {
