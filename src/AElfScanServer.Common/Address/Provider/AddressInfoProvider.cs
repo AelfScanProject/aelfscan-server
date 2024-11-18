@@ -52,7 +52,7 @@ public class AddressInfoProvider : RedisCacheExtension, IAddressInfoProvider, IS
         await ConnectAsync();
 
         var key = "";
-        if (!symbolTypes.IsNullOrEmpty())
+        if (symbolTypes.IsNullOrEmpty())
         {
             key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, address);
         }

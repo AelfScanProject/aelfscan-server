@@ -329,7 +329,7 @@ public class AddressAppService : IAddressAppService
         result.AddressTypeList = addressTypeList;
 
         _logger.LogInformation(
-            $"GetMergeAddressDetailAsync: mainChainCurAddressAssetToken:{mainChainCurAddressAssetToken.GetTotalValueOfElf()}," +
+                $"GetMergeAddressDetailAsync: mainChainCurAddressAssetToken:{mainChainCurAddressAssetToken.GetTotalValueOfElf()}," +
             $"token count {mainChainCurAddressAssetToken.Count}," +
             $"sideChainCurAddressAssetToken:{sideChainCurAddressAssetToken.GetTotalValueOfElf()}," +
             $"count {sideChainCurAddressAssetToken.Count}," +

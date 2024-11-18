@@ -36,7 +36,11 @@ public class Portfolio
     public long SideNftCount { get; set; }
     public decimal MainTokenValue { get; set; }
     public decimal SideTokenValue { get; set; }
-    public decimal TotalTokenValue { get; set; }
+
+    public decimal TotalTokenValue
+    {
+        get { return MainTokenValue + SideTokenValue; }
+    }
 }
 
 public class TransactionInfoDto
