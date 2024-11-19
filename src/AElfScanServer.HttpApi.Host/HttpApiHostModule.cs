@@ -129,62 +129,6 @@ public class HttpApiHostModule : AbpModule
     }
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-        // var app = context.GetApplicationBuilder();
-        //
-        // app.UseAbpRequestLocalization();
-        // app.UseCorrelationId();
-        // app.UseStaticFiles();
-        // app.UseRouting();
-        // app.UseCors();
-        // app.UseAuthentication();
-        //
-        //
-        // if (MultiTenancyConsts.IsEnabled)
-        // {
-        //     app.UseMultiTenancy();
-        // }
-        //
-        // app.UseAuditing();
-        // app.UseAbpSerilogEnrichers();
-        // app.UseUnitOfWork();
-        //
-        // app.UseHttpsRedirection();
-        // app.UseAuthorization();
-        // app.UseConfiguredEndpoints();
-        
-        // var app = context.GetApplicationBuilder();
-        // var env = context.GetEnvironment();
-        //
-        // if (env.IsDevelopment())
-        // {
-        //     app.UseDeveloperExceptionPage();
-        // }
-        //
-        // app.UseAbpRequestLocalization();
-        // app.UseCorrelationId();
-        // app.UseStaticFiles();
-        //
-        // app.UseCors();
-        // app.UseAuthentication();
-        // app.UseRouting();
-        // if (MultiTenancyConsts.IsEnabled)
-        // {
-        //     app.UseMultiTenancy();
-        // }
-        //
-        // app.UseUnitOfWork();
-        // app.UseDynamicClaims();
-        // app.UseAuthorization();
-        //
-        //
-        //
-        // app.UseAuditing();
-        // app.UseAbpSerilogEnrichers();
-        // app.UseConfiguredEndpoints();
-        // app.UseEndpoints(endpoints =>
-        // {
-        //     endpoints.MapControllers();
-        // });
         
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();

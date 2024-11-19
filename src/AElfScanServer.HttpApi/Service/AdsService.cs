@@ -35,6 +35,8 @@ public interface IAdsService
 {
     public Task<AdsResp> GetAds(AdsReq req);
 
+    public Task<List<AdsResp>> GetAdsDetailList(int size);
+
     public Task<AdsIndex> UpdateAds(UpdateAdsReq req);
 
 
@@ -94,6 +96,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
         _twitterProvider = twitterProvider;
     }
 
+
     public async Task<AdsBannerListResp> GetAdsBannerList(GetAdsBannerListReq req)
     {
         var result = new AdsBannerListResp();
@@ -139,7 +142,6 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
 
     public async Task<List<TwitterIndex>> GetLatestTwitterListAsync(int maxResultCount)
     {
-
         var queryable = await _twitterRepository.GetQueryableAsync();
         return queryable.OrderByDescending(c => c.Id).Take(maxResultCount).ToList();
     }
@@ -160,6 +162,15 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
            var list = _objectMapper.Map<List<Tweet>, List<TwitterIndex>>(twitterList);
            await _twitterRepository.AddOrUpdateManyAsync(list);
        }
+    }
+
+    public async Task<List<AdsResp>> GetAdsDetailList(int size)
+    {
+        var adsIndices = await QueryAdsList(size);
+
+        var adsResps = _objectMapper.Map<List<AdsIndex>, List<AdsResp>>(adsIndices);
+
+        return adsResps;
     }
 
     public async Task<AdsListResp> GetAdsList(GetAdsListReq req)
@@ -295,6 +306,38 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
         adsResp.SearchKey = key;
         RedisDatabase.StringSet(key, 1);
         return _objectMapper.Map<AdsIndex, AdsResp>(adsList.First());
+    }
+
+
+    public async Task<List<AdsIndex>> QueryAdsList(int size)
+    {
+        var utcMilliSeconds = DateTime.UtcNow.ToUtcMilliSeconds();
+        var searchResponse = await _elasticClient.SearchAsync<AdsIndex>(s => s
+            .Index("adsindex")
+            .Query(q => q
+                .Bool(b => b
+                    .Must(
+                        m => m.Range(r => r
+                            .Field(f => f.StartTime)
+                            .LessThanOrEquals(utcMilliSeconds)
+                        ),
+                        m => m.Range(r => r
+                            .Field(f => f.EndTime)
+                            .GreaterThanOrEquals(utcMilliSeconds)
+                        )
+                    )
+                )
+            )
+            .Sort(sort => sort
+                .Field(f => f
+                    .Field(c => c.StartTime)
+                    .Order(SortOrder.Ascending)
+                )
+            )
+            .Size(size)
+        );
+
+        return searchResponse.Documents.ToList();
     }
 
 
