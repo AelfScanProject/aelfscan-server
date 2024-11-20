@@ -138,30 +138,7 @@ public class ExploreHub : AbpHub
 
     public async Task RequestMergeBlockInfo(MergeBlockInfoReq request)
     {
-        if (request.ChainId.IsNullOrEmpty())
-        {
-            await RequestMergeChainInfo();
-        }
-        else
-        {
-            var startNew = Stopwatch.StartNew();
-            var transactions = await _latestTransactionsDataStrategy.DisplayData(request.ChainId);
-            var blocks = await _latestBlocksDataStrategy.DisplayData(request.ChainId);
-            var resp = new WebSocketMergeBlockInfoDto()
-            {
-                LatestTransactions = transactions,
-                LatestBlocks = blocks
-            };
-
-            await Groups.AddToGroupAsync(Context.ConnectionId,
-                HubGroupHelper.GetMergeBlockInfoGroupName(request.ChainId));
-            _logger.LogInformation("RequestMergeBlockInfo: {chainId}", request.ChainId);
-            await Clients.Caller.SendAsync("ReceiveMergeBlockInfo", resp);
-
-            startNew.Stop();
-            _logger.LogInformation("RequestMergeBlockInfo costTime:{chainId},{costTime}", request.ChainId,
-                startNew.Elapsed.TotalSeconds);
-        }
+        await RequestMergeChainInfo();
 
         PushMergeBlockInfoAsync(request.ChainId);
     }
@@ -238,46 +215,27 @@ public class ExploreHub : AbpHub
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,
         FinallyTargetType = typeof(ExploreHub), FinallyMethodName = nameof(FinallyPushMergeBlockInfoAsync))]
-    public virtual async Task PushMergeBlockInfoAsync(string chainId = "")
+    public virtual async Task PushMergeBlockInfoAsync()
     {
-        var key = "mergeBlockInfo" + chainId;
+        var key = "mergeBlockInfo";
         if (!_isPushRunning.TryAdd(key, true))
         {
-            _logger.LogInformation($"PushMergeBlockInfoAsync {key}");
+            _logger.LogInformation("PushMergeBlockInfoAsync return");
             return;
         }
 
         while (true)
         {
             await Task.Delay(2000);
-            if (chainId.IsNullOrEmpty())
+
+            var resp = new WebSocketMergeBlockInfoDto()
             {
-                var resp = new WebSocketMergeBlockInfoDto()
-                {
-                    LatestTransactions = await _latestTransactionsDataStrategy.DisplayData(""),
-                    LatestBlocks = await GetLatestBlocks()
-                };
-                await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
-                    .SendAsync("ReceiveMergeBlockInfo", resp);
-                _logger.LogInformation("push merge PushMergeBlockInfoAsync");
-                
-            }
-            else
-            {
-                var startNew = Stopwatch.StartNew();
-                var transactions = await _latestTransactionsDataStrategy.DisplayData(chainId);
-                var blocks = await _latestBlocksDataStrategy.DisplayData(chainId);
-                var resp = new WebSocketMergeBlockInfoDto()
-                {
-                    LatestTransactions = transactions,
-                    LatestBlocks = blocks
-                };
-                await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName(chainId))
-                    .SendAsync("ReceiveMergeBlockInfo", resp);
-                startNew.Stop();
-                _logger.LogInformation("PushMergeBlockInfoAsync costTime:{chainId},{costTime}", chainId,
-                    startNew.Elapsed.TotalSeconds);
-            }
+                LatestTransactions = await _latestTransactionsDataStrategy.DisplayData(""),
+                LatestBlocks = await GetLatestBlocks()
+            };
+            await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
+                .SendAsync("ReceiveMergeBlockInfo", resp);
+            _logger.LogInformation("push merge PushMergeBlockInfoAsync");
         }
     }
 
