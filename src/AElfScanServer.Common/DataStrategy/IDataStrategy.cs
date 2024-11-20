@@ -81,6 +81,7 @@ public abstract class DataStrategyBase<TInput, TOutPut> : AbpRedisCache, IDataSt
     {
         var key = DisplayKey(input);
         var s = await _cache.GetAsync(key);
+        DataStrategyLogger.LogInformation($"key:{key},value:{s}");
         return JsonConvert.DeserializeObject<TOutPut>(s);
     }
 

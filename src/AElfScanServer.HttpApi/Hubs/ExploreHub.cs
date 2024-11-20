@@ -171,44 +171,6 @@ public class ExploreHub : AbpHub
         return result;
     }
 
-    [ExceptionHandler(typeof(Exception),
-        Message = "GetTopTokens err",
-        TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New)]
-    public virtual async Task<List<TopTokenDto>> GetTopTokens()
-    {
-        var key = "TopTokens";
-        var list = await _cache.GetAsync(key);
-        if (!list.IsNullOrEmpty())
-        {
-            return list;
-        }
-
-        var searchMergeTokenList =
-            await EsIndex.SearchMergeTokenList(0, 6, "desc", null, _globalOptions.CurrentValue.SpecialSymbols);
-
-        var topTokenDtos = new List<TopTokenDto>();
-        foreach (var tokenInfoIndex in searchMergeTokenList.list)
-        {
-            topTokenDtos.Add(new TopTokenDto
-            {
-                Symbol = tokenInfoIndex.Symbol,
-                ChainIds = tokenInfoIndex.ChainIds.OrderByDescending(c => c).ToList(),
-                Transfers = tokenInfoIndex.TransferCount,
-                Holder = tokenInfoIndex.HolderCount,
-                TokenName = tokenInfoIndex.TokenName,
-                Type = tokenInfoIndex.Type,
-                ImageUrl = await _tokenIndexerProvider.GetTokenImageAsync(tokenInfoIndex.Symbol,
-                    tokenInfoIndex.IssueChainId, tokenInfoIndex.ExternalInfo)
-            });
-        }
-
-        await _cache.SetAsync(key, topTokenDtos, new DistributedCacheEntryOptions()
-        {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10)
-        });
-        return topTokenDtos;
-    }
 
     [ExceptionHandler(typeof(Exception),
         Message = "PushMergeBlockInfoAsync err",
