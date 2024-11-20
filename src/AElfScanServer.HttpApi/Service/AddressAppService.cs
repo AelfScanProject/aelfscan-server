@@ -221,11 +221,6 @@ public class AddressAppService : IAddressAppService
     {
         var hashSet = new HashSet<string>();
 
-        if (!contractChainId.IsNullOrEmpty())
-        {
-            hashSet.Add(contractChainId);
-        }
-
         var mainChainIdTask = GetAccountChainIdAsync(input.Address, "AELF");
         var sideChainIdTask = GetAccountChainIdAsync(input.Address, _globalOptions.SideChainId);
         var priceDtoTask =
@@ -277,6 +272,11 @@ public class AddressAppService : IAddressAppService
         if (!sideChainId.IsNullOrEmpty())
         {
             hashSet.Add(sideChainId);
+        }
+
+        if (!contractChainId.IsNullOrEmpty())
+        {
+            hashSet = new HashSet<string>() { contractChainId };
         }
 
         var priceDto = await priceDtoTask;
