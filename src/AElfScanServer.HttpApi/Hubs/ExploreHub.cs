@@ -140,7 +140,7 @@ public class ExploreHub : AbpHub
     {
         await RequestMergeChainInfo();
 
-        PushMergeBlockInfoAsync(request.ChainId);
+        PushMergeBlockInfoAsync();
     }
 
 
