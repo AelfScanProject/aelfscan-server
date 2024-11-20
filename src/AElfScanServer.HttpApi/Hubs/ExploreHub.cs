@@ -243,6 +243,7 @@ public class ExploreHub : AbpHub
         var key = "mergeBlockInfo" + chainId;
         if (!_isPushRunning.TryAdd(key, true))
         {
+            _logger.LogInformation($"PushMergeBlockInfoAsync {key}");
             return;
         }
 
@@ -258,6 +259,8 @@ public class ExploreHub : AbpHub
                 };
                 await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
                     .SendAsync("ReceiveMergeBlockInfo", resp);
+                _logger.LogInformation("push merge PushMergeBlockInfoAsync");
+                
             }
             else
             {
