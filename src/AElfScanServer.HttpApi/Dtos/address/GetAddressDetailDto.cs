@@ -34,10 +34,18 @@ public class Portfolio
     public long SideNftCount { get; set; }
     public decimal MainTokenValue { get; set; }
     public decimal SideTokenValue { get; set; }
+
+    public decimal MainTokenValueOfElf { get; set; }
+    public decimal SideTokenValueOfElf { get; set; }
     public long TotalTokenCount { get; set; }
     public long TotalNftCount { get; set; }
 
     public decimal TotalTokenValue
+    {
+        get { return MainTokenValue + SideTokenValue; }
+    }
+
+    public decimal TotalTokenValueOfElf
     {
         get { return MainTokenValue + SideTokenValue; }
     }

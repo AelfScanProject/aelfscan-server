@@ -300,6 +300,11 @@ public class AddressAppService : IAddressAppService
             new decimal(sideChainCurAddressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
             CommonConstant.UsdValueDecimals);
 
+        result.Portfolio.MainTokenValueOfElf = Math.Round(
+            new decimal(mainChainCurAddressAssetToken.GetTotalValueOfElf()));
+        result.Portfolio.SideTokenValueOfElf = Math.Round(
+            new decimal(sideChainCurAddressAssetToken.GetTotalValueOfElf()));
+
         result.Portfolio.MainNftCount = mainChainCurAddressAssetNft.Count;
         result.Portfolio.SideNftCount = sideChainCurAddressAssetNft.Count;
 
@@ -320,22 +325,6 @@ public class AddressAppService : IAddressAppService
         return result;
     }
 
-
-    public async Task<int> GetMergeTokens(List<HolderInfo> mainChain, List<HolderInfo> sideChain)
-    {
-        var hashSet = new HashSet<string>();
-        foreach (var holderInfo in mainChain)
-        {
-            hashSet.Add(holderInfo.Symbol);
-        }
-
-        foreach (var holderInfo in sideChain)
-        {
-            hashSet.Add(holderInfo.Symbol);
-        }
-
-        return hashSet.Count;
-    }
 
     public async Task<GetAddressTokenListResultDto> GetAddressTokenListAsync(
         GetAddressTokenListInput input)
