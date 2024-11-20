@@ -649,7 +649,8 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
     public virtual async Task<BlocksResponseDto> GetBlocksAsync(BlocksRequestDto requestDto)
     
-    { return await GetMergeBlocksAsync(requestDto);
+    { 
+        return await GetMergeBlocksAsync(requestDto);
     }
     
 
