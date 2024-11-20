@@ -164,9 +164,9 @@ public class ExploreHub : AbpHub
     public async Task<BlocksResponseDto> GetLatestBlocks()
     {
         var result = new BlocksResponseDto() { };
-        var searchMergeBlockList = EsIndex.SearchMergeBlockList(0, 10);
-        result.Blocks = _objectMapper.Map<List<BlockIndex>, List<BlockRespDto>>(searchMergeBlockList.Result.list);
-        result.Total = searchMergeBlockList.Result.totalCount;
+        var searchMergeBlockList = await EsIndex.SearchMergeBlockList(0, 10);
+        result.Blocks = _objectMapper.Map<List<BlockIndex>, List<BlockRespDto>>(searchMergeBlockList.list);
+        result.Total = searchMergeBlockList.totalCount;
 
         return result;
     }
