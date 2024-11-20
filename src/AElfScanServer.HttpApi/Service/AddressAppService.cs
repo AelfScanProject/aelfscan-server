@@ -192,7 +192,7 @@ public class AddressAppService : IAddressAppService
         if (contractInfo != null && contractInfo.ContractList != null && contractInfo.ContractList.Items != null &&
             contractInfo.ContractList.Items.Count > 0)
         {
-            contractChainId = contractInfo.ContractList.Items.First().ChainId;
+            contractChainId = contractInfo.ContractList.Items.First().Metadata.ChainId;
             author = contractInfo.ContractList.Items.First().Author;
         }
 
@@ -381,7 +381,7 @@ public class AddressAppService : IAddressAppService
     public async Task<GetAddressNftListResultDto> GetAddressNftListAsync(GetAddressTokenListInput input)
     {
         IndexerTokenHolderInfoListDto holderInfos;
-        var types = new List<SymbolType> { SymbolType.Nft };
+        var types = new List<SymbolType> { SymbolType.Nft }; 
         if (!input.Search.IsNullOrWhiteSpace())
         {
             var tokenListInputNft = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
