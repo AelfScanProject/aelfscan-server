@@ -105,52 +105,7 @@ public class AddressAppService : IAddressAppService
             SearchAfter = input.SearchAfter
         };
 
-        if (input.ChainId.IsNullOrEmpty())
-        {
-            return await GetMergeAddressListAsync(holderInput);
-        }
-
-        var tokenHolderInfoTask = _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
-        var tokenDetailTask = _tokenIndexerProvider.GetTokenDetailAsync(input.ChainId, CurrencyConstant.ElfCurrency);
-
-        await Task.WhenAll(tokenHolderInfoTask, tokenDetailTask);
-
-        var tokenHolderAccountlist = await tokenHolderInfoTask;
-        var indexerTokenList = await tokenDetailTask;
-        var tokenInfo = indexerTokenList[0];
-
-        var result = new GetAddressListResultDto
-        {
-            Total = tokenHolderAccountlist.TotalCount,
-            TotalBalance = DecimalHelper.Divide(indexerTokenList.Sum(c => c.Supply), tokenInfo.Decimals)
-        };
-
-
-        var contractInfosDict =
-            await _indexerGenesisProvider.GetContractListAsync(input.ChainId,
-                tokenHolderAccountlist.Items.Select(address => address.Address).ToList());
-
-
-        var addressList = new List<GetAddressInfoResultDto>();
-        foreach (var info in tokenHolderAccountlist.Items)
-        {
-            var addressResult = _objectMapper.Map<IndexerTokenHolderInfoDto, GetAddressInfoResultDto>(info);
-            addressResult.ChainIds = new List<string>() { info.Metadata.ChainId };
-            addressResult.Percentage = Math.Round((decimal)info.Amount / tokenInfo.Supply * 100,
-                CommonConstant.LargerPercentageValueDecimals);
-            addressResult.AddressType =
-                contractInfosDict.TryGetValue(info.Address + info.Metadata.ChainId, out var addressInfo)
-                    ? AddressType.ContractAddress
-                    : AddressType.EoaAddress;
-            addressList.Add(addressResult);
-        }
-
-        //add sort 
-        addressList = addressList.OrderByDescending(item => item.Balance)
-            .ThenByDescending(item => item.TransactionCount)
-            .ToList();
-        result.List = addressList;
-        return result;
+        return await GetMergeAddressListAsync(holderInput);
     }
 
     public async Task<GetAddressListResultDto> GetMergeAddressListAsync(TokenHolderInput input)
@@ -433,55 +388,6 @@ public class AddressAppService : IAddressAppService
         };
     }
 
-
-    public async Task<GetAddressTokenListResultDto> GetMergeAddressTokenListAsync(
-        GetAddressTokenListInput input)
-    {
-        input.SetDefaultSort();
-        Dictionary<string, IndexerTokenInfoDto> tokenDict;
-        IndexerTokenHolderInfoListDto holderInfos;
-        //search token name or symbol
-        if (!input.Search.IsNullOrWhiteSpace())
-        {
-            var tokenListInput = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
-            var tokenInfos = await _tokenIndexerProvider.GetAllTokenInfosAsync(tokenListInput);
-            if (tokenInfos.IsNullOrEmpty())
-            {
-                return new GetAddressTokenListResultDto();
-            }
-
-            tokenDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
-            holderInfos = await GetTokenHolderInfosAsync(input, searchSymbols: tokenDict.Keys.ToList());
-            if (holderInfos.Items.IsNullOrEmpty())
-            {
-                return new GetAddressTokenListResultDto();
-            }
-        }
-        else
-        {
-            holderInfos = await GetTokenHolderInfosAsync(input);
-            if (holderInfos.Items.IsNullOrEmpty())
-            {
-                return new GetAddressTokenListResultDto();
-            }
-
-            tokenDict = await _tokenIndexerProvider.GetTokenDictAsync(input.ChainId,
-                holderInfos.Items.Select(i => i.Token.Symbol).ToList());
-        }
-
-        var elfPriceDto =
-            await _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
-
-        var tokenInfoList = await GetTokenInfoListAsync(holderInfos.Items, tokenDict, elfPriceDto);
-
-        return new GetAddressTokenListResultDto
-        {
-            AssetInUsd = tokenInfoList.Sum(i => i.ValueOfUsd),
-            AssetInElf = tokenInfoList.Sum(i => i.ValueOfElf),
-            Total = holderInfos.TotalCount,
-            List = tokenInfoList
-        };
-    }
 
     public async Task<GetAddressNftListResultDto> GetAddressNftListAsync(GetAddressTokenListInput input)
     {

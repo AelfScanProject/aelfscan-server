@@ -18,14 +18,17 @@ using AElfScanServer.HttpApi.DataStrategy;
 using AElfScanServer.HttpApi.Helper;
 using AElfScanServer.HttpApi.Service;
 using AElfScanServer.DataStrategy;
+using Elasticsearch.Net;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
+using Nest;
 using Volo.Abp.AspNetCore.SignalR;
 using Volo.Abp.Caching;
 using Volo.Abp.ObjectMapping;
+using BlockRespDto = AElfScanServer.HttpApi.Dtos.BlockRespDto;
 using Timer = System.Timers.Timer;
 
 namespace AElfScanServer.HttpApi.Hubs;
@@ -46,6 +49,7 @@ public class ExploreHub : AbpHub
     private readonly IDistributedCache<List<TopTokenDto>> _cache;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IObjectMapper _objectMapper;
+    private readonly IElasticClient _elasticClient;
 
 
     private static readonly ConcurrentDictionary<string, bool>
@@ -59,7 +63,7 @@ public class ExploreHub : AbpHub
         LatestBlocksDataStrategy latestBlocksDataStrategy, IOptionsMonitor<GlobalOptions> globalOptions,
         IChartDataService chartDataService,
         IDistributedCache<List<TopTokenDto>> cache, ITokenIndexerProvider tokenIndexerProvider,
-        IObjectMapper objectMapper)
+        IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options)
     {
         _HomePageService = homePageService;
         _logger = logger;
@@ -76,6 +80,11 @@ public class ExploreHub : AbpHub
         _cache = cache;
         _tokenIndexerProvider = tokenIndexerProvider;
         _objectMapper = objectMapper;
+        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
+        var connectionPool = new StaticConnectionPool(uris);
+        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
+        _elasticClient = new ElasticClient(settings);
+        EsIndex.SetElasticClient(_elasticClient);
     }
 
 
@@ -165,8 +174,19 @@ public class ExploreHub : AbpHub
     {
         var result = new BlocksResponseDto() { };
         var searchMergeBlockList = await EsIndex.SearchMergeBlockList(0, 10);
-        result.Blocks = _objectMapper.Map<List<BlockIndex>, List<BlockRespDto>>(searchMergeBlockList.list);
-        result.Total = searchMergeBlockList.totalCount;
+
+        var blockRespDtos = new List<BlockRespDto>();
+        foreach (var blockIndex in searchMergeBlockList.list)
+        {
+            blockRespDtos.Add(new BlockRespDto()
+            {
+                BlockHeight = blockIndex.BlockHeight,
+                Timestamp = blockIndex.Timestamp,
+                TransactionCount = blockIndex.TransactionCount,
+            });
+        }
+
+        result.Blocks = blockRespDtos;
 
         return result;
     }
@@ -190,10 +210,11 @@ public class ExploreHub : AbpHub
         {
             await Task.Delay(2000);
 
+            var blocksResponseDto = await GetLatestBlocks();
             var resp = new WebSocketMergeBlockInfoDto()
             {
                 LatestTransactions = await _latestTransactionsDataStrategy.DisplayData(""),
-                LatestBlocks = await GetLatestBlocks()
+                LatestBlocks = blocksResponseDto
             };
             await _hubContext.Clients.Groups(HubGroupHelper.GetMergeBlockInfoGroupName())
                 .SendAsync("ReceiveMergeBlockInfo", resp);

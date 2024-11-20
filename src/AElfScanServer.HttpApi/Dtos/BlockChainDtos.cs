@@ -165,7 +165,6 @@ public class WebSocketMergeBlockInfoDto
     public TransactionsResponseDto LatestTransactions { get; set; }
     public BlocksResponseDto LatestBlocks { get; set; }
 
-    public List<TopTokenDto> TopTokens { get; set; }
 }
 
 public class TransactionsResponseDto
