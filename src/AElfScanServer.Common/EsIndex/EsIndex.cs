@@ -382,9 +382,9 @@ public class EsIndex
                 .Bool(b => b
                     .Must(must => must
                             .Terms(t => t.Field(f => f.Token.Type)
-                                .Terms(tokenTypeList)), // Token.Type 在 tokenTypeList 中
+                                .Terms(tokenTypeList)), 
                         must => !string.IsNullOrEmpty(chainId)
-                            ? must.Terms(t => t.Field(f => f.ChainIds).Terms(chainId)) // 如果 chainId 不为空，则添加该条件
+                            ? must.Terms(t => t.Field(f => f.ChainIds).Terms(chainId)) 
                             : null,
                         must => must.Range(r => r.Field(f => f.FormatAmount).GreaterThan(0)) // FormatAmount > 0
                     )
