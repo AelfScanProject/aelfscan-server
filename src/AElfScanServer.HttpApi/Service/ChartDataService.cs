@@ -1429,34 +1429,78 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<BlockProduceRateResp> GetBlockProduceRateAsync(ChartDataRequest request)
     {
-        var queryableAsync = await _blockProduceIndexRepository.GetQueryableAsync();
+        var tasks = new List<Task>();
 
-
-        var list = queryableAsync.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Skip(0).Take(10000)
+        var mainList = new List<DailyBlockProduceCount>();
+        var sideList = new List<DailyBlockProduceCount>();
+        tasks.Add(_blockProduceIndexRepository.GetQueryableAsync().ContinueWith(task =>
+        {
+          var list= task.Result.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Skip(0).Take(10000)
             .ToList();
+          
+          var destination = _objectMapper.Map<List<DailyBlockProduceCountIndex>, List<DailyBlockProduceCount>>(list);
 
-
-        var destination = _objectMapper.Map<List<DailyBlockProduceCountIndex>, List<DailyBlockProduceCount>>(list);
-
-        var orderList = destination.OrderBy(c => c.BlockProductionRate);
-
-
+        
         foreach (var i in destination)
         {
             i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
         }
 
         destination.RemoveAt(destination.Count - 1);
-        var blockProduceRateResp = new BlockProduceRateResp()
+        mainList = destination;
+        }));
+     
+
+          tasks.Add(_blockProduceIndexRepository.GetQueryableAsync().ContinueWith(task =>
         {
-            List = destination,
-            HighestBlockProductionRate = orderList.Last(),
-            lowestBlockProductionRate = orderList.First(),
-            Total = destination.Count()
+          var list= task.Result.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.Date).Skip(0).Take(10000)
+            .ToList();
+          
+          var destination = _objectMapper.Map<List<DailyBlockProduceCountIndex>, List<DailyBlockProduceCount>>(list);
+
+        
+        foreach (var i in destination)
+        {
+            i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
+        }
+
+        destination.RemoveAt(destination.Count - 1);
+        sideList = destination;
+        }));
+
+          await tasks.WhenAll();
+
+          var sideDic = sideList.ToDictionary(c=>c.Date,c=>c);
+
+          DailyBlockProduceCount min = new DailyBlockProduceCount();
+          DailyBlockProduceCount max = new DailyBlockProduceCount();
+          foreach (var mainData in mainList)
+          {
+              if (sideDic.TryGetValue(mainData.Date, out var v))
+              {
+                  mainData.MissedBlockCount += v.MissedBlockCount;
+                  mainData.BlockCount += v.BlockCount;
+                  var rate = ((decimal)mainData.BlockCount / (mainData.BlockCount + mainData.MissedBlockCount));
+                  mainData.BlockProductionRate = rate.ToString("F2");
+                  
+              }
+              
+          }
+
+
+          var blockProduceRateResp = new BlockProduceRateResp()
+        {
+            List = mainList,
+            HighestBlockProductionRate = mainList.MaxBy(c=>decimal.Parse(c.BlockProductionRate)),
+            lowestBlockProductionRate = sideList. MinBy(c=>decimal.Parse(c.BlockProductionRate)),
+            Total = mainList.Count
         };
 
         return blockProduceRateResp;
     }
+    
+    
+    
 
     public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync(ChartDataRequest request)
     {
