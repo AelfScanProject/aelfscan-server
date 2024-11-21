@@ -1427,7 +1427,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return nodeBlockProduceResp;
     }
 
-    public async Task<BlockProduceRateResp> GetBlockProduceRateAsync(ChartDataRequest request)
+    public async Task<BlockProduceRateResp> GetBlockProduceRateAsync()
     {
         var tasks = new List<Task>();
 
