@@ -60,9 +60,9 @@ public class BlockProduceRateResp
 public class AvgBlockDurationResp
 {
     public long Total { get; set; }
-    public DailyBlockProduceDuration HighestAvgBlockDuration { get; set; }
-    public DailyBlockProduceDuration LowestBlockProductionRate { get; set; }
-    public List<DailyBlockProduceDuration> List { get; set; }
+    public DailyMergeBlockProduceDuration HighestAvgBlockDuration { get; set; }
+    public DailyMergeBlockProduceDuration LowestBlockProductionRate { get; set; }
+    public List<DailyMergeBlockProduceDuration> List { get; set; }
 }
 
 public class CycleCountResp

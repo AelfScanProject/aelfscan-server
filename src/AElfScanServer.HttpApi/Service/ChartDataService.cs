@@ -45,6 +45,7 @@ using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
 using DailyActiveAddressCount = AElfScanServer.Common.Dtos.ChartData.DailyActiveAddressCount;
 using DailyMarketCap = AElfScanServer.HttpApi.Dtos.ChartData.DailyMarketCap;
+using DailyMergeBlockProduceDuration = AElfScanServer.Common.Dtos.ChartData.DailyMergeBlockProduceDuration;
 using MonthlyActiveAddressCount = AElfScanServer.HttpApi.Dtos.ChartData.MonthlyActiveAddressCount;
 
 namespace AElfScanServer.HttpApi.Service;
@@ -63,7 +64,7 @@ public interface IChartDataService
 
     public Task<BlockProduceRateResp> GetBlockProduceRateAsync();
 
-    public Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync(ChartDataRequest request);
+    public Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync();
 
     public Task<CycleCountResp> GetCycleCountRespAsync();
 
@@ -1512,16 +1513,36 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     
     
 
-    public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync(ChartDataRequest request)
+    public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync()
     {
-        var queryableAsync = await _blockProduceDurationRepository.GetQueryableAsync();
-
-
-        var list = queryableAsync.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000)
+        var tasks = new List<Task>();
+        var mainList = new List<DailyBlockProduceDuration>();
+        var sideList = new List<DailyBlockProduceDuration>();
+        
+        tasks.Add(_blockProduceDurationRepository.GetQueryableAsync().ContinueWith(task =>
+        {
+            var list =task.Result.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000)
             .ToList();
+            
+            var destination =
+            _objectMapper.Map<List<DailyBlockProduceDurationIndex>, List<DailyBlockProduceDuration>>(list);
+
+     
+        foreach (var i in destination)
+        {
+            i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
+        }
+
+        mainList = destination;
+        }));
 
 
-        var destination =
+        tasks.Add(_blockProduceDurationRepository.GetQueryableAsync().ContinueWith(task =>
+        {
+            var list =task.Result.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.Date).Take(10000)
+            .ToList();
+            
+            var destination =
             _objectMapper.Map<List<DailyBlockProduceDurationIndex>, List<DailyBlockProduceDuration>>(list);
 
 
@@ -1530,14 +1551,33 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
         }
 
-        var orderList = destination.OrderBy(c => c.AvgBlockDuration);
+        sideList = destination;
+        }));
 
+        await tasks.WhenAll();
+
+        var sideDic = sideList.ToDictionary(c=>c.Date,c=>c);
+
+        var result = new List<DailyMergeBlockProduceDuration>();
+        foreach (var mainData in mainList)
+        {
+            if (sideDic.TryGetValue(mainData.Date, out var v))
+            {
+                result.Add(new DailyMergeBlockProduceDuration()
+                {
+                    Date = mainData.Date,
+                    DateStr = mainData.DateStr,
+                    MainAvgBlockDuration = mainData.AvgBlockDuration,
+                    SideAvgBlockDuration = v.AvgBlockDuration
+                });
+            }
+        }
         var durationResp = new AvgBlockDurationResp()
         {
-            List = destination,
-            HighestAvgBlockDuration = orderList.Last(),
-            LowestBlockProductionRate = orderList.First(),
-            Total = destination.Count()
+            List = result,
+            // HighestAvgBlockDuration = orderList.Last(),
+            // LowestBlockProductionRate = orderList.First(),
+            Total = result.Count()
         };
 
         return durationResp;
@@ -1581,6 +1621,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         } ));
 
+        await tasks.WhenAll();
         var sideDic = sideList.ToDictionary(c=>c.Date,c=>c);
 
         var result = new List<DailyMergeCycleCount>();

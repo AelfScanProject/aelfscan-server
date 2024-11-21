@@ -92,7 +92,14 @@ public class DailyBlockProduceDuration
     public string AvgBlockDuration { get; set; }
     public string LongestBlockDuration { get; set; }
     public string ShortestBlockDuration { get; set; }
+    public string DateStr { get; set; }
+}
 
+public class DailyMergeBlockProduceDuration
+{
+    public long Date { get; set; }
+    public string MainAvgBlockDuration { get; set; }
+    public string SideAvgBlockDuration { get; set; }
     public string DateStr { get; set; }
 }
 

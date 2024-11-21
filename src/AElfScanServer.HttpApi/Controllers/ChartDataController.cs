@@ -60,9 +60,9 @@ public class ChartDataController : AbpController
     }
 
     [HttpGet("avgBlockDuration")]
-    public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync(ChartDataRequest request)
+    public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync()
     {
-        return await _chartDataService.GetAvgBlockDurationRespAsync(request);
+        return await _chartDataService.GetAvgBlockDurationRespAsync();
     }
 
     [HttpGet("cycleCount")]
