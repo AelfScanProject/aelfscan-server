@@ -267,8 +267,7 @@ public class AddressAppService : IAddressAppService
         {
             hashSet.Add(mainChainId);
         }
-
-
+        
         if (!sideChainId.IsNullOrEmpty())
         {
             hashSet.Add(sideChainId);
@@ -279,10 +278,16 @@ public class AddressAppService : IAddressAppService
             hashSet = new HashSet<string>() { contractChainId };
         }
 
+
         var priceDto = await priceDtoTask;
         var result = new GetAddressDetailResultDto();
         result.AddressTypeList = addressTypeList;
 
+        if (!contractChainId.IsNullOrEmpty())
+        {
+            result.AddressType = AddressType.ContractAddress;
+        }
+        
         _logger.LogInformation(
             $"GetMergeAddressDetailAsync: mainChainCurAddressAssetToken:{mainChainCurAddressAssetToken.GetTotalValueOfElf()}," +
             $"token count {mainChainCurAddressAssetToken.Count}," +
@@ -324,8 +329,7 @@ public class AddressAppService : IAddressAppService
 
         return result;
     }
-
-
+    
     public async Task<GetAddressTokenListResultDto> GetAddressTokenListAsync(
         GetAddressTokenListInput input)
     {
@@ -381,7 +385,7 @@ public class AddressAppService : IAddressAppService
     public async Task<GetAddressNftListResultDto> GetAddressNftListAsync(GetAddressTokenListInput input)
     {
         IndexerTokenHolderInfoListDto holderInfos;
-        var types = new List<SymbolType> { SymbolType.Nft }; 
+        var types = new List<SymbolType> { SymbolType.Nft };
         if (!input.Search.IsNullOrWhiteSpace())
         {
             var tokenListInputNft = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
