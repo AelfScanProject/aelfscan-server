@@ -105,3 +105,13 @@ public class DailyCycleCount
 
     public string DateStr { get; set; }
 }
+
+public class DailyMergeCycleCount
+{
+    public long Date { get; set; }
+    public long MergeCycleCount { get; set; }
+    public long MainCycleCount { get; set; }
+    public long SideCycleCount { get; set; }
+
+    public string DateStr { get; set; }
+}

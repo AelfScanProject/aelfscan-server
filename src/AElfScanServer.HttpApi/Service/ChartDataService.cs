@@ -61,11 +61,11 @@ public interface IChartDataService
 
     public Task<MonthlyActiveAddressCountResp> GetMonthlyActiveAddressCountAsync(ChartDataRequest request);
 
-    public Task<BlockProduceRateResp> GetBlockProduceRateAsync(ChartDataRequest request);
+    public Task<BlockProduceRateResp> GetBlockProduceRateAsync();
 
     public Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync(ChartDataRequest request);
 
-    public Task<CycleCountResp> GetCycleCountRespAsync(ChartDataRequest request);
+    public Task<CycleCountResp> GetCycleCountRespAsync();
 
     public Task<NodeBlockProduceResp> GetNodeBlockProduceRespAsync(ChartDataRequest request);
 
@@ -1543,17 +1543,17 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return durationResp;
     }
 
-    public async Task<CycleCountResp> GetCycleCountRespAsync(ChartDataRequest request)
+    public async Task<CycleCountResp> GetCycleCountRespAsync()
     {
-        var queryableAsync = await _cycleCountRepository.GetQueryableAsync();
 
-
-        var list = queryableAsync.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Skip(0).Take(1000)
-            .ToList();
-
-
-        var destination =
-            _objectMapper.Map<List<DailyCycleCountIndex>, List<DailyCycleCount>>(list);
+        var mainList = new List<DailyCycleCount>();
+        var sideList = new List<DailyCycleCount>();
+        var tasks = new List<Task>();
+        tasks.Add(_cycleCountRepository.GetQueryableAsync().ContinueWith(task =>
+        {
+            var list=task.Result.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Skip(0).Take(1000)
+            .ToList(); 
+            var destination =_objectMapper.Map<List<DailyCycleCountIndex>, List<DailyCycleCount>>(list);
 
         var orderList = destination.OrderBy(c => c.CycleCount).ToList();
         orderList.RemoveAt(orderList.Count - 1);
@@ -1561,13 +1561,48 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         {
             i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
         }
+        mainList = destination;
 
+        } ));
+        
+        tasks.Add(_cycleCountRepository.GetQueryableAsync().ContinueWith(task =>
+        {
+            var list=task.Result.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.Date).Skip(0).Take(1000)
+            .ToList(); 
+            var destination =_objectMapper.Map<List<DailyCycleCountIndex>, List<DailyCycleCount>>(list);
 
+        var orderList = destination.OrderBy(c => c.CycleCount).ToList();
+        orderList.RemoveAt(orderList.Count - 1);
+        foreach (var i in destination)
+        {
+            i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
+        }
+        mainList = destination;
+
+        } ));
+
+        var sideDic = sideList.ToDictionary(c=>c.Date,c=>c);
+
+        var result = new List<DailyMergeCycleCount>();
+        foreach (var dailyCycleCount in mainList)
+        {
+            if (sideDic.TryGetValue(dailyCycleCount.Date, out var v))
+            {
+                result.Add(new DailyMergeCycleCount()
+                {
+                    Date = dailyCycleCount.Date,
+                    DateStr = dailyCycleCount.DateStr,
+                    MergeCycleCount = dailyCycleCount.CycleCount + v.CycleCount,
+                    MainCycleCount = dailyCycleCount.CycleCount,
+                    SideCycleCount = v.CycleCount
+                });
+            }
+        }
         var cycleCountResp = new CycleCountResp()
         {
-            List = destination,
-            HighestMissedCycle = orderList.Last(),
-            Total = destination.Count()
+            List = result,
+            HighestMissedCycle = result.MaxBy(c=>c.MergeCycleCount),
+            Total = result.Count()
         };
 
         return cycleCountResp;

@@ -69,8 +69,8 @@ public class CycleCountResp
 {
     public long Total { get; set; }
 
-    public DailyCycleCount HighestMissedCycle { get; set; }
-    public List<DailyCycleCount> List { get; set; }
+    public DailyMergeCycleCount HighestMissedCycle { get; set; }
+    public List<DailyMergeCycleCount> List { get; set; }
 }
 
 public class NodeBlockProduceResp
