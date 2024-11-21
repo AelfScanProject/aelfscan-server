@@ -1594,9 +1594,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             var list=task.Result.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Skip(0).Take(1000)
             .ToList(); 
             var destination =_objectMapper.Map<List<DailyCycleCountIndex>, List<DailyCycleCount>>(list);
-
-        var orderList = destination.OrderBy(c => c.CycleCount).ToList();
-        orderList.RemoveAt(orderList.Count - 1);
+      
         foreach (var i in destination)
         {
             i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
@@ -1610,14 +1608,12 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             var list=task.Result.Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.Date).Skip(0).Take(1000)
             .ToList(); 
             var destination =_objectMapper.Map<List<DailyCycleCountIndex>, List<DailyCycleCount>>(list);
-
-        var orderList = destination.OrderBy(c => c.CycleCount).ToList();
-        orderList.RemoveAt(orderList.Count - 1);
+            
         foreach (var i in destination)
         {
             i.DateStr = DateTimeHelper.GetDateTimeString(i.Date);
         }
-        mainList = destination;
+        sideList = destination;
 
         } ));
 
