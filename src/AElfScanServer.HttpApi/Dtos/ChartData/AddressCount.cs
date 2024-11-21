@@ -52,9 +52,9 @@ public class MonthlyActiveAddressCount
 public class BlockProduceRateResp
 {
     public long Total { get; set; }
-    public DailyBlockProduceCount HighestBlockProductionRate { get; set; }
-    public DailyBlockProduceCount lowestBlockProductionRate { get; set; }
-    public List<DailyBlockProduceCount> List { get; set; }
+    public DailyMergeBlockProduceCount HighestBlockProductionRate { get; set; }
+    public DailyMergeBlockProduceCount lowestBlockProductionRate { get; set; }
+    public List<DailyMergeBlockProduceCount> List { get; set; }
 }
 
 public class AvgBlockDurationResp

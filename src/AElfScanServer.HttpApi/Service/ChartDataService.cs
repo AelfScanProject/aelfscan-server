@@ -1472,28 +1472,38 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
           var sideDic = sideList.ToDictionary(c=>c.Date,c=>c);
 
-          DailyBlockProduceCount min = new DailyBlockProduceCount();
-          DailyBlockProduceCount max = new DailyBlockProduceCount();
+
+          var result = new List<DailyMergeBlockProduceCount>();
+          
+
           foreach (var mainData in mainList)
           {
               if (sideDic.TryGetValue(mainData.Date, out var v))
               {
-                  mainData.MissedBlockCount += v.MissedBlockCount;
-                  mainData.BlockCount += v.BlockCount;
-                  var rate = ((decimal)mainData.BlockCount / (mainData.BlockCount + mainData.MissedBlockCount));
-                  mainData.BlockProductionRate = rate.ToString("F2");
+                  var mergeMissedBlockCount= mainData.MissedBlockCount + v.MissedBlockCount;
+                  var mergeBlockCount= mainData.BlockCount + v.BlockCount;
+                  var rate = ((decimal)mergeBlockCount / (mergeMissedBlockCount + mergeBlockCount)).ToString("F2");
+                  
+                  result.Add(new DailyMergeBlockProduceCount()
+                  {
+                      Date = mainData.Date,
+                      DateStr = mainData.DateStr,
+                      MergeBlockProductionRate = rate,
+                      MainBlockProductionRate = mainData.BlockProductionRate,
+                      SideBlockProductionRate = v.BlockProductionRate
+                  });
                   
               }
               
           }
-
+     
 
           var blockProduceRateResp = new BlockProduceRateResp()
         {
-            List = mainList,
-            HighestBlockProductionRate = mainList.MaxBy(c=>decimal.Parse(c.BlockProductionRate)),
-            lowestBlockProductionRate = sideList. MinBy(c=>decimal.Parse(c.BlockProductionRate)),
-            Total = mainList.Count
+            List = result,
+            HighestBlockProductionRate = result.MaxBy(c=>decimal.Parse(c.MergeBlockProductionRate)),
+            lowestBlockProductionRate = result. MinBy(c=>decimal.Parse(c.MergeBlockProductionRate)),
+            Total = result.Count
         };
 
         return blockProduceRateResp;

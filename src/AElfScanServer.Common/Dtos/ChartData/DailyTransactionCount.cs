@@ -36,7 +36,7 @@ public class DailyUniqueAddressCount
 
     public int SideChainTotalUniqueAddressees { get; set; }
 
-    public int OwnerUniqueAddressees { get; set; } 
+    public int OwnerUniqueAddressees { get; set; }
 
 
     public string DateStr { get; set; }
@@ -71,6 +71,17 @@ public class DailyBlockProduceCount
     public string BlockProductionRate { get; set; }
     public long BlockCount { get; set; }
     public long MissedBlockCount { get; set; }
+
+    public string DateStr { get; set; }
+}
+
+public class DailyMergeBlockProduceCount
+{
+    public long Date { get; set; }
+    public string MergeBlockProductionRate { get; set; }
+    public string MainBlockProductionRate { get; set; }
+    public string SideBlockProductionRate { get; set; }
+
 
     public string DateStr { get; set; }
 }
