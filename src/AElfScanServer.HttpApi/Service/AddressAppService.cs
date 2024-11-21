@@ -267,7 +267,7 @@ public class AddressAppService : IAddressAppService
         {
             hashSet.Add(mainChainId);
         }
-        
+
         if (!sideChainId.IsNullOrEmpty())
         {
             hashSet.Add(sideChainId);
@@ -287,7 +287,7 @@ public class AddressAppService : IAddressAppService
         {
             result.AddressType = AddressType.ContractAddress;
         }
-        
+
         _logger.LogInformation(
             $"GetMergeAddressDetailAsync: mainChainCurAddressAssetToken:{mainChainCurAddressAssetToken.GetTotalValueOfElf()}," +
             $"token count {mainChainCurAddressAssetToken.Count}," +
@@ -329,7 +329,7 @@ public class AddressAppService : IAddressAppService
 
         return result;
     }
-    
+
     public async Task<GetAddressTokenListResultDto> GetAddressTokenListAsync(
         GetAddressTokenListInput input)
     {
@@ -348,8 +348,10 @@ public class AddressAppService : IAddressAppService
                 return new GetAddressTokenListResultDto();
             }
 
-            tokenDict = tokenInfos.ToDictionary(i => i.Symbol, i => i);
-            holderInfos = await GetTokenHolderInfosAsync(input, searchSymbols: tokenDict.Keys.ToList());
+            tokenDict = tokenInfos.ToDictionary(i => i.Symbol + i.Metadata.ChainId, i => i);
+            var symbolSet = new HashSet<string>(tokenDict.Values.Select(i => i.Symbol));
+
+            holderInfos = await GetTokenHolderInfosAsync(input, searchSymbols: symbolSet.ToList());
             if (holderInfos.Items.IsNullOrEmpty())
             {
                 return new GetAddressTokenListResultDto();
@@ -535,7 +537,6 @@ public class AddressAppService : IAddressAppService
             var symbol = holderInfo.Token.Symbol;
             var collectionSymbol = holderInfo.Token.CollectionSymbol;
 
-       
 
             if (tokenDict.TryGetValue(symbol + holderInfo.Metadata.ChainId, out var tokenInfo))
             {
