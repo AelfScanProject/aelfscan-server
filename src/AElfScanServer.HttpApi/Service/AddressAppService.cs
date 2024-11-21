@@ -535,10 +535,7 @@ public class AddressAppService : IAddressAppService
             var symbol = holderInfo.Token.Symbol;
             var collectionSymbol = holderInfo.Token.CollectionSymbol;
 
-            // if (tokenDict.TryGetValue(symbol+"AELF", out var tokenInfo))
-            // {
-            //     tokenHolderInfo.Token = _tokenInfoProvider.OfTokenBaseInfo(tokenInfo);
-            // }
+       
 
             if (tokenDict.TryGetValue(symbol + holderInfo.Metadata.ChainId, out var tokenInfo))
             {

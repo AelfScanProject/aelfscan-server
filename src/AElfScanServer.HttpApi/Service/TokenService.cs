@@ -120,7 +120,7 @@ public class TokenService : ITokenService, ISingletonDependency
     public async Task<ListResponseDto<TokenCommonDto>> GetMergeTokenListAsync(TokenListInput input)
     {
         var result = await EsIndex.SearchMergeTokenList(
-            (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
+            (int)input.SkipCount, (int)input.MaxResultCount, input.Sort == null ? "desc" : input.Sort.ToLower(),
             null, _globalOptions.CurrentValue.SpecialSymbols);
 
         _logger.LogInformation("GetMergeTokenListAsync:{count}", result.list.Count);
@@ -164,15 +164,7 @@ public class TokenService : ITokenService, ISingletonDependency
             List = list
         };
     }
-
-
-    public class TokenAggregationResult
-    {
-        public string Symbol { get; set; }
-        public double HolderCount { get; set; }
-        public double Supply { get; set; }
-        public List<string> ChainIds { get; set; }
-    }
+    
 
     [ExceptionHandler(typeof(Exception),
         Message = "GetTokenDetailAsync err",
