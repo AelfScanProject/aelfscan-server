@@ -1510,9 +1510,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return blockProduceRateResp;
     }
     
-    
-    
-
     public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync()
     {
         var tasks = new List<Task>();

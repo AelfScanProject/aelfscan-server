@@ -17,6 +17,7 @@ using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.Options;
 using AElfScanServer.HttpApi.Service;
@@ -45,6 +46,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
     private readonly IEntityMappingRepository<AddressIndex, string> _addressRepository;
     private readonly IEntityMappingRepository<MergeAddressIndex, string> _mergeAddressRepository;
     private readonly IElasticClient _elasticClient;
+    private readonly ITokenPriceService _tokenPriceService;
 
 
     public OverviewDataStrategy(IOptions<RedisCacheOptions> optionsAccessor,
@@ -58,7 +60,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         ILogger<DataStrategyBase<string, HomeOverviewResponseDto>> logger, IDistributedCache<string> cache,
         IChartDataService chartDataService, IEntityMappingRepository<AddressIndex, string> addressRepository,
         IEntityMappingRepository<MergeAddressIndex, string> mergeAddressRepository,
-        IOptionsMonitor<ElasticsearchOptions> options) : base(
+        IOptionsMonitor<ElasticsearchOptions> options,ITokenPriceService tokenPriceService) : base(
         optionsAccessor, logger, cache)
     {
         _globalOptions = globalOptions;
@@ -76,6 +78,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         _elasticClient = new ElasticClient(settings);
         EsIndex.SetElasticClient(_elasticClient);
         _mergeAddressRepository = mergeAddressRepository;
+        _tokenPriceService = tokenPriceService;
     }
 
 
@@ -127,7 +130,17 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                 task =>
                 {
                     overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
-                    overviewResp.TokenPriceInUsd = task.Result.LastPrice;
+                }));
+            
+                  
+                tasks.Add(_tokenPriceService.GetTokenPriceAsync("ELF").ContinueWith(
+                task =>
+                {
+                    if (task.Result != null)
+                    {
+                     overviewResp.TokenPriceInUsd = task.Result.Price;
+
+                    }
                 }));
             tasks.Add(_homePageProvider.GetTransactionCountPerLastMinute(chainId).ContinueWith(
                 task => { overviewResp.MergeTps.Total = (task.Result / 60).ToString("F2"); }));
