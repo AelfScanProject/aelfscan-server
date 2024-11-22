@@ -1430,6 +1430,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<BlockProduceRateResp> GetBlockProduceRateAsync()
     {
+        
         var tasks = new List<Task>();
 
         var mainList = new List<DailyBlockProduceCount>();
@@ -1483,15 +1484,14 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
               {
                   var mergeMissedBlockCount= mainData.MissedBlockCount + v.MissedBlockCount;
                   var mergeBlockCount= mainData.BlockCount + v.BlockCount;
-                  var rate = ((decimal)mergeBlockCount / (mergeMissedBlockCount + mergeBlockCount)).ToString("P2");
-                  
+                  var rate = ((decimal)mergeBlockCount / (mergeMissedBlockCount + mergeBlockCount)*100).ToString("F2");
                   result.Add(new DailyMergeBlockProduceCount()
                   {
                       Date = mainData.Date,
                       DateStr = mainData.DateStr,
                       MergeBlockProductionRate = rate,
-                      MainBlockProductionRate = (decimal.Parse(mainData.BlockProductionRate)/100).ToString("P2"),
-                      SideBlockProductionRate = (decimal.Parse(v.BlockProductionRate)/100).ToString("P2")
+                      MainBlockProductionRate = mainData.BlockProductionRate,
+                      SideBlockProductionRate =v.BlockProductionRate
                   });
                   
               }
@@ -1575,8 +1575,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         var durationResp = new AvgBlockDurationResp()
         {
             List = result,
-            // HighestAvgBlockDuration = orderList.Last(),
-            // LowestBlockProductionRate = orderList.First(),
             Total = result.Count()
         };
 
