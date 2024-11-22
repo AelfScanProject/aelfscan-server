@@ -1,6 +1,11 @@
 using System.Collections.Generic;
+using AElfScanServer.Common.Address.Provider;
+using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.HttpApi;
+using AElfScanServer.HttpApi.Provider;
+using AElfScanServer.Mocks.Provider;
+using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AutoMapper;
 using Volo.Abp.EventBus;
 using Volo.Abp.Modularity;
@@ -25,6 +30,8 @@ public class AElfScanServerApplicationTestModule : AbpModule
         {
             "http://127.0.0.1:9200"
         });
-        
+        context.Services.AddSingleton<ITokenIndexerProvider, MockTokenIndexerProvider>();
+        context.Services.AddSingleton<IAddressInfoProvider, MockAddressInfoProvider>();
+        context.Services.AddSingleton<IBlockChainIndexerProvider, MockBlockChainIndexerProvider>();
     }
 }

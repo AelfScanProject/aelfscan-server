@@ -6,6 +6,7 @@ using AElfScanServer.HttpApi.Dtos.address;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.HttpApi.Service;
 using Microsoft.Extensions.Logging;
+using Shouldly;
 using Volo.Abp.ObjectMapping;
 using Xunit;
 using Xunit.Abstractions;
@@ -41,5 +42,6 @@ public class AddressAppServiceTest : AElfScanServerApplicationTestBase
             Address = "0x0000000000000000000000000000000000000000",
             ChainId = "MainChain"
         });
+        result.ChainIds.ShouldContain("AELF");
     }
 }
