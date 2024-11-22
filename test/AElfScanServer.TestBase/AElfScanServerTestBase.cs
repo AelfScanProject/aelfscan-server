@@ -1,16 +1,26 @@
+using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
 using Volo.Abp.Modularity;
 using Volo.Abp.Testing;
 using Volo.Abp.Uow;
+using Xunit.Abstractions;
 
-namespace AElfScanServer.TestBase;
+namespace AElfScanServer;
 
 /* All test classes are derived from this class, directly or indirectly.
  */
-public abstract class AElfScanServerTestBase<TStartupModule> : AbpIntegratedTest<TStartupModule>
-    where TStartupModule : IAbpModule
+public abstract partial class AElfScanServerTestBase<TStartupModule> : AbpIntegratedTest<TStartupModule> where TStartupModule : IAbpModule
+
 {
+    protected readonly ITestOutputHelper Output;
+    
+    protected AElfScanServerTestBase(ITestOutputHelper output)
+    {
+        Output = output;
+    }
+
     protected override void SetAbpApplicationCreationOptions(AbpApplicationCreationOptions options)
     {
         options.UseAutofac();
@@ -41,8 +51,7 @@ public abstract class AElfScanServerTestBase<TStartupModule> : AbpIntegratedTest
         return WithUnitOfWorkAsync(new AbpUnitOfWorkOptions(), func);
     }
 
-    protected virtual async Task<TResult> WithUnitOfWorkAsync<TResult>(AbpUnitOfWorkOptions options,
-        Func<Task<TResult>> func)
+    protected virtual async Task<TResult> WithUnitOfWorkAsync<TResult>(AbpUnitOfWorkOptions options, Func<Task<TResult>> func)
     {
         using (var scope = ServiceProvider.CreateScope())
         {

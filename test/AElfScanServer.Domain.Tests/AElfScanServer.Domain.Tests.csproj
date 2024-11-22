@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AElfScanServer</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Volo.Abp.Core" Version="8.2.0"/>
+    <PackageReference Include="xunit.extensibility.core" Version="2.6.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AElfScanServer.Common\AElfScanServer.Common.csproj" />
+    <ProjectReference Include="..\AElfScanServer.TestBase\AElfScanServer.TestBase.csproj" />
+  </ItemGroup>
+
+</Project>

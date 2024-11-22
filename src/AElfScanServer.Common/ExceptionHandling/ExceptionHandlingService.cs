@@ -111,6 +111,8 @@ public class ExceptionHandlingService
         };
     }
     
+    
+    
     public static  async Task<FlowBehavior> HandleExceptionGetContractListAsync(Exception ex)
     {
         SetExceptionCount();
