@@ -18,6 +18,7 @@ public class TokenCommonDto
     public long MainChainHolders { get; set; }
     public long SideChainHolders { get; set; }
     public double HolderPercentChange24H { get; set; }
+    public double BeforeCount { get; set; }
     public long TransferCount { get; set; }
     public long MergeTransferCount { get; set; }
     public long MainChainTransferCount { get; set; }

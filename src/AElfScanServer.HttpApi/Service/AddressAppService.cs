@@ -388,11 +388,13 @@ public class AddressAppService : IAddressAppService
     {
         IndexerTokenHolderInfoListDto holderInfos;
         var types = new List<SymbolType> { SymbolType.Nft };
+        var inputOrderBy = input.OrderBy;
+        var inputSort = input.Sort;
         if (!input.Search.IsNullOrWhiteSpace())
         {
             var tokenListInputNft = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
             tokenListInputNft.Types = types;
-
+            
             var tokenListInputCollection = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
             tokenListInputCollection.Types = new List<SymbolType> { SymbolType.Nft_Collection };
 

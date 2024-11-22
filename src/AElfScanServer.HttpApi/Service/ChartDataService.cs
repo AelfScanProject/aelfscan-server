@@ -1483,15 +1483,15 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
               {
                   var mergeMissedBlockCount= mainData.MissedBlockCount + v.MissedBlockCount;
                   var mergeBlockCount= mainData.BlockCount + v.BlockCount;
-                  var rate = ((decimal)mergeBlockCount / (mergeMissedBlockCount + mergeBlockCount)).ToString("F2");
+                  var rate = ((decimal)mergeBlockCount / (mergeMissedBlockCount + mergeBlockCount)).ToString("P2");
                   
                   result.Add(new DailyMergeBlockProduceCount()
                   {
                       Date = mainData.Date,
                       DateStr = mainData.DateStr,
                       MergeBlockProductionRate = rate,
-                      MainBlockProductionRate = mainData.BlockProductionRate,
-                      SideBlockProductionRate = v.BlockProductionRate
+                      MainBlockProductionRate = (decimal.Parse(mainData.BlockProductionRate)/100).ToString("P2"),
+                      SideBlockProductionRate = (decimal.Parse(v.BlockProductionRate)/100).ToString("P2")
                   });
                   
               }
