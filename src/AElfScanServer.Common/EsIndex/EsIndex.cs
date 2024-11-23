@@ -258,7 +258,7 @@ public class EsIndex
 
 
     public static async Task<(List<AccountTokenIndex> list, long totalCount)> SearchAccountIndexList(
-        TokenHolderInput input)
+        TokenHolderInput input, List<string> specialSymbols = null)
     {
         var sortOrder = SortOrder.Descending;
 
@@ -277,12 +277,32 @@ public class EsIndex
             filterQueries.Add(new TermQuery { Field = "token.symbol", Value = input.Symbol });
         }
 
-        if (!input.Types.IsNullOrEmpty())
+        if (!input.Types.IsNullOrEmpty() || !specialSymbols.IsNullOrEmpty())
         {
-            filterQueries.Add(new TermsQuery
+            var typeQueries = new List<QueryContainer>();
+
+            if (!input.Types.IsNullOrEmpty())
             {
-                Field = "token.type",
-                Terms = input.Types.Cast<object>()
+                typeQueries.Add(new TermsQuery
+                {
+                    Field = "token.type",
+                    Terms = input.Types.Cast<object>()
+                });
+            }
+
+            if (!specialSymbols.IsNullOrEmpty())
+            {
+                typeQueries.Add(new TermsQuery
+                {
+                    Field = "token.symbol",
+                    Terms = specialSymbols.Cast<object>()
+                });
+            }
+
+            filterQueries.Add(new BoolQuery
+            {
+                Should = typeQueries,
+                MinimumShouldMatch = 1
             });
         }
 
@@ -345,6 +365,28 @@ public class EsIndex
                             ? must.Terms(t => t.Field(f => f.ChainIds).Terms(chainId))
                             : null,
                         must => must.Range(r => r.Field(f => f.FormatAmount).GreaterThan(0))
+                    )
+                )
+            )
+        );
+
+        return countResponse.Count;
+    }
+
+    public static async Task<long> GetTokenTypeHolders(
+        string chainId, List<SymbolType> tokenTypeList)
+    {
+        var countResponse = await esClient.CountAsync<AccountTokenIndex>(c => c
+            .Index("accounttokenindex")
+            .Query(q => q
+                .Bool(b => b
+                    .Must(must => must
+                            .Terms(t => t.Field(f => f.Token.Type)
+                                .Terms(tokenTypeList)), 
+                        must => !string.IsNullOrEmpty(chainId)
+                            ? must.Terms(t => t.Field(f => f.ChainIds).Terms(chainId)) 
+                            : null,
+                        must => must.Range(r => r.Field(f => f.FormatAmount).GreaterThan(0)) // FormatAmount > 0
                     )
                 )
             )

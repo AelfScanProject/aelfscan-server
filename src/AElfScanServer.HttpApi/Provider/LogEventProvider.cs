@@ -58,12 +58,7 @@ public class LogEventProvider : AbpRedisCache, ISingletonDependency
 
             QueryContainer Filter(QueryContainerDescriptor<LogEventIndex> f) => f.Bool(b => b.Must(mustQuery));
 
-
-            // var resp = await _logEventIndexRepository.GetListAsync(Filter, skip: request.SkipCount,
-            //     limit: request.MaxResultCount,
-            //     index: BlockChainIndexNameHelper.GenerateLogEventIndexName(request.ChainId));
-
-
+        
             var resp = await _logEventIndexRepository.GetSortListAsync(Filter, skip: request.SkipCount,
                 limit: request.MaxResultCount,
                 index: BlockChainIndexNameHelper.GenerateLogEventIndexName(request.ChainId),

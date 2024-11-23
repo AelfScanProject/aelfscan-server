@@ -15,41 +15,62 @@ namespace AElfScanServer.Common.Address.Provider;
 
 public interface IAddressInfoProvider
 {
-    Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset);
-    
-    Task<AddressAssetDto> GetAddressAssetAsync(AddressAssetType type, string chainId, string address);
+    Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset,
+        List<SymbolType> symbolTypes = null);
+
+    Task<AddressAssetDto> GetAddressAssetAsync(AddressAssetType type, string chainId, string address,
+        List<SymbolType> symbolTypes = null);
 
     Task<Dictionary<string, CommonAddressDto>> GetAddressInfo(string chainId, List<string> addressList);
 }
 
 public class AddressInfoProvider : RedisCacheExtension, IAddressInfoProvider, ISingletonDependency
 {
-    private const string AddressAssetCacheKeyPrefix = "AddressAsset";
-    private const string AddressInfoCacheKeyPrefix = "AddressInfo";
-    
+    private const string AddressAssetCacheKeyPrefix = "AddressAsset:";
+    private const string AddressInfoCacheKeyPrefix = "AddressInfo:";
+
     private readonly IOptionsMonitor<AddressAssetOptions> _addressAssetOptions;
 
-    public AddressInfoProvider(IOptions<RedisCacheOptions> optionsAccessor, 
+    public AddressInfoProvider(IOptions<RedisCacheOptions> optionsAccessor,
         IOptionsMonitor<AddressAssetOptions> addressAssetOptions) : base(optionsAccessor)
     {
         _addressAssetOptions = addressAssetOptions;
     }
 
-    public async Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset)
-    {
-        await ConnectAsync();
-         
-        var key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, addressAsset.Address);
-        
-        await SetObjectAsync(key, addressAsset, TimeSpan.FromSeconds(_addressAssetOptions.CurrentValue.GetExpireSeconds(type)));
-    }
-    
-    public async Task<AddressAssetDto> GetAddressAssetAsync(AddressAssetType type, string chainId, string address)
+    public async Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset,
+        List<SymbolType> symbolTypes = null)
     {
         await ConnectAsync();
 
-        var key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, address);
- 
+        var symbolStr = "";
+        if (!symbolTypes.IsNullOrEmpty())
+        {
+            symbolStr = string.Join("-", symbolTypes);
+        }
+
+        var key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, addressAsset.Address, symbolStr);
+
+        await SetObjectAsync(key, addressAsset,
+            TimeSpan.FromSeconds(_addressAssetOptions.CurrentValue.GetExpireSeconds(type)));
+    }
+
+    public async Task<AddressAssetDto> GetAddressAssetAsync(AddressAssetType type, string chainId, string address,
+        List<SymbolType> symbolTypes)
+    {
+        await ConnectAsync();
+
+        var key = "";
+        if (symbolTypes.IsNullOrEmpty())
+        {
+            key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, address);
+        }
+        else
+        {
+            string symbols = string.Join(",", symbolTypes);
+            key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, address, symbols);
+        }
+
+
         return await GetObjectAsync<AddressAssetDto>(key);
     }
 
@@ -57,7 +78,8 @@ public class AddressInfoProvider : RedisCacheExtension, IAddressInfoProvider, IS
     {
         await ConnectAsync();
         var batch = RedisDatabase.CreateBatch();
-        var tasks = addressList.Select(address => batch.StringGetAsync(GetKey(AddressInfoCacheKeyPrefix, chainId, address))).ToArray();
+        var tasks = addressList
+            .Select(address => batch.StringGetAsync(GetKey(AddressInfoCacheKeyPrefix, chainId, address))).ToArray();
         batch.Execute();
         await Task.WhenAll(tasks);
 
@@ -76,8 +98,8 @@ public class AddressInfoProvider : RedisCacheExtension, IAddressInfoProvider, IS
         return addressInfos.ToDictionary(i => i.Address, i => i);
     }
 
-    private string GetKey(string prefix, string chainId, string address)
+    private string GetKey(params string[] parts)
     {
-        return $"{prefix}-{chainId}-{address}";
+        return string.Join("-", parts);
     }
 }

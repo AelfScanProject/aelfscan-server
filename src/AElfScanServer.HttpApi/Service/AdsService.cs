@@ -14,6 +14,8 @@ using AElfScanServer.Grains.Grain.Ads;
 using AElfScanServer.Grains.State.Ads;
 using AElfScanServer.HttpApi.Dtos.AdsData;
 using AElfScanServer.HttpApi.Options;
+using AElfScanServer.HttpApi.Provider;
+using AElfScanServer.Worker.Core.Dtos;
 using Elasticsearch.Net;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
@@ -33,6 +35,8 @@ public interface IAdsService
 {
     public Task<AdsResp> GetAds(AdsReq req);
 
+    public Task<List<AdsResp>> GetAdsDetailList(int size);
+
     public Task<AdsIndex> UpdateAds(UpdateAdsReq req);
 
 
@@ -49,26 +53,35 @@ public interface IAdsService
     public Task<AdsBannerIndex> DeleteAdsBanner(DeleteAdsBannerReq req);
 
     public Task<AdsBannerListResp> GetAdsBannerList(GetAdsBannerListReq req);
+
+    public Task<List<TwitterIndex>> GetLatestTwitterListAsync(int maxResultCount);
+    public Task SaveTwitterListAsync();
 }
 
 public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
 {
-    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
+    private readonly IOptionsMonitor<SecretOptions> _secretOptions;
+    private readonly IOptionsMonitor<TwitterOptions> _twitterOptions;
     private readonly ILogger<AdsService> _logger;
     private readonly IClusterClient _clusterClient;
     private readonly IEntityMappingRepository<AdsIndex, string> _adsRepository;
     private readonly IEntityMappingRepository<AdsBannerIndex, string> _adsBannerRepository;
+    private readonly IEntityMappingRepository<TwitterIndex, string> _twitterRepository;
     private readonly IObjectMapper _objectMapper;
     private readonly IElasticClient _elasticClient;
+    private readonly ITwitterProvider _twitterProvider;
 
-    public AdsService(IOptions<RedisCacheOptions> optionsAccessor, IOptionsMonitor<GlobalOptions> globalOptions,
+    public AdsService(IOptions<RedisCacheOptions> optionsAccessor, IOptionsMonitor<SecretOptions> secretOptions,
         ILogger<AdsService> logger,
         IClusterClient clusterClient, IEntityMappingRepository<AdsIndex, string> adsRepository,
         IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options,
-        IEntityMappingRepository<AdsBannerIndex, string> adsBannerRepository) : base(
+        IEntityMappingRepository<AdsBannerIndex, string> adsBannerRepository,
+        IEntityMappingRepository<TwitterIndex, string> twitterRepository,
+        IOptionsMonitor<TwitterOptions> twitterOptions,
+        ITwitterProvider twitterProvider) : base(
         optionsAccessor)
     {
-        _globalOptions = globalOptions;
+        _secretOptions = secretOptions;
         _logger = logger;
         _clusterClient = clusterClient;
         _objectMapper = objectMapper;
@@ -78,12 +91,16 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
         var settings = new ConnectionSettings(connectionPool);
         _elasticClient = new ElasticClient(settings);
         _adsBannerRepository = adsBannerRepository;
+        _twitterRepository = twitterRepository;
+        _twitterOptions = twitterOptions;
+        _twitterProvider = twitterProvider;
     }
+
 
     public async Task<AdsBannerListResp> GetAdsBannerList(GetAdsBannerListReq req)
     {
         var result = new AdsBannerListResp();
-        var searchResponse = _elasticClient.Search<AdsBannerIndex>(s => s
+        var searchResponse = await _elasticClient.SearchAsync<AdsBannerIndex>(s => s
             .Index("adsbannerindex")
             .Query(q => q
                 .Bool(b => b
@@ -123,10 +140,43 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
         return result;
     }
 
+    public async Task<List<TwitterIndex>> GetLatestTwitterListAsync(int maxResultCount)
+    {
+        var queryable = await _twitterRepository.GetQueryableAsync();
+        return queryable.OrderByDescending(c => c.Id).Take(maxResultCount).ToList();
+    }
+
+    public async Task SaveTwitterListAsync()
+    {
+        var latestTwitterListAsync = await GetLatestTwitterListAsync(1);
+        var sinceId = "0";
+        if (!latestTwitterListAsync.IsNullOrEmpty())
+        {
+            sinceId = latestTwitterListAsync[0].Id;
+        }
+
+       var twitterList = await _twitterProvider.GetLatestTwittersAsync(_secretOptions.CurrentValue.TwitterBearToken,
+            _twitterOptions.CurrentValue.TwitterUserId, sinceId);
+       if (!twitterList.IsNullOrEmpty())
+       {
+           var list = _objectMapper.Map<List<Tweet>, List<TwitterIndex>>(twitterList);
+           await _twitterRepository.AddOrUpdateManyAsync(list);
+       }
+    }
+
+    public async Task<List<AdsResp>> GetAdsDetailList(int size)
+    {
+        var adsIndices = await QueryAdsList(size);
+
+        var adsResps = _objectMapper.Map<List<AdsIndex>, List<AdsResp>>(adsIndices);
+
+        return adsResps;
+    }
+
     public async Task<AdsListResp> GetAdsList(GetAdsListReq req)
     {
         var result = new AdsListResp();
-        var searchResponse = _elasticClient.Search<AdsIndex>(s => s
+        var searchResponse = await _elasticClient.SearchAsync<AdsIndex>(s => s
             .Index("adsindex")
             .Query(q => q
                 .Bool(b => b
@@ -259,10 +309,42 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
     }
 
 
+    public async Task<List<AdsIndex>> QueryAdsList(int size)
+    {
+        var utcMilliSeconds = DateTime.UtcNow.ToUtcMilliSeconds();
+        var searchResponse = await _elasticClient.SearchAsync<AdsIndex>(s => s
+            .Index("adsindex")
+            .Query(q => q
+                .Bool(b => b
+                    .Must(
+                        m => m.Range(r => r
+                            .Field(f => f.StartTime)
+                            .LessThanOrEquals(utcMilliSeconds)
+                        ),
+                        m => m.Range(r => r
+                            .Field(f => f.EndTime)
+                            .GreaterThanOrEquals(utcMilliSeconds)
+                        )
+                    )
+                )
+            )
+            .Sort(sort => sort
+                .Field(f => f
+                    .Field(c => c.StartTime)
+                    .Order(SortOrder.Ascending)
+                )
+            )
+            .Size(size)
+        );
+
+        return searchResponse.Documents.ToList();
+    }
+
+
     public async Task<List<AdsIndex>> QueryAdsList(string label, string adsId, int size)
     {
         var utcMilliSeconds = DateTime.UtcNow.ToUtcMilliSeconds();
-        var searchResponse = _elasticClient.Search<AdsIndex>(s => s
+        var searchResponse = await _elasticClient.SearchAsync<AdsIndex>(s => s
             .Index("adsindex")
             .Query(q => q
                 .Bool(b => b
@@ -311,7 +393,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
     public async Task<List<AdsBannerIndex>> QueryAdsBannerList(string label, string adsBannerId, int size)
     {
         var utcMilliSeconds = DateTime.UtcNow.ToUtcMilliSeconds();
-        var searchResponse = _elasticClient.Search<AdsBannerIndex>(s => s
+        var searchResponse = await _elasticClient.SearchAsync<AdsBannerIndex>(s => s
             .Index("adsbannerindex")
             .Query(q => q
                 .Bool(b => b

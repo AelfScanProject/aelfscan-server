@@ -52,25 +52,24 @@ public class MonthlyActiveAddressCount
 public class BlockProduceRateResp
 {
     public long Total { get; set; }
-    public DailyBlockProduceCount HighestBlockProductionRate { get; set; }
-    public DailyBlockProduceCount lowestBlockProductionRate { get; set; }
-    public List<DailyBlockProduceCount> List { get; set; }
+    public DailyMergeBlockProduceCount HighestBlockProductionRate { get; set; }
+    public DailyMergeBlockProduceCount lowestBlockProductionRate { get; set; }
+    public List<DailyMergeBlockProduceCount> List { get; set; }
 }
 
 public class AvgBlockDurationResp
 {
     public long Total { get; set; }
-    public DailyBlockProduceDuration HighestAvgBlockDuration { get; set; }
-    public DailyBlockProduceDuration LowestBlockProductionRate { get; set; }
-    public List<DailyBlockProduceDuration> List { get; set; }
+
+    public List<DailyMergeBlockProduceDuration> List { get; set; }
 }
 
 public class CycleCountResp
 {
     public long Total { get; set; }
 
-    public DailyCycleCount HighestMissedCycle { get; set; }
-    public List<DailyCycleCount> List { get; set; }
+    public DailyMergeCycleCount HighestMissedCycle { get; set; }
+    public List<DailyMergeCycleCount> List { get; set; }
 }
 
 public class NodeBlockProduceResp

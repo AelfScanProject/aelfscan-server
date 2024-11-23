@@ -36,7 +36,7 @@ public class DailyUniqueAddressCount
 
     public int SideChainTotalUniqueAddressees { get; set; }
 
-    public int OwnerUniqueAddressees { get; set; } 
+    public int OwnerUniqueAddressees { get; set; }
 
 
     public string DateStr { get; set; }
@@ -75,13 +75,31 @@ public class DailyBlockProduceCount
     public string DateStr { get; set; }
 }
 
+public class DailyMergeBlockProduceCount
+{
+    public long Date { get; set; }
+    public string MergeBlockProductionRate { get; set; }
+    public string MainBlockProductionRate { get; set; }
+    public string SideBlockProductionRate { get; set; }
+
+
+    public string DateStr { get; set; }
+}
+
 public class DailyBlockProduceDuration
 {
     public long Date { get; set; }
     public string AvgBlockDuration { get; set; }
     public string LongestBlockDuration { get; set; }
     public string ShortestBlockDuration { get; set; }
+    public string DateStr { get; set; }
+}
 
+public class DailyMergeBlockProduceDuration
+{
+    public long Date { get; set; }
+    public string MainAvgBlockDuration { get; set; }
+    public string SideAvgBlockDuration { get; set; }
     public string DateStr { get; set; }
 }
 
@@ -91,6 +109,16 @@ public class DailyCycleCount
     public long CycleCount { get; set; }
     public long MissedBlockCount { get; set; }
     public long MissedCycle { get; set; }
+
+    public string DateStr { get; set; }
+}
+
+public class DailyMergeCycleCount
+{
+    public long Date { get; set; }
+    public long MergeCycleCount { get; set; }
+    public long MainCycleCount { get; set; }
+    public long SideCycleCount { get; set; }
 
     public string DateStr { get; set; }
 }
