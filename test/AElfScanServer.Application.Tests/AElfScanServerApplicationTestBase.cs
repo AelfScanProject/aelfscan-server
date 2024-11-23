@@ -1,4 +1,3 @@
-using ETransferServer;
 using Xunit.Abstractions;
 
 namespace AElfScanServer;

@@ -3,6 +3,7 @@ using AElfScanServer.Common.Address.Provider;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.HttpApi;
+using AElfScanServer.HttpApi.Options;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.Mocks.Provider;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,5 +34,7 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<ITokenIndexerProvider, MockTokenIndexerProvider>();
         context.Services.AddSingleton<IAddressInfoProvider, MockAddressInfoProvider>();
         context.Services.AddSingleton<IBlockChainIndexerProvider, MockBlockChainIndexerProvider>();
+        Configure<SecretOptions>(o => o.CMCApiKey = "");
+        Configure<SecretOptions>(o => o.CMCApiKey = "");
     }
 }
