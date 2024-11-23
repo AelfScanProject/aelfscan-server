@@ -188,7 +188,6 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     public async Task<FilterTypeResponseDto> GetFilterType()
     {
         var filterTypeResp = new FilterTypeResponseDto();
-
         filterTypeResp.FilterTypes = new List<FilterTypeDto>();
         foreach (var keyValuePair in _globalOptions.CurrentValue.FilterTypes)
         {
