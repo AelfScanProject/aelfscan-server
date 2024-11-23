@@ -1,3 +1,4 @@
+using AElf.EntityMapping.Elasticsearch;
 using AElfScanServer.Domain.Shared;
 using AElfScanServer.Domain.Shared.MultiTenancy;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,7 @@ namespace AElfScanServer;
         typeof(AbpPermissionManagementDomainIdentityModule),
         typeof(AbpSettingManagementDomainModule),
         typeof(AbpTenantManagementDomainModule),
+        typeof(AElfEntityMappingElasticsearchModule),
         // typeof(AElfIndexingElasticsearchModule)
     }
 )]

@@ -2,10 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using AElf.EntityMapping.Elasticsearch;
+using AElf.EntityMapping.Elasticsearch.Options;
+using AElf.EntityMapping.Options;
 using AElf.Indexing.Elasticsearch;
 using AElf.Indexing.Elasticsearch.Options;
 using AElf.Indexing.Elasticsearch.Services;
 using AElfScanServer.Common;
+using AElfScanServer.HttpApi;
 using Elasticsearch.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -20,48 +24,54 @@ namespace AElfScanServer;
 )]
 public class AElfScanServerDomainTestModule : AbpModule
 {
-    public override void ConfigureServices(ServiceConfigurationContext context)
+     public override void ConfigureServices(ServiceConfigurationContext context)
     {
-        Configure<IndexCreateOption>(x => { x.AddModule(typeof(AElfScanCommonModule)); });
-        
-        // Do not modify this!!!
-        context.Services.Configure<EsEndpointOption>(options =>
+        Configure<CollectionCreateOptions>(x =>
         {
-            options.Uris = new List<string> { "http://127.0.0.1:9200" };
+            x.AddModule(typeof(AElfScanCommonModule));
+            x.AddModule(typeof(HttpApiModule));
         });
-
-        context.Services.Configure<IndexSettingOptions>(options =>
+        
+         /*// Do not modify this!!!
+         context.Services.Configure<EsEndpointOption>(options =>
+         {
+             options.Uris = new List<string> { "http://127.0.0.1:9200"};
+         });*/
+            
+        /*context.Services.Configure<IndexSettingOptions>(options =>
         {
             options.NumberOfReplicas = 1;
             options.NumberOfShards = 1;
             options.Refresh = Refresh.True;
-            options.IndexPrefix = "Test";
+            options.IndexPrefix = "AeFinder";
+        });*/
+        context.Services.Configure<AElfEntityMappingOptions>(options =>
+        {
+            options.CollectionPrefix = "test";
+            // options.ShardInitSettings = InitShardInitSettingOptions();
         });
+        context.Services.Configure<ElasticsearchOptions>(
+            options =>
+            {
+                options.NumberOfShards = 1;
+                options.NumberOfReplicas = 1;
+                options.Refresh = Refresh.True;
+            }
+        );
     }
     
     public override void OnApplicationShutdown(ApplicationShutdownContext context)
     {
-        var elasticIndexService = context.ServiceProvider.GetRequiredService<IElasticIndexService>();
-        var modules = context.ServiceProvider.GetRequiredService<IOptionsSnapshot<IndexCreateOption>>().Value.Modules;
-
-        modules.ForEach(m =>
-        {
-            var types = GetTypesAssignableFrom<IIndexBuild>(m.Assembly);
-            foreach (var t in types)
-            {
-                AsyncHelper.RunSync(async () =>
-                    await elasticIndexService.DeleteIndexAsync("Test.".ToLower() + t.Name.ToLower()));
-            }
-        });
-    }
-
-    private List<Type> GetTypesAssignableFrom<T>(Assembly assembly)
-    {
-        var compareType = typeof(T);
-        return assembly.DefinedTypes
-            .Where(type => compareType.IsAssignableFrom(type) && !compareType.IsAssignableFrom(type.BaseType) &&
-                           !type.IsAbstract && type.IsClass && compareType != type)
-            .Cast<Type>().ToList();
+        var option = context.ServiceProvider.GetRequiredService<IOptionsSnapshot<AElfEntityMappingOptions>>();
+        if(option.Value.CollectionPrefix.IsNullOrEmpty())
+            return;
+        
+        var clientProvider = context.ServiceProvider.GetRequiredService<IElasticsearchClientProvider>();
+        var client = clientProvider.GetClient();
+        var indexPrefix = option.Value.CollectionPrefix.ToLower();
+        
+        client.Indices.Delete(indexPrefix+"*");
+        client.Indices.DeleteTemplate(indexPrefix + "*");
     }
 
 }

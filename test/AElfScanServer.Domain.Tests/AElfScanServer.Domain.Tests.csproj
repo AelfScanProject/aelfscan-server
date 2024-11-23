@@ -15,8 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\AElfScanServer.HttpApi\AElfScanServer.HttpApi.csproj" />
     <ProjectReference Include="..\..\src\AElfScanServer.Common\AElfScanServer.Common.csproj" />
     <ProjectReference Include="..\AElfScanServer.TestBase\AElfScanServer.TestBase.csproj" />
+    <ProjectReference Include="..\AElfScanServer.Orleans.TestBase\AElfScanServer.Orleans.TestBase.csproj" />
   </ItemGroup>
 
 </Project>

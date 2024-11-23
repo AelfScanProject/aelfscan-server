@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Repositories;
 using AElf.Indexing.Elasticsearch;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
@@ -22,19 +23,20 @@ public interface IAddressService
 public class AddressService : IAddressService, ISingletonDependency
 {
     private readonly INESTRepository<AddressIndex, string> _repository;
+  //  private readonly IEntityMappingRepository<AddressIndex, string> _addressIndexRepository;
     private readonly IObjectMapper _objectMapper;
-
-    public AddressService(INESTRepository<AddressIndex, string> repository, IObjectMapper objectMapper)
+    public AddressService(INESTRepository<AddressIndex, string> repository, IObjectMapper objectMapper,
+    IEntityMappingRepository<AddressIndex, string> addressIndexRepository)
     {
         _repository = repository;
         _objectMapper = objectMapper;
+     //   _addressIndexRepository = addressIndexRepository;
     }
 
     public async Task<Dictionary<string, CommonAddressDto>> GetAddressDictionaryAsync(AElfAddressInput input)
     {
         var mustQuery = new List<Func<QueryContainerDescriptor<AddressIndex>, QueryContainer>>();
-
-
+       // _addressIndexRepository.GetListAsync()
         if (!input.Addresses.IsNullOrEmpty())
         {
             mustQuery.Add(q => q.Terms(i => i.Field(f => f.Address).Terms(input.Addresses)));

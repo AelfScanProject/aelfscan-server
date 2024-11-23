@@ -5,7 +5,9 @@ using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Options;
 using AElf.EntityMapping.Repositories;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Dtos.Ads;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
@@ -23,6 +25,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Nest;
 using Orleans;
+using StackExchange.Redis;
 using Volo.Abp;
 using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
@@ -58,32 +61,32 @@ public interface IAdsService
     public Task SaveTwitterListAsync();
 }
 
-public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
+public class AdsService : IAdsService, ITransientDependency
 {
     private readonly IOptionsMonitor<SecretOptions> _secretOptions;
     private readonly IOptionsMonitor<TwitterOptions> _twitterOptions;
     private readonly ILogger<AdsService> _logger;
-    private readonly IClusterClient _clusterClient;
     private readonly IEntityMappingRepository<AdsIndex, string> _adsRepository;
     private readonly IEntityMappingRepository<AdsBannerIndex, string> _adsBannerRepository;
     private readonly IEntityMappingRepository<TwitterIndex, string> _twitterRepository;
     private readonly IObjectMapper _objectMapper;
     private readonly IElasticClient _elasticClient;
     private readonly ITwitterProvider _twitterProvider;
+    private readonly IOptionsMonitor<AElfEntityMappingOptions> _mappingOptions;
+    private readonly ICacheProvider _cacheProvider;
 
-    public AdsService(IOptions<RedisCacheOptions> optionsAccessor, IOptionsMonitor<SecretOptions> secretOptions,
+    public AdsService( IOptionsMonitor<SecretOptions> secretOptions,
         ILogger<AdsService> logger,
-        IClusterClient clusterClient, IEntityMappingRepository<AdsIndex, string> adsRepository,
+         IEntityMappingRepository<AdsIndex, string> adsRepository,
+        
         IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options,
         IEntityMappingRepository<AdsBannerIndex, string> adsBannerRepository,
         IEntityMappingRepository<TwitterIndex, string> twitterRepository,
-        IOptionsMonitor<TwitterOptions> twitterOptions,
-        ITwitterProvider twitterProvider) : base(
-        optionsAccessor)
+        IOptionsMonitor<TwitterOptions> twitterOptions,IOptionsMonitor<AElfEntityMappingOptions> mappingOptions,
+        ITwitterProvider twitterProvider,ICacheProvider cacheProvider) 
     {
         _secretOptions = secretOptions;
         _logger = logger;
-        _clusterClient = clusterClient;
         _objectMapper = objectMapper;
         _adsRepository = adsRepository;
         var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
@@ -94,6 +97,8 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
         _twitterRepository = twitterRepository;
         _twitterOptions = twitterOptions;
         _twitterProvider = twitterProvider;
+        _mappingOptions = mappingOptions;
+        _cacheProvider = cacheProvider;
     }
 
 
@@ -219,8 +224,8 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
     public async Task<AdsBannerResp> GetAdsBanner(AdsBannerReq req)
     {
         var key = GrainIdHelper.GenerateAdsBannerKey(req.SearchKey, req.Label);
-        await ConnectAsync();
-        var adsBannerVisitCount = RedisDatabase.StringGet(key);
+       
+        var adsBannerVisitCount = await _cacheProvider.StringGetAsync(key);
         var adsBannerList = new List<AdsBannerIndex>();
         var adsBannerResp = new AdsBannerResp();
         adsBannerResp.SearchKey = key;
@@ -230,13 +235,12 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
             return adsBannerResp;
         }
 
-        if (adsBannerVisitCount.IsNullOrEmpty)
+        if (adsBannerVisitCount.IsNullOrEmpty())
         {
             var adsBannerIndex = adsBannerList.First();
             adsBannerResp = _objectMapper.Map<AdsBannerIndex, AdsBannerResp>(adsBannerIndex);
 
-            RedisDatabase.StringIncrement(key);
-            RedisDatabase.KeyExpire(key, TimeSpan.FromDays(7));
+            await _cacheProvider.StringIncrement(key, 1, TimeSpan.FromDays(7));
             adsBannerResp.SearchKey = key;
             return adsBannerResp;
         }
@@ -249,7 +253,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
             totalVisitCount += ads.TotalVisitCount;
             if (count < totalVisitCount)
             {
-                RedisDatabase.StringIncrement(key);
+                await _cacheProvider.StringIncrement(key, 1, TimeSpan.FromDays(7));
                 var resp = _objectMapper.Map<AdsBannerIndex, AdsBannerResp>(ads);
                 resp.SearchKey = key;
                 return resp;
@@ -257,7 +261,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
         }
 
         adsBannerResp.SearchKey = key;
-        RedisDatabase.StringSet(key, 1);
+        await _cacheProvider.StringSetAsync(key, 1,null);
         return _objectMapper.Map<AdsBannerIndex, AdsBannerResp>(adsBannerList.First());
     }
 
@@ -265,8 +269,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
     public async Task<AdsResp> GetAds(AdsReq req)
     {
         var key = GrainIdHelper.GenerateAdsKey(req.SearchKey, req.Label);
-        await ConnectAsync();
-        var adsVisitCount = RedisDatabase.StringGet(key);
+        var adsVisitCount = await _cacheProvider.StringGetAsync(key);
         var adsList = new List<AdsIndex>();
         var adsResp = new AdsResp();
 
@@ -277,13 +280,12 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
             return adsResp;
         }
 
-        if (adsVisitCount.IsNullOrEmpty)
+        if (adsVisitCount.IsNullOrEmpty())
         {
             var adsIndex = adsList.First();
             adsResp = _objectMapper.Map<AdsIndex, AdsResp>(adsIndex);
 
-            RedisDatabase.StringIncrement(key);
-            RedisDatabase.KeyExpire(key, TimeSpan.FromDays(7));
+            await _cacheProvider.StringIncrement(key, 1, TimeSpan.FromDays(7));
             adsResp.SearchKey = key;
             return adsResp;
         }
@@ -296,7 +298,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
             totalVisitCount += ads.TotalVisitCount;
             if (count < totalVisitCount)
             {
-                RedisDatabase.StringIncrement(key);
+                await _cacheProvider.StringIncrement(key, 1, TimeSpan.FromDays(7));
                 var resp = _objectMapper.Map<AdsIndex, AdsResp>(ads);
                 resp.SearchKey = key;
                 return resp;
@@ -304,7 +306,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
         }
 
         adsResp.SearchKey = key;
-        RedisDatabase.StringSet(key, 1);
+        await _cacheProvider.StringSetAsync(key, 1,null);
         return _objectMapper.Map<AdsIndex, AdsResp>(adsList.First());
     }
 
@@ -313,7 +315,7 @@ public class AdsService : AbpRedisCache, IAdsService, ITransientDependency
     {
         var utcMilliSeconds = DateTime.UtcNow.ToUtcMilliSeconds();
         var searchResponse = await _elasticClient.SearchAsync<AdsIndex>(s => s
-            .Index("adsindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"adsindex"))
             .Query(q => q
                 .Bool(b => b
                     .Must(

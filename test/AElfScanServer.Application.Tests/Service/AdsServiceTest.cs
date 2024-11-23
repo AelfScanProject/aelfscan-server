@@ -21,11 +21,13 @@ public class AdsServiceTest : AElfScanServerApplicationTestBase
     [Fact]
     public async Task GetAds_Test()
     {
+        await UpdateAds_Test();
+        await Task.Delay(2000);
         // Arrange
         var req = new AdsReq
         {
-            Label = null,
-            SearchKey = null
+            Label = "Sample",
+            SearchKey = "SearchKey"
         };
 
         // Act
@@ -38,6 +40,8 @@ public class AdsServiceTest : AElfScanServerApplicationTestBase
     [Fact]
     public async Task GetAdsDetailList_Test()
     {
+       await UpdateAds_Test();
+       await Task.Delay(2000);
         // Arrange
         int size = 1;
 
@@ -78,8 +82,13 @@ public class AdsServiceTest : AElfScanServerApplicationTestBase
     [Fact]
     public async Task GetAdsList_Test()
     {
+        await UpdateAds_Test();
         // Arrange
-        var req = new GetAdsListReq { /* 初始化参数 */ };
+        var req = new GetAdsListReq
+        {
+            AdsId = CreateUpdateAdsReq().AdsId,
+            Labels = CreateUpdateAdsReq().Labels
+        };
 
         // Act
         var result = await _adsService.GetAdsList(req);
@@ -92,7 +101,7 @@ public class AdsServiceTest : AElfScanServerApplicationTestBase
     public async Task GetAdsBanner_Test()
     {
         // Arrange
-        var req = new AdsBannerReq { /* 初始化参数 */ };
+        var req = new AdsBannerReq {  };
 
         // Act
         var result = await _adsService.GetAdsBanner(req);
@@ -105,7 +114,7 @@ public class AdsServiceTest : AElfScanServerApplicationTestBase
     public async Task UpdateAdsBanner_Test()
     {
         // Arrange
-        var req = new UpdateAdsBannerReq { /* 初始化参数 */ };
+        var req = new UpdateAdsBannerReq {  };
 
         // Act
         var result = await _adsService.UpdateAdsBanner(req);
@@ -118,7 +127,7 @@ public class AdsServiceTest : AElfScanServerApplicationTestBase
     public async Task DeleteAdsBanner_Test()
     {
         // Arrange
-        var req = new DeleteAdsBannerReq { /* 初始化参数 */ };
+        var req = new DeleteAdsBannerReq {  };
 
         // Act
         var result = await _adsService.DeleteAdsBanner(req);
@@ -173,8 +182,8 @@ public class AdsServiceTest : AElfScanServerApplicationTestBase
             ClickLink = "http://example.com",
             Labels = new List<string> { "Sample", "Ads" },
             Createtime = DateTime.UtcNow,
-            StartTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            EndTime = DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds(),
+            StartTime = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeMilliseconds(),
+            EndTime = DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeMilliseconds(),
             TotalVisitCount = 0
         };
     }

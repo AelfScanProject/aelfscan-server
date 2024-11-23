@@ -48,7 +48,6 @@ namespace AElfScanServer.HttpApi;
     typeof(AbpAutoMapperModule),
     typeof(AbpAccountHttpApiModule),
     typeof(AbpFeatureManagementApplicationContractsModule),
-    typeof(AElfIndexingElasticsearchModule),
     typeof(AbpIdentityHttpApiModule),
     typeof(AbpIdentityApplicationContractsModule),
     typeof(AbpCachingStackExchangeRedisModule),
