@@ -23,14 +23,16 @@ public class MockAddressInfoProvider : IAddressInfoProvider
         _memoryCache = memoryCache;
     }
 
-    public async Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset)
+    public async Task CreateAddressAssetAsync(AddressAssetType type, string chainId, AddressAssetDto addressAsset,
+        List<SymbolType> symbolTypes = null)
     {
         var key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, addressAsset.Address);
         var serializedValue = JsonConvert.SerializeObject(addressAsset);
         _memoryCache.Set(key, serializedValue);
+        
     }
 
-    public async Task<AddressAssetDto> GetAddressAssetAsync(AddressAssetType type, string chainId, string address)
+    public async Task<AddressAssetDto> GetAddressAssetAsync(AddressAssetType type, string chainId, string address, List<SymbolType> symbolTypes = null)
     {
         var key = GetKey(AddressAssetCacheKeyPrefix + type, chainId, address);
         var re = _memoryCache.Get(key);

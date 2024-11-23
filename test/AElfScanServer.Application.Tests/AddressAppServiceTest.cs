@@ -1,11 +1,6 @@
 using System.Threading.Tasks;
-using AElfScanServer.Common.IndexerPluginProvider;
-using AElfScanServer.Common.Token;
-using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.HttpApi.Dtos.address;
-using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.HttpApi.Service;
-using Microsoft.Extensions.Logging;
 using Shouldly;
 using Volo.Abp.ObjectMapping;
 using Xunit;
@@ -17,21 +12,11 @@ public class AddressAppServiceTest : AElfScanServerApplicationTestBase
 {
     private readonly IAddressAppService _addressAppService;
     private readonly IObjectMapper _objectMapper;
-    private readonly ILogger<AddressAppService> _logger;
-    private readonly IIndexerGenesisProvider _indexerGenesisProvider;
-    private readonly ITokenIndexerProvider _tokenIndexerProvider;
-    private readonly ITokenPriceService _tokenPriceService;
-    private readonly ITokenInfoProvider _tokenInfoProvider;
 
     public AddressAppServiceTest(ITestOutputHelper output) : base(output)
     {
         _addressAppService = GetRequiredService<IAddressAppService>();
         _objectMapper = GetRequiredService<IObjectMapper>();
-        _logger = GetRequiredService<ILogger<AddressAppService>>();
-        _indexerGenesisProvider = GetRequiredService<IIndexerGenesisProvider>();
-        _tokenIndexerProvider = GetRequiredService<ITokenIndexerProvider>();
-        _tokenPriceService = GetRequiredService<ITokenPriceService>();
-        _tokenInfoProvider = GetRequiredService<ITokenInfoProvider>();
     }
 
     [Fact]
@@ -43,5 +28,45 @@ public class AddressAppServiceTest : AElfScanServerApplicationTestBase
             ChainId = "MainChain"
         });
         result.ChainIds.ShouldContain("AELF");
+    }
+    
+    [Fact]
+    public async Task GetAddressListAsync_Test()
+    {
+        var result = await _addressAppService.GetAddressListAsync(new GetListInputInput()
+        {
+            ChainId = "AELF"
+        });
+        result.List.Count.ShouldBeGreaterThan(0);
+    }
+    
+    [Fact]
+    public async Task GetAddressTokenListAsync_Test()
+    {
+        var result = await _addressAppService.GetAddressTokenListAsync(new GetAddressTokenListInput()
+        {
+            ChainId = "AELF"
+        });
+        result.List.Count.ShouldBeGreaterThan(0);
+    }
+    
+    [Fact]
+    public async Task GetAddressNftListAsync_Test()
+    {
+        var result = await _addressAppService.GetAddressNftListAsync(new GetAddressTokenListInput()
+        {
+            ChainId = "AELF"
+        });
+        result.List.Count.ShouldBeGreaterThan(0);
+    }
+    
+    [Fact]
+    public async Task GetTransferListAsync_Test()
+    {
+        var result = await _addressAppService.GetTransferListAsync(new GetTransferListInput()
+        {
+            ChainId = "AELF"
+        });
+        result.List.Count.ShouldBeGreaterThan(0);
     }
 }

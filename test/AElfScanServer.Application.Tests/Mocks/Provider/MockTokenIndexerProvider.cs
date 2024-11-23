@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
+using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Token.Provider;
 
@@ -148,6 +149,16 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
                    Amount = 10000,
                    FormatAmount = 1,
                    TransferCount = 200,
+                   Metadata = new MetadataDto
+                   {
+                       ChainId = "AELF",
+                       Block = new BlockMetadataDto
+                       {
+                           BlockHash = "BlockHash",
+                           BlockHeight = 100,
+                           BlockTime = default
+                       }
+                   }
                }
             }
         };
@@ -177,14 +188,86 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
         };
     }
 
-    public Task<Dictionary<string, IndexerTokenInfoDto>> GetTokenDictAsync(string chainId, List<string> symbols)
+    public async Task<Dictionary<string, IndexerTokenInfoDto>> GetTokenDictAsync(string chainId, List<string> symbols)
     {
-        throw new System.NotImplementedException();
+        return new Dictionary<string, IndexerTokenInfoDto>()
+        {
+            {
+                "ELF", new IndexerTokenInfoDto
+                {
+                    Symbol = "ELF",
+                    TokenName = "Token",
+                    TotalSupply = 1000,
+                    Supply = 100,
+                    Decimals = 2,
+                    Type = SymbolType.Token,
+                    HolderCount = 20,
+                    TransferCount = 20,
+                    Metadata = new MetadataDto
+                    {
+                        ChainId = "AELF",
+                        Block = new BlockMetadataDto
+                        {
+                            BlockHash = "BlockHash",
+                            BlockHeight = 100,
+                            BlockTime = default
+                        }
+                    }
+                }
+            }
+        };
     }
 
-    public Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input)
+    public async Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input)
     {
-        throw new System.NotImplementedException();
+        return new TokenTransferInfosDto
+        {
+            Total = 2,
+            List = new List<TokenTransferInfoDto>()
+            {
+                new TokenTransferInfoDto
+                {
+                    ChainId = "AELF",
+                    TransactionId = "TransactionId",
+                    Method = "Transfer",
+                    BlockHeight = 100,
+                    BlockTime = 0,
+                    Symbol = "ELF",
+                    SymbolName = "Token",
+                    SymbolImageUrl = "test.jpg",
+                    From = new CommonAddressDto
+                    {
+                        Name = "From",
+                        Address = "From",
+                        AddressType = AddressType.EoaAddress,
+                        IsManager = false,
+                        IsProducer = false
+                    },
+                    To = new CommonAddressDto
+                    {
+                        Name = "To",
+                        Address = "To",
+                        AddressType = AddressType.ContractAddress,
+                        IsManager = false,
+                        IsProducer = false
+                    },
+                    Quantity = 10,
+                    Status = TransactionStatus.Mined,
+                    TransactionFeeList = new List<TransactionFeeDto>
+                    {
+                        new TransactionFeeDto
+                        {
+                            Symbol = "Elf",
+                            Amount = 10,
+                            AmountOfUsd = 10
+                        }
+                    }
+                }
+            },
+            IsAddress = false,
+            Balance = 0,
+            Value = 0
+        };
     }
 
     public Task<List<BlockBurnFeeDto>> GetBlockBurntFeeListAsync(string chainId, long startBlockHeight, long endBlockHeight)
