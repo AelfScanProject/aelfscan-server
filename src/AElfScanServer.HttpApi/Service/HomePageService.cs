@@ -183,7 +183,6 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
 
         return overviewResp;
     }
-
     
     public async Task<FilterTypeResponseDto> GetFilterType()
     {
