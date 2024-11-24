@@ -103,9 +103,7 @@ public interface IChartDataService
     public Task<NodeProduceBlockInfoResp> GetNodeProduceBlockInfoRespAsync(NodeProduceBlockRequest request);
 
     public Task<InitRoundResp> InitDailyNetwork(SetRoundRequest request);
-
-    public Task<JonInfoResp> GetJobInfo(SetJob request);
-
+    
     public Task FixDailyData(FixDailyData request);
 
     Task FixTokenHolderAsync(FixTokenHolderInput request);
@@ -146,38 +144,34 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IObjectMapper _objectMapper;
     private readonly IDistributedCache<string> _cache;
-
-    public ChartDataService(IOptions<RedisCacheOptions> optionsAccessor, ILogger<ChartDataService> logger,
+    public ChartDataService(
+        IOptions<RedisCacheOptions> optionsAccessor,
+        IObjectMapper objectMapper,
+        IOptionsMonitor<GlobalOptions> globalOptions,
+        IEntityMappingRepository<DailyTransactionCountIndex, string> transactionCountRepository,
+        ILogger<ChartDataService> logger,
         IEntityMappingRepository<RoundIndex, string> roundIndexRepository,
         IEntityMappingRepository<NodeBlockProduceIndex, string> nodeBlockProduceIndex,
         IEntityMappingRepository<DailyBlockProduceCountIndex, string> blockProduceIndexRepository,
-        IObjectMapper objectMapper,
         IEntityMappingRepository<DailyBlockProduceDurationIndex, string> blockProduceDurationRepository,
         IEntityMappingRepository<DailyCycleCountIndex, string> cycleCountRepository,
-        IOptionsMonitor<GlobalOptions> globalOptions,
         IEntityMappingRepository<HourNodeBlockProduceIndex, string> hourNodeBlockProduceRepository,
         IEntityMappingRepository<DailyAvgTransactionFeeIndex, string> avgTransactionFeeRepository,
         IEntityMappingRepository<ElfPriceIndex, string> elfPriceRepository,
         IEntityMappingRepository<DailyBlockRewardIndex, string> blockRewardRepository,
         IEntityMappingRepository<DailyTotalBurntIndex, string> totalBurntRepository,
-        IEntityMappingRepository<DailyDeployContractIndex, string> deployContractRepository,
         IEntityMappingRepository<DailyAvgBlockSizeIndex, string> blockSizeRepository,
-        IEntityMappingRepository<DailyTransactionCountIndex, string> transactionCountRepository,
-        IEntityMappingRepository<DailyUniqueAddressCountIndex, string> uniqueAddressRepository,
         IEntityMappingRepository<DailyActiveAddressCountIndex, string> activeAddressRepository,
-        IEntityMappingRepository<TransactionIndex, string> transactionsRepository,
         IEntityMappingRepository<DailyContractCallIndex, string> dailyContractCallRepository,
         IEntityMappingRepository<DailyTotalContractCallIndex, string> dailyTotalContractCallRepository,
         IEntityMappingRepository<DailySupplyGrowthIndex, string> dailySupplyGrowthIndexRepository,
         IEntityMappingRepository<DailyStakedIndex, string> dailyStakedIndexRepository,
-        IEntityMappingRepository<DailyTransactionRecordIndex, string> transactionRecordIndexRepository,
         IEntityMappingRepository<DailyTVLIndex, string> dailyTVLRepository,
         IEntityMappingRepository<MonthlyActiveAddressIndex, string> monthlyActiveAddressIndexRepository,
         IPriceServerProvider priceServerProvider,
         IDailyHolderProvider dailyHolderProvider,
         IDistributedCache<string> cache,
-        IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> uniqueMergeAddressRepository,
-        IOptionsMonitor<ElasticsearchOptions> options) : base(
+        IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> uniqueMergeAddressRepository) : base(
         optionsAccessor)
     {
         _logger = logger;
@@ -189,26 +183,17 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         _cycleCountRepository = cycleCountRepository;
         _globalOptions = globalOptions;
         _hourNodeBlockProduceRepository = hourNodeBlockProduceRepository;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool);
-        _elasticClient = new ElasticClient(settings);
         _avgTransactionFeeRepository = avgTransactionFeeRepository;
         _elfPriceRepository = elfPriceRepository;
         _blockRewardRepository = blockRewardRepository;
         _totalBurntRepository = totalBurntRepository;
-        _deployContractRepository = deployContractRepository;
-        EsIndex.SetElasticClient(_elasticClient);
         _blockSizeRepository = blockSizeRepository;
         _transactionCountRepository = transactionCountRepository;
-        _uniqueAddressRepository = uniqueAddressRepository;
         _activeAddressRepository = activeAddressRepository;
-        _transactionsRepository = transactionsRepository;
         _dailyContractCallRepository = dailyContractCallRepository;
         _dailyTotalContractCallRepository = dailyTotalContractCallRepository;
         _dailySupplyGrowthIndexRepository = dailySupplyGrowthIndexRepository;
         _dailyStakedIndexRepository = dailyStakedIndexRepository;
-        _transactionRecordIndexRepository = transactionRecordIndexRepository;
         _dailyHolderProvider = dailyHolderProvider;
         _dailyTVLRepository = dailyTVLRepository;
         _priceServerProvider = priceServerProvider;
@@ -216,7 +201,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         _uniqueMergeAddressRepository = uniqueMergeAddressRepository;
         _cache = cache;
     }
-
     public async Task FixDailyData(FixDailyData request)
     {
         await ConnectAsync();
@@ -227,57 +211,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     public async Task FixTokenHolderAsync(FixTokenHolderInput request)
     {
         await _cache.SetAsync(RedisKeyHelper.FixTokenHolder(), JsonConvert.SerializeObject(request));
-    }
-
-    public async Task<JonInfoResp> GetJobInfo(SetJob request)
-    {
-        await ConnectAsync();
-        var jonInfoResp = new JonInfoResp() { };
-
-        // var v1 = RedisDatabase.StringGet(RedisKeyHelper.TransactionLastBlockHeight(request.ChainId));
-        // var v2 = RedisDatabase.StringGet(RedisKeyHelper.BlockSizeLastBlockHeight(request.ChainId));
-        // var v3 = RedisDatabase.StringGet(RedisKeyHelper.LatestRound(request.ChainId));
-        //
-        //
-        // var queryable1 = await _roundIndexRepository.GetQueryableAsync();
-        // var roundIndices = queryable1.Where(c => c.ChainId == request.ChainId)
-        //     .OrderByDescending(c => c.RoundNumber).Take(1).ToList();
-        //
-        //
-        // jonInfoResp.RedisLastBlockHeight = long.Parse(v1);
-        // jonInfoResp.BlockSizeBlockHeight = long.Parse(v2);
-        // jonInfoResp.RedisLastRound = long.Parse(v3);
-        //
-        //
-        // jonInfoResp.EsLastRound = roundIndices[0].RoundNumber;
-        // jonInfoResp.EsLastRoundDate = roundIndices[0].DateStr;
-        //
-        // if (request.SetBlockHeight > 0)
-        // {
-        //     RedisDatabase.StringSet(RedisKeyHelper.TransactionLastBlockHeight(request.ChainId), request.SetBlockHeight);
-        // }
-        //
-        // if (request.SetSizBlockHeight > 0)
-        // {
-        //     RedisDatabase.StringSet(RedisKeyHelper.BlockSizeLastBlockHeight(request.ChainId),
-        //         request.SetSizBlockHeight);
-        // }
-        //
-        // if (request.SetLastRound > 0)
-        // {
-        //     RedisDatabase.StringSet(RedisKeyHelper.LatestRound(request.ChainId),
-        //         request.SetLastRound);
-        // }
-
-
-        // var queryable2 = await _transactionRecordIndexRepository.GetQueryableAsync();
-        // queryable2 = queryable2.Where(c => c.ChainId == request.ChainId);
-        // var count = queryable2.Count();
-        // var dailyTransactionRecordIndices = queryable2.OrderByDescending(c => c.DateStr).Take(1);
-        // jonInfoResp.TransactionLastDate = dailyTransactionRecordIndices.First().DateStr;
-        // jonInfoResp.TransactionDateCount = count;
-
-        return jonInfoResp;
     }
 
 
@@ -1643,11 +1576,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     public async Task<DailyTransactionCountResp> GetDailyTransactionCountAsync(ChartDataRequest request)
 
     { 
-        return await GetMergeDailyTransactionCountAsync();
-    }
-
-    public async Task<DailyTransactionCountResp> GetMergeDailyTransactionCountAsync()
-    {
         var queryable = await _transactionCountRepository.GetQueryableAsync();
         var mainChainList = queryable.Where(c => c.ChainId == "AELF").Take(10000).OrderBy(c => c.Date).ToList();
         var mainChainDataList =
@@ -1682,11 +1610,12 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         return resp;
     }
+    
 
 
-    public async Task<UniqueAddressCountResp> GetMergeUniqueAddressCountAsync()
+    public async Task<UniqueAddressCountResp> GetUniqueAddressCountAsync(ChartDataRequest request)
     {
-        var queryable = await _uniqueMergeAddressRepository.GetQueryableAsync();
+             var queryable = await _uniqueMergeAddressRepository.GetQueryableAsync();
         var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
 
         var sideIndexList = new List<DailyMergeUniqueAddressCountIndex>();
@@ -1731,11 +1660,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         };
 
         return resp;
-    }
-
-    public async Task<UniqueAddressCountResp> GetUniqueAddressCountAsync(ChartDataRequest request)
-    {
-        return await GetMergeUniqueAddressCountAsync();
     }
     
 

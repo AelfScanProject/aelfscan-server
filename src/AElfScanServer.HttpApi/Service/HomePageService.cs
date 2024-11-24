@@ -35,9 +35,6 @@ namespace AElfScanServer.HttpApi.Service;
 
 public interface IHomePageService
 {
-    
-    public Task<HomeOverviewResponseDto> GetBlockchainOverviewAsync(BlockchainOverviewRequestDto req);
-
     public Task<TransactionPerMinuteResponseDto> GetTransactionPerMinuteAsync(
         string chainId);
 
@@ -49,32 +46,16 @@ public interface IHomePageService
 public class HomePageService : AbpRedisCache, IHomePageService, ITransientDependency
 {
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
-    private readonly HomePageProvider _homePageProvider;
-    private readonly BlockChainDataProvider _blockChainProvider;
-    private readonly ITokenIndexerProvider _tokenIndexerProvider;
-    private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
-    private readonly ITokenPriceService _tokenPriceService;
 
     private readonly ILogger<HomePageService> _logger;
 
 
     public HomePageService(IOptions<RedisCacheOptions> optionsAccessor,
-        ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> globalOptions,
-        AELFIndexerProvider aelfIndexerProvider,
-        HomePageProvider homePageProvider, ITokenIndexerProvider tokenIndexerProvider,
-        BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
-        ITokenPriceService tokenPriceService
+        ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> globalOptions
     ) : base(optionsAccessor)
     {
         _logger = logger;
         _globalOptions = globalOptions;
-        _aelfIndexerProvider = aelfIndexerProvider;
-        _homePageProvider = homePageProvider;
-        _tokenIndexerProvider = tokenIndexerProvider;
-        _blockChainProvider = blockChainProvider;
-        _blockChainIndexerProvider = blockChainIndexerProvider;
-        _tokenPriceService = tokenPriceService;
     }
 
     public async Task<TransactionPerMinuteResponseDto> GetTransactionPerMinuteAsync(
@@ -101,82 +82,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         return transactionPerMinuteResp;
     }
 
-    public async Task<TransactionPerMinuteResponseDto> GetAllTransactionPerMinuteAsync()
-    {
-        var transactionPerMinuteResp = new TransactionPerMinuteResponseDto();
-        await ConnectAsync();
 
-        var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionChartData("merge"));
-        var mergeData =
-            JsonConvert.DeserializeObject<List<TransactionCountPerMinuteDto>>(redisValue);
-
-        transactionPerMinuteResp.All = mergeData;
-
-
-        return transactionPerMinuteResp;
-    }
-
-    [ExceptionHandler(typeof(Exception),
-        Message = "GetBlockchainOverviewAsync err",
-        TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["req"])]
-    public virtual async Task<HomeOverviewResponseDto> GetBlockchainOverviewAsync(BlockchainOverviewRequestDto req)
-    {
-        var overviewResp = new HomeOverviewResponseDto();
-        if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == req.ChainId))
-        {
-            _logger.LogWarning("Get blockchain overview chainId not exist:{chainId},chainIds:{chainIds}", req.ChainId,
-                _globalOptions.CurrentValue.ChainIds);
-            return overviewResp;
-        }
-
-      
-            var tasks = new List<Task>();
-            tasks.Add(_aelfIndexerProvider.GetLatestBlockHeightAsync(req.ChainId).ContinueWith(
-                task => { overviewResp.BlockHeight = task.Result; }));
-
-            tasks.Add(_blockChainIndexerProvider.GetTransactionCount(req.ChainId).ContinueWith(task =>
-            {
-                overviewResp.Transactions = task.Result;
-            }));
-
-            tasks.Add(_tokenIndexerProvider.GetAccountCountAsync(req.ChainId).ContinueWith(
-                task => { overviewResp.Accounts = task.Result; }));
-
-
-            tasks.Add(_homePageProvider.GetRewardAsync(req.ChainId).ContinueWith(
-                task =>
-                {
-                    overviewResp.Reward = task.Result.ToDecimalsString(8);
-                    overviewResp.CitizenWelfare = (task.Result * 0.75).ToDecimalsString(8);
-                }));
-
-            tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync("ELF").ContinueWith(
-                task =>
-                {
-                    overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
-                }));
-            
-            
-                tasks.Add(_tokenPriceService.GetTokenPriceAsync("ELF").ContinueWith(
-                task =>
-                {
-                    if (task.Result != null)
-                    {
-                     overviewResp.TokenPriceInUsd = task.Result.Price;
-
-                    }
-                }));
-            tasks.Add(_homePageProvider.GetTransactionCountPerLastMinute(req.ChainId).ContinueWith(
-                task => { overviewResp.Tps = (task.Result / 60).ToString("F2"); }));
-
-            await Task.WhenAll(tasks);
-       
-
-        return overviewResp;
-    }
-
-    
     public async Task<FilterTypeResponseDto> GetFilterType()
     {
         var filterTypeResp = new FilterTypeResponseDto();
@@ -194,53 +100,4 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
 
         return filterTypeResp;
     }
-
-
-    [ExceptionHandler(typeof(Exception),
-        Message = "GetLatestBlocksAsync err",
-        TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
-    public virtual async Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto)
-    {
-        var result = new BlocksResponseDto() { };
-        if (!_globalOptions.CurrentValue.ChainIds.Exists(s => s == requestDto.ChainId) ||
-            requestDto.MaxResultCount <= 0 ||
-            requestDto.MaxResultCount > _globalOptions.CurrentValue.MaxResultCount)
-        {
-            return result;
-        }
-        
-            var aElfClient = new AElfClient(_globalOptions.CurrentValue.ChainNodeHosts[requestDto.ChainId]);
-            var blockHeightAsync = await aElfClient.GetBlockHeightAsync();
-
-
-            var blockList = await _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
-                blockHeightAsync - requestDto.MaxResultCount,
-                blockHeightAsync);
-            
-            result.Blocks = new List<BlockRespDto>();
-            result.Total = blockList.Count;
-
-            for (var i = blockList.Count - 1; i > 0; i--)
-            {
-                var indexerBlockDto = blockList[i];
-                var latestBlockDto = new BlockRespDto();
-
-                latestBlockDto.BlockHeight = indexerBlockDto.BlockHeight;
-                latestBlockDto.Timestamp = DateTimeHelper.GetTotalSeconds(indexerBlockDto.BlockTime);
-                latestBlockDto.TransactionCount = indexerBlockDto.TransactionIds.Count;
-
-                latestBlockDto.TimeSpan = (Convert.ToDouble(0 < blockList.Count
-                    ? DateTimeHelper.GetTotalMilliseconds(indexerBlockDto.BlockTime) -
-                      DateTimeHelper.GetTotalMilliseconds(blockList[i - 1].BlockTime)
-                    : 0) / 1000).ToString("0.0");
-               
-                latestBlockDto.Reward = "";
-                result.Blocks.Add(latestBlockDto);
-            }
-
-            return result;
-    }
-
-
 }

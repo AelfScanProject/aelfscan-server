@@ -187,17 +187,7 @@ public class ChartDataController : AbpController
     {
         return await _chartDataService.InitDailyNetwork(request);
     }
-
-
-    [HttpGet("getJob")]
-    public async Task<JonInfoResp> GetJobInfo(SetJob request)
-    {
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var userAgent = HttpContext.Request.Headers["User-Agent"].FirstOrDefault();
-        return await _chartDataService.GetJobInfo(request);
-    }
-
-
+    
     [HttpPost("fixDailyData")]
     public async Task FixDailyData(FixDailyData request)
     {

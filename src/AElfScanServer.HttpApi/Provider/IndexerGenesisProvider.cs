@@ -52,7 +52,6 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
     public virtual async Task<Dictionary<string, ContractInfoDto>> GetContractListAsync(string chainId,
         List<string> addressList)
     {
-        var indexerContractListResultDto = new IndexerContractListResultDto();
        
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
                 new GraphQLRequest
@@ -99,7 +98,6 @@ public class IndexerGenesisProvider : IIndexerGenesisProvider, ISingletonDepende
         int skipCount,
         int maxResultCount, string orderBy = "", string sort = "", string address = "", long blockHeight = 0)
     {
-        var indexerContractListResultDto = new IndexerContractListResultDto();
       
             var result = await _graphQlFactory.GetGraphQlHelper(IndexerType).QueryAsync<IndexerContractListResultDto>(
                 new GraphQLRequest

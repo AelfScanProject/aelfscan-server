@@ -33,17 +33,6 @@ public class BlockChainController : AbpController
         _dynamicTransactionService = dynamicTransactionService;
     }
 
-    [HttpGet]
-    [Route("latestBlocks")]
-    public async Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto)
-    {
-        return await _blockChainService.GetBlocksAsync(new BlocksRequestDto()
-        {
-            ChainId = requestDto.ChainId,
-            MaxResultCount = requestDto.MaxResultCount
-        });
-    }
-
 
     [HttpGet]
     [Route("blockDetail")]
@@ -79,17 +68,6 @@ public class BlockChainController : AbpController
     [Route("search")]
     public virtual async Task<object> SearchAsync(SearchRequestDto requestDto) =>
         await _searchService.SearchAsync(requestDto);
-
-    [HttpPost]
-    [Route("blockchainOverview")]
-    public virtual async Task<HomeOverviewResponseDto> BlockchainOverviewAsync(
-        BlockchainOverviewRequestDto req) => await _homePageService.GetBlockchainOverviewAsync(req);
-
-    [HttpPost]
-    [Route("transactionDataChart")]
-    public virtual async Task<TransactionPerMinuteResponseDto> GetTransactionPerMinuteAsync(
-        GetTransactionPerMinuteRequestDto requestDto) =>
-        await _homePageService.GetTransactionPerMinuteAsync(requestDto.ChainId);
 
 
     [HttpGet]
