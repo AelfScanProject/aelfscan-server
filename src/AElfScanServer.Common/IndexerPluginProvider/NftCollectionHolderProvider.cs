@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Repositories;
 using AElf.Indexing.Elasticsearch;
 using AElfScanServer.Domain.Common.Entities;
 using Microsoft.Extensions.Logging;
@@ -18,36 +20,31 @@ public interface INftCollectionHolderProvider
 
 public class NftCollectionHolderProvider : INftCollectionHolderProvider
 {
-    private readonly INESTRepository<NftCollectionHolderInfoIndex, string> _repository;
+    private readonly IEntityMappingRepository<NftCollectionHolderInfoIndex, string> _holderInfoIndexRepository;
+
     private ILogger<NftCollectionHolderProvider> _logger;
 
     public NftCollectionHolderProvider(ILogger<NftCollectionHolderProvider> logger,
-        INESTRepository<NftCollectionHolderInfoIndex, string> repository)
+        IEntityMappingRepository<NftCollectionHolderInfoIndex, string> repository)
     {
         _logger = logger;
-        _repository = repository;
+        _holderInfoIndexRepository = repository;
     }
 
 
     public async Task UpdateNftCollectionHolder(List<NftCollectionHolderInfoIndex> list)
     {
         //todo add cache
-        await _repository.BulkAddOrUpdateAsync(list);
+        await _holderInfoIndexRepository.AddOrUpdateManyAsync(list);
     }
 
     public async Task<List<NftCollectionHolderInfoIndex>> GetNftCollectionHolderInfoAsync(string collectionSymbol,
         string chainId)
     {
-        var mustQuery = new List<Func<QueryContainerDescriptor<NftCollectionHolderInfoIndex>, QueryContainer>>();
+        var queryableAsync = await _holderInfoIndexRepository.GetQueryableAsync();
+        var nftCollectionHolderInfoIndices = queryableAsync.Where(c => c.ChainId == chainId)
+            .Where(c => c.CollectionSymbol == collectionSymbol).ToList();
 
-        mustQuery.Add(q => q.Term(i => i.Field(f => f.ChainId).Value(chainId)));
-        mustQuery.Add(q => q.Term(i => i.Field(f => f.CollectionSymbol).Value(collectionSymbol)));
-
-
-        QueryContainer Filter(QueryContainerDescriptor<NftCollectionHolderInfoIndex> f) =>
-            f.Bool(b => b.Must(mustQuery));
-
-        var result = await _repository.GetListAsync(Filter);
-        return result.Item2;
+        return nftCollectionHolderInfoIndices;
     }
 }

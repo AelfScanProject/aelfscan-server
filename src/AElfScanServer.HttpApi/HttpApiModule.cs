@@ -78,7 +78,6 @@ public class HttpApiModule : AbpModule
 
         context.Services.AddSingleton<IHomePageService, HomePageService>();
         context.Services.AddSingleton<IBlockChainService, BlockChainService>();
-        context.Services.AddSingleton<IAddressService, AddressService>();
         context.Services.AddSingleton<ISearchService, SearchService>();
 
         context.Services.AddSingleton<OverviewDataStrategy, OverviewDataStrategy>();
@@ -120,7 +119,6 @@ public class HttpApiModule : AbpModule
 
         context.Services.AddSingleton<AELFIndexerProvider, AELFIndexerProvider>();
         context.Services.AddSingleton<HomePageProvider, HomePageProvider>();
-        context.Services.AddSingleton<LogEventProvider, LogEventProvider>();
         context.Services.AddSingleton<BlockChainDataProvider, BlockChainDataProvider>();
         context.Services.AddSingleton<ITokenIndexerProvider, TokenIndexerProvider>();
         context.Services.AddSingleton<IBlockChainIndexerProvider, BlockChainIndexerProvider>();

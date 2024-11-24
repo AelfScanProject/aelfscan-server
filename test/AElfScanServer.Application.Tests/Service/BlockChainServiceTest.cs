@@ -80,19 +80,5 @@ public class BlockChainServiceTest : AElfScanServerApplicationTestBase
         result.ShouldNotBeNull();
     }
 
-    [Fact]
-    public async Task GetLogEventsAsync_Test()
-    {
-        // Arrange
-        var request = new GetLogEventRequestDto
-        {
-            // 初始化您的请求参数
-        };
-
-        // Act
-        var result = await _blockChainService.GetLogEventsAsync(request);
-
-        // Assert
-        result.ShouldNotBeNull();
-    }
+ 
 }

@@ -68,11 +68,7 @@ public class DynamicTransactionService : IDynamicTransactionService
     private readonly AELFIndexerProvider _aelfIndexerProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly BlockChainDataProvider _blockChainProvider;
-    private readonly LogEventProvider _logEventProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
-    private readonly ITokenPriceService _tokenPriceService;
-    private readonly ITokenInfoProvider _tokenInfoProvider;
-    private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptionsMonitor;
     private readonly DataStrategyContext<string, HomeOverviewResponseDto> _overviewDataStrategy;
     private IDistributedCache<TransactionDetailResponseDto> _transactionDetailCache;
     private readonly ILogger<HomePageService> _logger;
@@ -81,24 +77,19 @@ public class DynamicTransactionService : IDynamicTransactionService
     public DynamicTransactionService(
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
         AELFIndexerProvider aelfIndexerProvider,
-        LogEventProvider logEventProvider,
         BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
-        ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
+        ITokenIndexerProvider tokenIndexerProvider, 
         OverviewDataStrategy overviewDataStrategy,
-        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider,ITokenPriceService tokenPriceService)
+        IDistributedCache<TransactionDetailResponseDto> transactionDetailCache)
     {
         _logger = logger;
         _globalOptions = blockChainOptions;
         _aelfIndexerProvider = aelfIndexerProvider;
-        _logEventProvider = logEventProvider;
         _blockChainProvider = blockChainProvider;
         _blockChainIndexerProvider = blockChainIndexerProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
-        _tokenInfoOptionsMonitor = tokenInfoOptions;
         _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _transactionDetailCache = transactionDetailCache;
-        _tokenInfoProvider = tokenInfoProvider;
-        _tokenPriceService = tokenPriceService;
     }
 
 

@@ -32,10 +32,7 @@ namespace AElfScanServer.Worker.Core.Service;
 
 public interface IAddressService
 {
-    Task<(long, List<AddressIndex>)> GetAddressIndexAsync(string chainId, List<string> list);
-    Task BulkAddOrUpdateAsync(List<AddressIndex> list);
-    Task PatchAddressInfoAsync(string chainId, string address, List<AddressIndex> list);
-
+ 
     public Task PullTokenInfo();
 
     public Task DeleteMergeBlock();
@@ -46,7 +43,6 @@ public interface IAddressService
 public class AddressService : IAddressService, ISingletonDependency
 {
     private readonly ILogger<AddressService> _logger;
-    private readonly INESTRepository<AddressIndex, string> _repository;
     private readonly IDistributedCache<string> _cache;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IEntityMappingRepository<TokenInfoIndex, string> _tokenInfoRepository;
@@ -54,14 +50,13 @@ public class AddressService : IAddressService, ISingletonDependency
     private readonly IObjectMapper _objectMapper;
     private readonly IElasticClient _elasticClient;
 
-    public AddressService(INESTRepository<AddressIndex, string> repository, ITokenIndexerProvider tokenIndexerProvider,
+    public AddressService(ITokenIndexerProvider tokenIndexerProvider,
         IDistributedCache<string> cache,
         IEntityMappingRepository<TokenInfoIndex, string> tokenInfoRepository,
         IEntityMappingRepository<AccountTokenIndex, string> accountTokenRepository,
         IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options,
         ILogger<AddressService> logger)
     {
-        _repository = repository;
         _logger = logger;
         _tokenIndexerProvider = tokenIndexerProvider;
         _tokenInfoRepository = tokenInfoRepository;
@@ -113,37 +108,8 @@ public class AddressService : IAddressService, ISingletonDependency
 
         await _cache.RemoveAsync(RedisKeyHelper.FixTokenHolder());
     }
-
-    public async Task<(long, List<AddressIndex>)> GetAddressIndexAsync(string chainId, List<string> addressList)
-    {
-        var mustQuery = new List<Func<QueryContainerDescriptor<AddressIndex>, QueryContainer>>();
-        mustQuery.Add(q => q.Terms(i => i.Field(f => f.Address).Terms(addressList)));
-        mustQuery.Add(q => !q.Exists(e => e.Field(f => f.Name)));
-
-        QueryContainer Filter(QueryContainerDescriptor<AddressIndex> f) => f.Bool(b => b.Must(mustQuery));
-
-        var (total, result) = await _repository.GetListAsync(Filter, index: GenerateIndexName(chainId));
-        return (total, result);
-    }
-
-    public async Task BulkAddOrUpdateAsync(List<AddressIndex> list) => await _repository.BulkAddOrUpdateAsync(list);
-
-    public async Task PatchAddressInfoAsync(string id, string chainId, List<AddressIndex> list)
-    {
-        var addressIndex = await _repository.GetAsync(id, GenerateIndexName(chainId));
-
-        if (addressIndex != null) return;
-
-        list.Add(new AddressIndex
-        {
-            Id = id,
-            Address = id,
-            LowerAddress = id.ToLower()
-        });
-    }
-
-    private string GenerateIndexName(string chainId) => BlockChainIndexNameHelper.GenerateAddressIndexName(chainId);
-
+    
+    
 
     public async Task PullTokenInfo()
     {

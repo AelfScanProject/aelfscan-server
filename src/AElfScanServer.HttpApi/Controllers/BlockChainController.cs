@@ -19,20 +19,17 @@ public class BlockChainController : AbpController
 {
     private readonly IHomePageService _homePageService;
     private readonly IBlockChainService _blockChainService;
-    private readonly IAddressService _addressService;
     private readonly ISearchService _searchService;
     private readonly IDynamicTransactionService _dynamicTransactionService;
 
 
     public BlockChainController(IHomePageService homePageService,
-        IAddressService addressService,
         IBlockChainService blockChainService, ISearchService searchService,
         IDynamicTransactionService dynamicTransactionService)
     {
         _homePageService = homePageService;
         _blockChainService = blockChainService;
         _searchService = searchService;
-        _addressService = addressService;
         _dynamicTransactionService = dynamicTransactionService;
     }
 
@@ -74,13 +71,6 @@ public class BlockChainController : AbpController
     public virtual async Task<TransactionsResponseDto> GetTransactionsAsync(
         TransactionsRequestDto requestDto) => await _dynamicTransactionService.GetTransactionsAsync(requestDto);
 
-
-    [HttpPost]
-    [Route("logEvents")]
-    public virtual async Task<LogEventResponseDto> GetLogEventsAsync(
-        GetLogEventRequestDto requestDto) => await _blockChainService.GetLogEventsAsync(requestDto);
-
-
     [HttpGet]
     [Route("filters")]
     public virtual async Task<object> GetFilterTypeAsync() => await _homePageService.GetFilterType();
@@ -107,10 +97,4 @@ public class BlockChainController : AbpController
     public virtual async Task<TransactionDetailResponseDto> GetTransactionDetailAsync(
         TransactionDetailRequestDto requestDto) =>
         await _dynamicTransactionService.GetTransactionDetailAsync(requestDto);
-
-
-    [HttpPost]
-    [Route("addressDictionary")]
-    public async Task<Dictionary<string, CommonAddressDto>> GetAddressDictionaryAsync(
-        AElfAddressInput requestDto) => await _addressService.GetAddressDictionaryAsync(requestDto);
 }

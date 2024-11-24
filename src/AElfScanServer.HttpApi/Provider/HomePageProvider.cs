@@ -29,8 +29,7 @@ namespace AElfScanServer.HttpApi.Provider;
 
 public class HomePageProvider : AbpRedisCache, ISingletonDependency
 {
-    private readonly INESTRepository<BlockExtraIndex, string> _blockExtraIndexRepository;
-    private readonly INESTRepository<AddressIndex, string> _addressIndexRepository;
+  
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IElasticClient _elasticClient;
     private const string TransactionCountRedisKey = "transaction_count";
@@ -43,8 +42,6 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
     public HomePageProvider(
         ILogger<HomePageProvider> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
         IOptions<ElasticsearchOptions> options,
-        INESTRepository<BlockExtraIndex, string> blockExtraIndexRepository,
-        INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor) : base(optionsAccessor)
     {
         _logger = logger;
@@ -53,8 +50,7 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
         var connectionPool = new StaticConnectionPool(uris);
         var settings = new ConnectionSettings(connectionPool);
         _elasticClient = new ElasticClient(settings);
-        _blockExtraIndexRepository = blockExtraIndexRepository;
-        _addressIndexRepository = addressIndexRepository;
+    
     }
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetRewardAsync err",

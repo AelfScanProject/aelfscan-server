@@ -66,18 +66,15 @@ public interface IBlockChainService
 
     public Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request);
 
-    public Task<LogEventResponseDto> GetLogEventsAsync(GetLogEventRequestDto request);
 }
 
 [AggregateExecutionTime]
 public class BlockChainService : IBlockChainService, ITransientDependency
 {
-    private readonly INESTRepository<BlockExtraIndex, string> _blockExtraIndexRepository;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly AELFIndexerProvider _aelfIndexerProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly BlockChainDataProvider _blockChainProvider;
-    private readonly LogEventProvider _logEventProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly ITokenInfoProvider _tokenInfoProvider;
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptionsMonitor;
@@ -87,14 +84,12 @@ public class BlockChainService : IBlockChainService, ITransientDependency
     private readonly IElasticClient _elasticClient;
     private readonly ITokenPriceService _tokenPriceService;
     private readonly IObjectMapper _objectMapper;
-    public const long TimeToReduceMiningRewardByHalf = 126144000; // 60 * 60 * 24 * 365 * 4
-    public const long InitialMiningRewardPerBlock = 12500000;
+
 
     public BlockChainService(
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
         AELFIndexerProvider aelfIndexerProvider,
-        INESTRepository<BlockExtraIndex, string> blockExtraIndexRepository,
-        LogEventProvider logEventProvider, IObjectMapper objectMapper,
+       IObjectMapper objectMapper,
         BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
         ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         OverviewDataStrategy overviewDataStrategy,
@@ -104,8 +99,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         _logger = logger;
         _globalOptions = blockChainOptions;
         _aelfIndexerProvider = aelfIndexerProvider;
-        _blockExtraIndexRepository = blockExtraIndexRepository;
-        _logEventProvider = logEventProvider;
         _blockChainProvider = blockChainProvider;
         _blockChainIndexerProvider = blockChainIndexerProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
@@ -625,14 +618,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             });
         }
     }
-
-
-    public async Task<LogEventResponseDto> GetLogEventsAsync(GetLogEventRequestDto request)
-    {
-        return await _logEventProvider.GetLogEventListAsync(request);
-    }
-
-
+    
     public async Task<BlocksResponseDto> GetMergeBlocksAsync(BlocksRequestDto requestDto)
     {
         var result = new BlocksResponseDto() { };

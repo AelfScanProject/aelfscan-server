@@ -11,6 +11,7 @@ using AElf;
 using AElf.Client.Dto;
 using AElf.Client.MultiToken;
 using AElf.Client.Service;
+using AElf.EntityMapping.Repositories;
 using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
 using AElf.Standards.ACS10;
@@ -45,7 +46,6 @@ namespace AElfScanServer.HttpApi.Provider;
 
 public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 {
-    private readonly INESTRepository<AddressIndex, string> _addressIndexRepository;
     private readonly GlobalOptions _globalOptions;
     private readonly IHttpProvider _httpProvider;
     private readonly IDistributedCache<string> _tokenUsdPriceCache;
@@ -62,7 +62,6 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     public BlockChainDataProvider(
         ILogger<BlockChainDataProvider> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
         IOptions<ElasticsearchOptions> options,
-        INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor,
         IHttpProvider httpProvider,
         IDistributedCache<string> tokenUsdPriceCache,ITokenIndexerProvider tokenIndexerProvider,ITokenPriceService tokenPriceService,
@@ -76,7 +75,6 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         // var connectionPool = new StaticConnectionPool(uris);
         // var settings = new ConnectionSettings(connectionPool);
         // _elasticClient = new ElasticClient(settings);
-        _addressIndexRepository = addressIndexRepository;
         _contractAddressCache = new ConcurrentDictionary<string, string>();
         _tokenUsdPriceCache = tokenUsdPriceCache;
         _tokenImageUrlCache = new Dictionary<string, string>();

@@ -35,16 +35,12 @@ namespace AElfScanServer.HttpApi.Service;
 
 public interface IHomePageService
 {
-
-    public Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto);
-
-
+    
     public Task<HomeOverviewResponseDto> GetBlockchainOverviewAsync(BlockchainOverviewRequestDto req);
 
     public Task<TransactionPerMinuteResponseDto> GetTransactionPerMinuteAsync(
         string chainId);
 
-    public Task<TransactionPerMinuteResponseDto> GetAllTransactionPerMinuteAsync();
 
     public Task<FilterTypeResponseDto> GetFilterType();
 }
@@ -52,7 +48,6 @@ public interface IHomePageService
 [Ump]
 public class HomePageService : AbpRedisCache, IHomePageService, ITransientDependency
 {
-    private readonly INESTRepository<AddressIndex, string> _addressIndexRepository;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly AELFIndexerProvider _aelfIndexerProvider;
     private readonly HomePageProvider _homePageProvider;
@@ -62,13 +57,11 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     private readonly ITokenPriceService _tokenPriceService;
 
     private readonly ILogger<HomePageService> _logger;
-    private const string SearchKeyPattern = "[^a-zA-Z0-9-_]";
 
 
     public HomePageService(IOptions<RedisCacheOptions> optionsAccessor,
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> globalOptions,
         AELFIndexerProvider aelfIndexerProvider,
-        INESTRepository<AddressIndex, string> addressIndexRepository,
         HomePageProvider homePageProvider, ITokenIndexerProvider tokenIndexerProvider,
         BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
         ITokenPriceService tokenPriceService
@@ -77,7 +70,6 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         _logger = logger;
         _globalOptions = globalOptions;
         _aelfIndexerProvider = aelfIndexerProvider;
-        _addressIndexRepository = addressIndexRepository;
         _homePageProvider = homePageProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
         _blockChainProvider = blockChainProvider;
