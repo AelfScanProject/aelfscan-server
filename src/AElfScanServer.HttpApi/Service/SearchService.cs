@@ -48,7 +48,7 @@ public class SearchService : ISearchService, ISingletonDependency
     private readonly ITokenPriceService _tokenPriceService;
     private readonly ITokenInfoProvider _tokenInfoProvider;
     private readonly IIndexerGenesisProvider _indexerGenesisProvider;
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
+    private readonly IAELFIndexerProvider _aelfIndexerProvider;
     private readonly IBlockchainClientFactory<AElfClient> _blockchainClientFactory;
 
     public SearchService(ILogger<SearchService> logger, ITokenIndexerProvider tokenIndexerProvider,
@@ -56,7 +56,7 @@ public class SearchService : ISearchService, ISingletonDependency
         ITokenPriceService tokenPriceService, ITokenInfoProvider tokenInfoProvider,
         IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         IIndexerGenesisProvider indexerGenesisProvider,
-        AELFIndexerProvider aelfIndexerProvider,
+        IAELFIndexerProvider aelfIndexerProvider,
         IBlockchainClientFactory<AElfClient> blockchainClientFactory)
     {
         _logger = logger;

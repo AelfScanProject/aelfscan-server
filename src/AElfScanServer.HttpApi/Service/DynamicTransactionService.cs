@@ -65,9 +65,9 @@ public interface IDynamicTransactionService
 public class DynamicTransactionService : IDynamicTransactionService
 {
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
+    private readonly IAELFIndexerProvider _aelfIndexerProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
-    private readonly BlockChainDataProvider _blockChainProvider;
+    private readonly IBlockChainDataProvider _blockChainProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly DataStrategyContext<string, HomeOverviewResponseDto> _overviewDataStrategy;
     private IDistributedCache<TransactionDetailResponseDto> _transactionDetailCache;
@@ -76,8 +76,8 @@ public class DynamicTransactionService : IDynamicTransactionService
 
     public DynamicTransactionService(
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
-        AELFIndexerProvider aelfIndexerProvider,
-        BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
+        IAELFIndexerProvider aelfIndexerProvider,
+        IBlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
         ITokenIndexerProvider tokenIndexerProvider, 
         OverviewDataStrategy overviewDataStrategy,
         IDistributedCache<TransactionDetailResponseDto> transactionDetailCache)

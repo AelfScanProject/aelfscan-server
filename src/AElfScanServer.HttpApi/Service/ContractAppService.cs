@@ -46,7 +46,7 @@ public class ContractAppService : IContractAppService
     private readonly IIndexerGenesisProvider _indexerGenesisProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
+    private readonly IAELFIndexerProvider _aelfIndexerProvider;
     private readonly IEntityMappingRepository<LogEventIndex, string> _logEventIndexRepository;
     private readonly IDistributedCache<GetContractListResultDto> _contractListCache;
     private readonly IClusterClient _clusterClient;
@@ -57,7 +57,7 @@ public class ContractAppService : IContractAppService
         IIndexerTokenProvider indexerTokenProvider, IIndexerGenesisProvider indexerGenesisProvider,
         IOptionsMonitor<GlobalOptions> globalOptions, IBlockChainIndexerProvider blockChainIndexerProvider,
         IEntityMappingRepository<LogEventIndex, string> logEventIndexRepository,
-        AELFIndexerProvider aelfIndexerProvider, IDistributedCache<GetContractListResultDto> contractListCache,
+        IAELFIndexerProvider aelfIndexerProvider, IDistributedCache<GetContractListResultDto> contractListCache,
         IClusterClient clusterClient, IDistributedCache<ContractVerifyResult> contractVerifyCache)
     {
         _objectMapper = objectMapper;

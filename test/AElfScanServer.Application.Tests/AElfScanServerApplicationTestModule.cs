@@ -39,5 +39,17 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<IAddressInfoProvider, MockAddressInfoProvider>();
         context.Services.AddSingleton<IBlockChainIndexerProvider, MockBlockChainIndexerProvider>();
         context.Services.AddSingleton<ICacheProvider,LocalCacheProvider>();
+        context.Services.AddSingleton<IBlockChainDataProvider,MockBlockChainDataProvider>();
+        context.Services.AddSingleton<IAELFIndexerProvider,MockAELFIndexerProvider>();
+        Configure<GlobalOptions>(options =>
+        {
+            options.BPNames = new Dictionary<string, Dictionary<string, string>>();
+            options.ContractNames = new Dictionary<string, Dictionary<string, string>>()
+            {
+                {
+                    "AELF" , new Dictionary<string, string>(){}
+                }
+            };
+        });
     }
 }

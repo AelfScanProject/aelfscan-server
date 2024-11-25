@@ -29,19 +29,19 @@ namespace AElfScanServer.HttpApi.DataStrategy;
 public class LatestBlocksDataStrategy : DataStrategyBase<string, BlocksResponseDto>
 {
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
+    private readonly IAELFIndexerProvider _aelfIndexerProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IEntityMappingRepository<BlockIndex, string> _blockResponseDtoRepository;
     private readonly IObjectMapper _objectMapper;
 
 
-    public LatestBlocksDataStrategy(IOptions<RedisCacheOptions> optionsAccessor,
+    public LatestBlocksDataStrategy(
         ILogger<DataStrategyBase<string, BlocksResponseDto>> logger,
         IOptionsMonitor<GlobalOptions> globalOptions,
-        AELFIndexerProvider aelfIndexerProvider, IDistributedCache<string> cache,
+        IAELFIndexerProvider aelfIndexerProvider, IDistributedCache<string> cache,
         ITokenIndexerProvider tokenIndexerProvider,
         IEntityMappingRepository<BlockIndex, string> blockResponseDtoRepository, IObjectMapper objectMapper) : base(
-        optionsAccessor, logger, cache)
+         logger, cache)
     {
         _globalOptions = globalOptions;
         _aelfIndexerProvider = aelfIndexerProvider;

@@ -117,9 +117,9 @@ public class HttpApiModule : AbpModule
         ConfigureGraphQl(context, configuration);
 
 
-        context.Services.AddSingleton<AELFIndexerProvider, AELFIndexerProvider>();
+        context.Services.AddSingleton<IAELFIndexerProvider, AELFIndexerProvider>();
         context.Services.AddSingleton<HomePageProvider, HomePageProvider>();
-        context.Services.AddSingleton<BlockChainDataProvider, BlockChainDataProvider>();
+        context.Services.AddSingleton<IBlockChainDataProvider, BlockChainDataProvider>();
         context.Services.AddSingleton<ITokenIndexerProvider, TokenIndexerProvider>();
         context.Services.AddSingleton<IBlockChainIndexerProvider, BlockChainIndexerProvider>();
 

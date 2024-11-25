@@ -270,9 +270,17 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
         };
     }
 
-    public Task<List<BlockBurnFeeDto>> GetBlockBurntFeeListAsync(string chainId, long startBlockHeight, long endBlockHeight)
+    public async Task<List<BlockBurnFeeDto>> GetBlockBurntFeeListAsync(string chainId, long startBlockHeight, long endBlockHeight)
     {
-        throw new System.NotImplementedException();
+        return new List<BlockBurnFeeDto>
+        {
+            new BlockBurnFeeDto
+            {
+                Symbol = "ELF",
+                Amount = 20,
+                BlockHeight = 100
+            }
+        };
     }
 
     public Task<IndexerTokenHolderInfoListDto> GetCollectionHolderInfoAsync(TokenHolderInput input)

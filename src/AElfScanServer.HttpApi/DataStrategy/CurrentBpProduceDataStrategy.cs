@@ -27,11 +27,10 @@ public class CurrentBpProduceDataStrategy : DataStrategyBase<string, BlockProduc
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
 
-    public CurrentBpProduceDataStrategy(IOptions<RedisCacheOptions> optionsAccessor,
+    public CurrentBpProduceDataStrategy(
         IOptionsMonitor<GlobalOptions> globalOptions,
         ILogger<DataStrategyBase<string, BlockProduceInfoDto>> logger, IDistributedCache<string> cache
-    ) : base(
-        optionsAccessor, logger,cache)
+    ) : base(logger,cache)
     {
         _globalOptions = globalOptions;
     }

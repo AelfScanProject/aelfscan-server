@@ -31,7 +31,21 @@ public static class AELFIndexerApi
     public static ApiInfo GetToken { get; } = new(HttpMethod.Post, "/connect/token");
 }
 
-public class AELFIndexerProvider : ISingletonDependency
+public interface IAELFIndexerProvider
+{
+    Task<List<IndexerBlockDto>> GetLatestBlocksAsync(string chainId, long startBlockHeight, long endBlockHeight);
+    Task<long> GetLatestBlockHeightAsync(string chainId);
+    Task<List<IndexSummaries>> GetLatestSummariesAsync(string chainId);
+    Task<List<TransactionIndex>> GetTransactionsAsync(string chainId, long startBlockHeight, long endBlockHeight, string transactionId);
+    Task<List<TransactionData>> GetTransactionsDataAsync(
+        string chainId,
+        long startBlockHeight,
+        long endBlockHeight,
+        string transactionId
+    );
+}
+
+public class AELFIndexerProvider : IAELFIndexerProvider, ISingletonDependency
 
 {
     private readonly ILogger<AELFIndexerProvider> _logger;

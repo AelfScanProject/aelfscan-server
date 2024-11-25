@@ -72,9 +72,9 @@ public interface IBlockChainService
 public class BlockChainService : IBlockChainService, ITransientDependency
 {
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
+    private readonly IAELFIndexerProvider _aelfIndexerProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
-    private readonly BlockChainDataProvider _blockChainProvider;
+    private readonly IBlockChainDataProvider _blockChainProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly ITokenInfoProvider _tokenInfoProvider;
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptionsMonitor;
@@ -88,9 +88,9 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
     public BlockChainService(
         ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
-        AELFIndexerProvider aelfIndexerProvider,
+        IAELFIndexerProvider aelfIndexerProvider,
        IObjectMapper objectMapper,
-        BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
+        IBlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
         ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         OverviewDataStrategy overviewDataStrategy,
         IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider,
@@ -255,7 +255,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
         blockResponseDto.BlockHeight = requestDto.BlockHeight;
         blockResponseDto.ChainId = requestDto.ChainId;
-        var fee = await _blockChainProvider.GetBlockRewardAsync(requestDto.BlockHeight, requestDto.ChainId);
 
         if (blockBurntFee.TryGetValue(requestDto.BlockHeight, out var burnt))
         {
