@@ -11,7 +11,7 @@ public class GetAddressTokenListInput : BaseInput
 {
     [Required] public string Address { get; set; }
 
-    public string Search { get; set; } = "";
+    public string FuzzySearch { get; set; } = "";
 
 
     public void SetDefaultSort()

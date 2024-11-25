@@ -338,11 +338,10 @@ public class AddressAppService : IAddressAppService
         Dictionary<string, IndexerTokenInfoDto> tokenDict;
         IndexerTokenHolderInfoListDto holderInfos;
         //search token name or symbol
-        if (!input.Search.IsNullOrWhiteSpace())
+        if (!input.FuzzySearch.IsNullOrWhiteSpace())
         {
             var tokenListInput = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
             tokenListInput.Types = types;
-            tokenListInput.FuzzySearch = input.Search;
             var tokenInfos = await _tokenIndexerProvider.GetAllTokenInfosAsync(tokenListInput);
             if (tokenInfos.IsNullOrEmpty())
             {
@@ -390,11 +389,11 @@ public class AddressAppService : IAddressAppService
         IndexerTokenHolderInfoListDto holderInfos;
         var types = new List<SymbolType> { SymbolType.Nft };
 
-        if (!input.Search.IsNullOrWhiteSpace())
+        if (!input.FuzzySearch.IsNullOrWhiteSpace())
         {
             var tokenListInputNft = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
             tokenListInputNft.Types = types;
-            tokenListInputNft.FuzzySearch = input.Search;
+            
             var tokenListInputCollection = _objectMapper.Map<GetAddressTokenListInput, TokenListInput>(input);
             tokenListInputCollection.Types = new List<SymbolType> { SymbolType.Nft_Collection };
 
