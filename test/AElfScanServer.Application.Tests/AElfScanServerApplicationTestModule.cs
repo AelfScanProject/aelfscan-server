@@ -49,9 +49,10 @@ public class AElfScanServerApplicationTestModule : AbpModule
             options.ContractNames = new Dictionary<string, Dictionary<string, string>>()
             {
                 {
-                    "AELF" , new Dictionary<string, string>(){}
+                    "AELF", new Dictionary<string, string>() { }
                 }
             };
+            options.SideChainId = "tDVW";
         });
     }
 }
