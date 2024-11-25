@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AElfScanServer.Common.Enums;
 using AElfScanServer.HttpApi.Dtos;
@@ -51,8 +52,13 @@ public class MockBlockChainIndexerProvider :IBlockChainIndexerProvider
         throw new System.NotImplementedException();
     }
 
-    public Task<List<IndexerAddressTransactionCountDto>> GetAddressTransactionCount(string chainId, List<string> addressList)
+    public async Task<List<IndexerAddressTransactionCountDto>> GetAddressTransactionCount(string chainId, List<string> addressList)
     {
-        throw new System.NotImplementedException();
+        return  addressList.Select(o => new IndexerAddressTransactionCountDto
+        {
+            ChainId = chainId,
+            Count = 10,
+            Address = o
+        }).ToList();
     }
 }

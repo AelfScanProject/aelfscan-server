@@ -41,6 +41,8 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<ICacheProvider,LocalCacheProvider>();
         context.Services.AddSingleton<IBlockChainDataProvider,MockBlockChainDataProvider>();
         context.Services.AddSingleton<IAELFIndexerProvider,MockAELFIndexerProvider>();
+        context.Services.AddSingleton<IIndexerGenesisProvider,MockIndexerGenesisProvider>();
+        context.Services.AddSingleton<IDecompilerProvider,MockDecompilerProvider>();
         Configure<GlobalOptions>(options =>
         {
             options.BPNames = new Dictionary<string, Dictionary<string, string>>();
