@@ -325,13 +325,13 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     public async Task<MonthlyActiveAddressCountResp> GetMonthlyActiveAddressCountAsync(ChartDataRequest request)
     {  
         var mainList = _monthlyActiveAddressIndexRepository.GetQueryableAsync().Result
-            .Where(c => c.ChainId == "AELF").OrderBy(c => c.DateMonth).Take(100000).ToList();
+            .Where(c => c.ChainId == "AELF").OrderBy(c => c.DateMonth).Take(10000).ToList();
 
         var mainDataList =
             _objectMapper.Map<List<MonthlyActiveAddressIndex>, List<MonthlyActiveAddressCount>>(mainList);
 
         var sideList = _monthlyActiveAddressIndexRepository.GetQueryableAsync().Result
-            .Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.DateMonth).Take(100000)
+            .Where(c => c.ChainId == _globalOptions.CurrentValue.SideChainId).OrderBy(c => c.DateMonth).Take(10000)
             .ToList();
 
         var sideDataList =

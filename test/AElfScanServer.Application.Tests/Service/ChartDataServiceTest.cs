@@ -84,6 +84,7 @@ public class ChartDataServiceTests : AElfScanServerApplicationTestBase
     }
 
     [Fact]
+    //pass
     public async Task GetDailyTransactionCountAsync_ShouldProcessDataCorrectly()
     {
         var mockDatas = new List<DailyTransactionCountIndex>()
@@ -107,6 +108,7 @@ public class ChartDataServiceTests : AElfScanServerApplicationTestBase
     }
 
     [Fact]
+    //pass
     public async Task GetUniqueAddressCountAsync_ShouldProcessDataCorrectly()
     {
         var mockDatas = new List<DailyMergeUniqueAddressCountIndex>()
@@ -144,7 +146,8 @@ public class ChartDataServiceTests : AElfScanServerApplicationTestBase
         Assert.Equal(2, result.Total);
     }
 
-    [Fact]
+    [Fact] 
+    //pass
     public async Task GetActiveAddressCountAsync_ShouldProcessDataCorrectly()
     {
         var mockDatas = new List<DailyActiveAddressCountIndex>()
@@ -183,6 +186,7 @@ public class ChartDataServiceTests : AElfScanServerApplicationTestBase
     }
 
     [Fact]
+    //pass
     public async Task GetMonthlyActiveAddressCountAsync_ShouldProcessDataCorrectly()
     {
         var mockDatas = new List<MonthlyActiveAddressIndex>()
@@ -222,6 +226,7 @@ public class ChartDataServiceTests : AElfScanServerApplicationTestBase
 
 
     [Fact]
+    //pass
     public async Task GetBlockProduceRateAsync_ShouldProcessDataCorrectly()
     {
         var mockDatas = new List<DailyBlockProduceCountIndex>()
@@ -259,6 +264,7 @@ public class ChartDataServiceTests : AElfScanServerApplicationTestBase
     }
 
     [Fact]
+    //pass
     public async Task GetAvgBlockDurationRespAsync_ShouldReturnCorrectData()
     {
         // Arrange
