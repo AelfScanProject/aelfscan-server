@@ -20,7 +20,6 @@ using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token.Provider;
-using Google.Protobuf;
 using GraphQL;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -48,10 +47,15 @@ public interface ITokenIndexerProvider
     Task<Dictionary<string, IndexerTokenInfoDto>> GetTokenDictAsync(string chainId, List<string> symbols);
     Task<TokenTransferInfosDto> GetTokenTransfersAsync(TokenTransferInput input);
 
+    Task<long> GetAddressElfBalanceAsync(string chainId, string address);
 
     Task<List<BlockBurnFeeDto>> GetBlockBurntFeeListAsync(string chainId, long startBlockHeight, long endBlockHeight);
 
-
+  Task<List<AccountTokenDto>> GetAddressTokenListAsync(string chainId, string symbol, List<string> addressList,
+        int skipCount = 0,
+        int maxResultCount = 10);
+    
+  
     Task<IndexerTokenHolderInfoListDto> GetCollectionHolderInfoAsync(TokenHolderInput input);
     Task<Dictionary<string, IndexerTokenInfoDto>> GetNftDictAsync(string chainId, List<string> symbols);
 }
@@ -84,6 +88,87 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         _logger = logger;
         _globalOptions = globalOptions.CurrentValue;
         _tokenInfoOptionsMonitor = tokenInfoOptions;
+    }
+
+    
+           
+    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAddressElfBalanceAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetAddressElfBalanceAsync), LogTargets = ["chainId","address"])]
+    public virtual async Task<long> GetAddressElfBalanceAsync(string chainId, string address)
+    {
+            var graphQlHelper = GetGraphQlHelper();
+
+            var result = await graphQlHelper.QueryAsync<IndexerAccountTokenDto>(
+                new GraphQLRequest
+                {
+                    Query =
+                        @"query($chainId:String!,$address:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!){
+                            accountToken(input: {chainId:$chainId,address:$address,symbol:$symbol,skipCount:$skipCount,maxResultCount:$maxResultCount}){
+                            items {
+                              amount
+                            }
+                            }
+                        }",
+                    Variables = new
+                    {
+                        chainId = chainId, address = address, symbol = "ELF", skipCount = 0, maxResultCount = 1
+                    }
+                });
+            return result.AccountToken.Items.Count > 0 ? result.AccountToken.Items[0].Amount : 0;
+       
+    }
+    
+       [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
+        Message = "GetAddressTokenListAsync err",
+        TargetType = typeof(ExceptionHandlingService),
+        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","skipCount","maxResultCount","symbol","addressList"])]
+    public virtual async Task<List<AccountTokenDto>> GetAddressTokenListAsync(string chainId, string symbol,
+        List<string> addressList, int skipCount,
+        int maxResultCount)
+    {
+      var graphQlHelper = GetGraphQlHelper();
+            var result = await graphQlHelper.QueryAsync<IndexerAccountTokenDto>(
+                new GraphQLRequest
+                {
+                    Query =
+                        @"query($chainId:String!,$symbol:String!,$addressList:[String!],$skipCount:Int!,$maxResultCount:Int!){
+                            accountToken(input: {chainId:$chainId,symbol:$symbol,skipCount:$skipCount,addressList:$addressList,maxResultCount:$maxResultCount})
+                           {
+                                totalCount
+                                items {
+                                  address
+                                  token {
+                                    symbol
+                                    collectionSymbol
+                                    type
+                                    decimals
+                                  }
+                                  amount
+                                  formatAmount
+                                  transferCount
+                                  firstNftTransactionId
+                                  firstNftTime
+                                  metadata {
+                                    chainId
+                                    block {
+                                      blockHash
+                                      blockTime
+                                      blockHeight
+                                    }
+                                  }
+                                }
+                            }
+                        }",
+                    Variables = new
+                    {
+                        chainId = chainId, symbol = symbol, skipCount = skipCount, maxResultCount = maxResultCount,
+                        addressList = addressList
+                    }
+                });
+            return result.AccountToken != null ? result.AccountToken.Items : new List<AccountTokenDto>();
+      
     }
 
     public async Task<List<BlockBurnFeeDto>> GetBlockBurntFeeListAsync(string chainId, long startBlockHeight,

@@ -9,6 +9,7 @@ using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Helper;
+using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Grains;
 using AElfScanServer.Grains.Grain.Contract;
@@ -41,12 +42,15 @@ public class ContractAppService : IContractAppService
 {
     private readonly IObjectMapper _objectMapper;
     private readonly ILogger<ContractAppService> _logger;
+
     private readonly IDecompilerProvider _decompilerProvider;
-    private readonly IIndexerTokenProvider _indexerTokenProvider;
+
+    // private readonly IIndexerTokenProvider _indexerTokenProvider;
     private readonly IIndexerGenesisProvider _indexerGenesisProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IAELFIndexerProvider _aelfIndexerProvider;
+    private readonly ITokenIndexerProvider _indexerTokenProvider;
     private readonly IEntityMappingRepository<LogEventIndex, string> _logEventIndexRepository;
     private readonly IDistributedCache<GetContractListResultDto> _contractListCache;
     private readonly IClusterClient _clusterClient;
@@ -54,7 +58,7 @@ public class ContractAppService : IContractAppService
 
     public ContractAppService(IObjectMapper objectMapper, ILogger<ContractAppService> logger,
         IDecompilerProvider decompilerProvider,
-        IIndexerTokenProvider indexerTokenProvider, IIndexerGenesisProvider indexerGenesisProvider,
+        ITokenIndexerProvider indexerTokenProvider, IIndexerGenesisProvider indexerGenesisProvider,
         IOptionsMonitor<GlobalOptions> globalOptions, IBlockChainIndexerProvider blockChainIndexerProvider,
         IEntityMappingRepository<LogEventIndex, string> logEventIndexRepository,
         IAELFIndexerProvider aelfIndexerProvider, IDistributedCache<GetContractListResultDto> contractListCache,

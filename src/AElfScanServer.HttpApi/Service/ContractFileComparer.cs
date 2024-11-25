@@ -91,7 +91,6 @@ public static class ContractFileComparer
             return false;
         }
 
-        // SaveContentDifference(fileName, decodedContent1, decodedContent2);
         return true;
     }
 
@@ -112,21 +111,5 @@ public static class ContractFileComparer
         var root2 = tree2.GetRoot();
 
         return root1.IsEquivalentTo(root2);
-    }
-
-    private static void SaveContentDifference(string name, string content1, string content2)
-    {
-        string diffDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Differences");
-
-        if (!Directory.Exists(diffDirectory))
-        {
-            Directory.CreateDirectory(diffDirectory);
-        }
-
-        string filePath1 = Path.Combine(diffDirectory, $"Difference_{name}_File1.txt");
-        string filePath2 = Path.Combine(diffDirectory, $"Difference_{name}_File2.txt");
-
-        File.WriteAllText(filePath1, content1);
-        File.WriteAllText(filePath2, content2);
     }
 }

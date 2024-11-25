@@ -1,3 +1,5 @@
+using AElfScanServer.Common.Dtos;
+
 namespace AElfScanServer.HttpApi.Dtos.address;
 
 public class ContractRegistrationDto : GraphQLDto
