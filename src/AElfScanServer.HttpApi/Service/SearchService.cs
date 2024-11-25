@@ -181,7 +181,7 @@ public class SearchService : ISearchService, ISingletonDependency
     public async Task<List<ContractInfoDto>> FindContractAddress(string chainId, string contractAddress)
     {
         var contractListAsync =
-            await _indexerGenesisProvider.GetContractListAsync(chainId, 0, 1, "", "",
+            await _indexerGenesisProvider.GetContractListAsync(chainId, 0, 2, "", "",
                 contractAddress);
 
         if (!contractListAsync.ContractList.Items.IsNullOrEmpty())

@@ -150,26 +150,16 @@ public class AddressAppService : IAddressAppService
                 CommonConstant.LargerPercentageValueDecimals);
 
 
-            var dic = new Dictionary<string, MergeAddressType>();
-
             foreach (var c in info.ChainIds)
             {
-                dic[c] = new MergeAddressType()
-                {
-                    ChainId = c
-                };
-
                 if (contractInfosDict.TryGetValue(info.Address + info.ChainId, out var v))
                 {
-                    dic[c].AddressType = AddressType.ContractAddress;
+                    addressResult.AddressType = AddressType.ContractAddress;
+                    addressResult.ChainIds = new List<string>() { info.ChainId };
+                    break;
                 }
             }
 
-            addressResult.MergeAddressType.AddRange(dic.Values.OrderByDescending(c => c.ChainId));
-            addressResult.AddressType =
-                contractInfosDict.TryGetValue(info.Address + info.ChainId, out var addressInfo)
-                    ? AddressType.ContractAddress
-                    : AddressType.EoaAddress;
             addressList.Add(addressResult);
         }
 
