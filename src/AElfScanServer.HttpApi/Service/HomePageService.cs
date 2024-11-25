@@ -190,6 +190,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         filterTypeResp.FilterTypes = new List<FilterTypeDto>();
         foreach (var keyValuePair in _globalOptions.CurrentValue.FilterTypes)
         {
+            _logger.LogInformation("filterType:{0},filterInfo:{1}", keyValuePair.Key, keyValuePair.Value);
             var filterTypeDto = new FilterTypeDto();
             filterTypeDto.FilterType = keyValuePair.Value;
             filterTypeDto.FilterInfo = keyValuePair.Key;
