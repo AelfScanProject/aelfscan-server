@@ -37,8 +37,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AElfScanServer.Application.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AElfScanServer.DbMigrator", "src\AElfScanServer.DbMigrator\AElfScanServer.DbMigrator.csproj", "{7FE8BFF1-4C05-424A-9FF6-334B77057A1B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AElfScan.Plugin.Portkey", "plugins\AElfScan.Plugin.Portkey\AElfScan.Plugin.Portkey.csproj", "{5DE6F353-ED39-4944-BE2B-0430751342A6}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{4E0DB2A4-8D3F-4A69-8A78-88A6D5813FE3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AElfScanServer.Application.Tests", "test\AElfScanServer.Application.Tests\AElfScanServer.Application.Tests.csproj", "{EFE618CE-595F-4615-8228-699CCB547A63}"
