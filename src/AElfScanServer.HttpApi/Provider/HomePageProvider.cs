@@ -7,7 +7,6 @@ using AElf;
 using AElf.Client.Dto;
 using AElf.Client.Service;
 using AElf.ExceptionHandler;
-using AElf.Indexing.Elasticsearch;
 using AElf.Standards.ACS10;
 using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.HttpApi.Dtos;

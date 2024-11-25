@@ -5,9 +5,6 @@ using System.Reflection;
 using AElf.EntityMapping.Elasticsearch;
 using AElf.EntityMapping.Elasticsearch.Options;
 using AElf.EntityMapping.Options;
-using AElf.Indexing.Elasticsearch;
-using AElf.Indexing.Elasticsearch.Options;
-using AElf.Indexing.Elasticsearch.Services;
 using AElfScanServer.Common;
 using AElfScanServer.HttpApi;
 using Elasticsearch.Net;
@@ -29,22 +26,10 @@ public class AElfScanServerDomainTestModule : AbpModule
         Configure<CollectionCreateOptions>(x =>
         {
             x.AddModule(typeof(AElfScanCommonModule));
-            x.AddModule(typeof(HttpApiModule));
+          //  x.AddModule(typeof(HttpApiModule));
         });
         
-         /*// Do not modify this!!!
-         context.Services.Configure<EsEndpointOption>(options =>
-         {
-             options.Uris = new List<string> { "http://127.0.0.1:9200"};
-         });*/
-            
-        /*context.Services.Configure<IndexSettingOptions>(options =>
-        {
-            options.NumberOfReplicas = 1;
-            options.NumberOfShards = 1;
-            options.Refresh = Refresh.True;
-            options.IndexPrefix = "AeFinder";
-        });*/
+         
         context.Services.Configure<AElfEntityMappingOptions>(options =>
         {
             options.CollectionPrefix = "test";

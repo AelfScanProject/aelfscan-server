@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AElf.Client.Dto;
 using AElf.Client.Service;
-using AElf.Indexing.Elasticsearch;
 using AElf.Types;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
@@ -22,6 +21,7 @@ using Nest;
 using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElf.CSharp.Core.Extension;
+using AElf.EntityMapping.Options;
 using AElf.ExceptionHandler;
 using AElf.OpenTelemetry;
 using AElf.OpenTelemetry.ExecutionTime;
@@ -92,7 +92,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         OverviewDataStrategy overviewDataStrategy,
         IDistributedCache<TransactionDetailResponseDto> transactionDetailCache, ITokenInfoProvider tokenInfoProvider,
-        IOptionsMonitor<ElasticsearchOptions> options)
+        IOptionsMonitor<ElasticsearchOptions> options,IOptionsMonitor<AElfEntityMappingOptions> mappingOptions)
     {
         _logger = logger;
         _globalOptions = blockChainOptions;
@@ -103,11 +103,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         _tokenInfoOptionsMonitor = tokenInfoOptions;
         _overviewDataStrategy = new DataStrategyContext<string, HomeOverviewResponseDto>(overviewDataStrategy);
         _transactionDetailCache = transactionDetailCache;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
         _objectMapper = objectMapper;
     }
 

@@ -29,8 +29,7 @@ namespace AElfScanServer;
         typeof(AbpPermissionManagementDomainIdentityModule),
         typeof(AbpSettingManagementDomainModule),
         typeof(AbpTenantManagementDomainModule),
-        typeof(AElfEntityMappingElasticsearchModule),
-        // typeof(AElfIndexingElasticsearchModule)
+        typeof(AElfEntityMappingElasticsearchModule)
     }
 )]
 public class AElfScanServerDomainModule : AbpModule

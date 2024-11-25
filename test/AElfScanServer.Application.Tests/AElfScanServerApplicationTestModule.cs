@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Address.Provider;
+using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token;
@@ -19,10 +20,8 @@ using Volo.Abp.Modularity;
 namespace AElfScanServer;
 
 [DependsOn(
-    typeof(AbpEventBusModule),
+    
     typeof(HttpApiModule),
-    typeof(AElfScanCommonModule),
-    typeof(AElfScanServerOrleansTestBaseModule),
     typeof(AElfScanServerApplicationContractsModule),
     typeof(AElfScanServerOrleansTestBaseModule),
     typeof(AElfScanServerDomainTestModule)
@@ -45,6 +44,7 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<IIndexerGenesisProvider, MockIndexerGenesisProvider>();
         context.Services.AddSingleton<IDecompilerProvider, MockDecompilerProvider>();
         context.Services.AddSingleton<ITokenPriceService, MockTokenPriceService>();
+        context.Services.AddSingleton<IGenesisPluginProvider,MockGenesisPluginProvider>();
         Configure<GlobalOptions>(options =>
         {
             options.BPNames = new Dictionary<string, Dictionary<string, string>>();

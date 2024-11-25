@@ -4,10 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using AElf;
-using AElf.Client.Dto;
-using AElf.Client.Service;
-using AElf.Contracts.MultiToken;
 using AElfScanServer.Common.Commons;
 using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
@@ -20,13 +16,11 @@ using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token.Provider;
-using Google.Protobuf;
 using GraphQL;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
-using GetTokenInfoInput = AElf.Client.MultiToken.GetTokenInfoInput;
 
 namespace AElfScanServer.Common.IndexerPluginProvider;
 

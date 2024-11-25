@@ -15,6 +15,7 @@ using AElf.Contracts.Consensus.AEDPoS;
 using AElf.Contracts.MultiToken;
 using AElf.Contracts.Vote;
 using AElf.CSharp.Core.Extension;
+using AElf.EntityMapping.Options;
 using AElf.EntityMapping.Repositories;
 using AElf.ExceptionHandler;
 using AElf.Standards.ACS0;
@@ -222,7 +223,8 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> dailyMergeUniqueAddressCountRepository,
         IDistributedCache<string> cache,
         IPriceServerProvider priceServerProvider,
-        IEntityMappingRepository<HourNodeBlockProduceIndex, string> hourNodeBlockProduceRepository) :
+        IEntityMappingRepository<HourNodeBlockProduceIndex, string> hourNodeBlockProduceRepository,
+        IOptionsMonitor<AElfEntityMappingOptions> mappingOptions) :
         base(optionsAccessor)
     {
         _aelfIndexerProvider = aelfIndexerProvider;
@@ -234,10 +236,6 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         _homePageProvider = homePageProvider;
         _blockChainIndexerProvider = blockChainIndexerProvider;
         _storageProvider = storageProvider;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
         _workerOptions = workerOptions;
         _roundIndexRepository = roundIndexRepository;
         _nodeBlockProduceRepository = nodeBlockProduceRepository;
@@ -247,7 +245,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         _transactionIndexRepository = transactionIndexRepository;
         _priceRepository = priceRepository;
         _logEventRepository = logEventRepository;
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
         _avgTransactionFeeRepository = avgTransactionFeeRepository;
         _avgBlockSizeRepository = avgBlockSizeRepository;
         _blockRewardRepository = blockRewardRepository;

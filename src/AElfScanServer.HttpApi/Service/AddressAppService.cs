@@ -2,19 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using AElf.EntityMapping.Repositories;
-using AElfScanServer.HttpApi.Dtos;
+using AElf.EntityMapping.Options;
 using AElfScanServer.HttpApi.Provider;
-using AElfScanServer.Common.Address.Provider;
-using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Constant;
-using AElfScanServer.Common.Contract.Provider;
-using AElfScanServer.Common.Core;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
-using AElfScanServer.Common.Enums;
 using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -23,16 +17,11 @@ using AElfScanServer.Common.Token;
 using AElfScanServer.Common.Token.Provider;
 using AElfScanServer.HttpApi.Dtos.address;
 using AElfScanServer.HttpApi.Dtos.Indexer;
-using AElfScanServer.HttpApi.Provider;
-using Elasticsearch.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Nest;
-using Newtonsoft.Json;
 using Nito.AsyncEx;
 using Volo.Abp.ObjectMapping;
-using MetadataDto = AElfScanServer.Common.Dtos.MetadataDto;
 using TokenInfoDto = AElfScanServer.Common.Dtos.TokenInfoDto;
 
 namespace AElfScanServer.HttpApi.Service;
@@ -46,7 +35,6 @@ public interface IAddressAppService
     Task<GetTransferListResultDto> GetTransferListAsync(GetTransferListInput input);
 }
 
-[Ump]
 public class AddressAppService : IAddressAppService
 {
     private readonly IObjectMapper _objectMapper;
@@ -58,20 +46,15 @@ public class AddressAppService : IAddressAppService
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptions;
     private readonly GlobalOptions _globalOptions;
     private readonly ITokenAssetProvider _tokenAssetProvider;
-    private readonly IAddressInfoProvider _addressInfoProvider;
-    private readonly IGenesisPluginProvider _genesisPluginProvider;
-    private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly IAddressTypeService _addressTypeService;
     private readonly IElasticClient _elasticClient;
-
 
     public AddressAppService(IObjectMapper objectMapper, ILogger<AddressAppService> logger,
         IIndexerGenesisProvider indexerGenesisProvider,
         ITokenIndexerProvider tokenIndexerProvider, ITokenPriceService tokenPriceService,
         ITokenInfoProvider tokenInfoProvider, IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         IOptionsSnapshot<GlobalOptions> globalOptions, ITokenAssetProvider tokenAssetProvider,
-        IAddressInfoProvider addressInfoProvider, IGenesisPluginProvider genesisPluginProvider,
-        IBlockChainIndexerProvider blockChainIndexerProvider,
+        IOptionsMonitor<AElfEntityMappingOptions> mappingOptions,
         IAddressTypeService addressTypeService, IOptionsMonitor<ElasticsearchOptions> options)
     {
         _logger = logger;
@@ -82,16 +65,9 @@ public class AddressAppService : IAddressAppService
         _tokenInfoProvider = tokenInfoProvider;
         _tokenInfoOptions = tokenInfoOptions;
         _tokenAssetProvider = tokenAssetProvider;
-        _addressInfoProvider = addressInfoProvider;
-        _genesisPluginProvider = genesisPluginProvider;
         _globalOptions = globalOptions.Value;
-        _blockChainIndexerProvider = blockChainIndexerProvider;
         _addressTypeService = addressTypeService;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
     }
 
     public async Task<GetAddressListResultDto> GetAddressListAsync(GetListInputInput input)

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using AElf.EntityMapping.Options;
 using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.EsIndex;
@@ -63,7 +64,8 @@ public class ExploreHub : AbpHub
         LatestBlocksDataStrategy latestBlocksDataStrategy, IOptionsMonitor<GlobalOptions> globalOptions,
         IChartDataService chartDataService,
         IDistributedCache<List<TopTokenDto>> cache, ITokenIndexerProvider tokenIndexerProvider,
-        IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options)
+        IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options,
+        IOptionsMonitor<AElfEntityMappingOptions> mappingOptions)
     {
         _HomePageService = homePageService;
         _logger = logger;
@@ -80,11 +82,7 @@ public class ExploreHub : AbpHub
         _cache = cache;
         _tokenIndexerProvider = tokenIndexerProvider;
         _objectMapper = objectMapper;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
     }
 
 
