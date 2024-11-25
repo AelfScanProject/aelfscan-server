@@ -175,7 +175,7 @@ public class AddressAppService : IAddressAppService
     public async Task<GetAddressDetailResultDto> GetAddressDetailAsync(GetAddressDetailInput input)
     {
         var contractInfo =
-            await _indexerGenesisProvider.GetContractListAsync(input.ChainId, 0, 1, "", "", input.Address);
+            await _indexerGenesisProvider.GetContractListAsync("", 0, 1, "", "", input.Address);
 
         var contractChainId = "";
         var author = "";
@@ -186,8 +186,12 @@ public class AddressAppService : IAddressAppService
             author = contractInfo.ContractList.Items.First().Author;
         }
 
+        if (input.ChainId.IsNullOrEmpty() || contractChainId.IsNullOrEmpty())
+        {
+            return await GetMergeAddressDetailAsync(input, author, contractChainId);
+        }
 
-        return await GetMergeAddressDetailAsync(input, author, contractChainId);
+        return await GetContractAddressDetailAsync(input, author);
     }
 
 
@@ -203,6 +207,72 @@ public class AddressAppService : IAddressAppService
         }
 
         return "";
+    }
+
+
+    public async Task<GetAddressDetailResultDto> GetContractAddressDetailAsync(GetAddressDetailInput input,
+        string author)
+    {
+        var priceDtoTask =
+            _tokenPriceService.GetTokenPriceAsync(CurrencyConstant.ElfCurrency, CurrencyConstant.UsdCurrency);
+
+        var addressTypeTask = _addressTypeService.GetAddressTypeList(input.ChainId, input.Address);
+
+        var assetTokenTask =
+            _tokenAssetProvider.GetTokenValuesAsync(input.ChainId, input.Address,
+                new List<SymbolType>() { SymbolType.Token });
+
+        var assetNftTask =
+            _tokenAssetProvider.GetTokenValuesAsync(input.ChainId, input.Address,
+                new List<SymbolType>() { SymbolType.Nft });
+
+
+        await Task.WhenAll(assetTokenTask, priceDtoTask, assetNftTask);
+
+        var addressTypeList = await addressTypeTask;
+
+        var addressAssetToken = await assetTokenTask;
+
+        var addressAssetNft = await assetNftTask;
+
+
+        var priceDto = await priceDtoTask;
+        var result = new GetAddressDetailResultDto();
+        result.AddressTypeList = addressTypeList;
+
+        result.AddressType = AddressType.ContractAddress;
+
+        if (input.ChainId == "AELF")
+        {
+            result.Portfolio.MainTokenValue = Math.Round(
+                new decimal(addressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
+                CommonConstant.UsdValueDecimals);
+            result.Portfolio.MainTokenValueOfElf = Math.Round(
+                new decimal(addressAssetToken.GetTotalValueOfElf()));
+            result.Portfolio.MainNftCount = addressAssetNft.Count;
+            result.Portfolio.MainTokenCount = addressAssetToken.Count;
+        }
+        else
+        {
+            result.Portfolio.SideTokenValue = Math.Round(
+                new decimal(addressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
+                CommonConstant.UsdValueDecimals);
+            result.Portfolio.SideTokenValueOfElf = Math.Round(
+                new decimal(addressAssetToken.GetTotalValueOfElf()));
+            result.Portfolio.SideNftCount = addressAssetNft.Count;
+            result.Portfolio.SideTokenCount = addressAssetToken.Count;
+        }
+
+
+        result.Author = author;
+        result.ContractName = _globalOptions.GetContractName(input.ChainId, input.Address);
+
+        result.Portfolio.TotalNftCount = addressAssetNft.SymbolSet.Count;
+        result.Portfolio.TotalTokenCount = addressAssetToken.SymbolSet.Count;
+
+        result.ChainIds = new List<string>() { input.ChainId };
+
+        return result;
     }
 
 
