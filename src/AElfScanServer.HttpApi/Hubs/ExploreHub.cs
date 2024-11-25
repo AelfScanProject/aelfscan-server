@@ -183,6 +183,7 @@ public class ExploreHub : AbpHub
                 BlockHeight = blockIndex.BlockHeight,
                 Timestamp = blockIndex.Timestamp,
                 TransactionCount = blockIndex.TransactionCount,
+                ChainIds = blockIndex.ChainIds
             });
         }
 
