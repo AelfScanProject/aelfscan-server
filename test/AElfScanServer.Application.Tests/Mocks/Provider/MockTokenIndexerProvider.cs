@@ -37,6 +37,7 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
                     HolderCount = 100,
                     TransferCount = 200,
                     ItemCount = 0,
+                    Metadata = MockUtil.CreateDefaultMetaData()
                 }
             }
         };

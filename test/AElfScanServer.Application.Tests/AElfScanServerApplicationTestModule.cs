@@ -3,6 +3,7 @@ using AElfScanServer.Common;
 using AElfScanServer.Common.Address.Provider;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using AElfScanServer.HttpApi;
 using AElfScanServer.HttpApi.Options;
 using AElfScanServer.HttpApi.Provider;
@@ -43,6 +44,7 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<IAELFIndexerProvider,MockAELFIndexerProvider>();
         context.Services.AddSingleton<IIndexerGenesisProvider,MockIndexerGenesisProvider>();
         context.Services.AddSingleton<IDecompilerProvider,MockDecompilerProvider>();
+        context.Services.AddSingleton<ITokenPriceService,MockTokenPriceService>();
         Configure<GlobalOptions>(options =>
         {
             options.BPNames = new Dictionary<string, Dictionary<string, string>>();
@@ -53,6 +55,14 @@ public class AElfScanServerApplicationTestModule : AbpModule
                 }
             };
             options.SideChainId = "tDVW";
+            options.FilterTypes = new Dictionary<string, int>()
+            {
+                { "All Filter", 0 },
+                { "Tokens", 1 },
+                { "Accounts", 2 },
+                { "Contracts", 3 },
+                { "Nfts", 4 }
+            };
         });
     }
 }

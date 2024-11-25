@@ -43,36 +43,39 @@ public interface IHomePageService
 }
 
 [Ump]
-public class HomePageService : AbpRedisCache, IHomePageService, ITransientDependency
+public class HomePageService :  IHomePageService, ITransientDependency
 {
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
     private readonly ILogger<HomePageService> _logger;
 
+    private readonly ICacheProvider _cacheProvider;
 
-    public HomePageService(IOptions<RedisCacheOptions> optionsAccessor,
-        ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> globalOptions
-    ) : base(optionsAccessor)
+
+    public HomePageService(
+        ILogger<HomePageService> logger, IOptionsMonitor<GlobalOptions> globalOptions,
+        ICacheProvider cacheProvider
+    ) 
     {
         _logger = logger;
         _globalOptions = globalOptions;
+        _cacheProvider = cacheProvider;
     }
 
     public async Task<TransactionPerMinuteResponseDto> GetTransactionPerMinuteAsync(
         string chainId)
     {
         var transactionPerMinuteResp = new TransactionPerMinuteResponseDto();
-        await ConnectAsync();
         var key = RedisKeyHelper.TransactionChartData(chainId);
 
-        var dataValue = RedisDatabase.StringGet(key);
+        var dataValue = await _cacheProvider.StringGetAsync(key);
 
         var data =
             JsonConvert.DeserializeObject<List<TransactionCountPerMinuteDto>>(dataValue);
 
         transactionPerMinuteResp.Owner = data;
 
-        var redisValue = RedisDatabase.StringGet(RedisKeyHelper.TransactionChartData("merge"));
+        var redisValue = await _cacheProvider.StringGetAsync(RedisKeyHelper.TransactionChartData("merge"));
         var mergeData =
             JsonConvert.DeserializeObject<List<TransactionCountPerMinuteDto>>(redisValue);
 
