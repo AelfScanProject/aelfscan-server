@@ -35,9 +35,10 @@ public class AElfScanServerApplicationTestModule : AbpModule
         {
             "http://127.0.0.1:9200"
         });
+        Configure<GlobalOptions>(o => o.SideChainId = "tDVW");
         context.Services.AddSingleton<ITokenIndexerProvider, MockTokenIndexerProvider>();
         context.Services.AddSingleton<IAddressInfoProvider, MockAddressInfoProvider>();
         context.Services.AddSingleton<IBlockChainIndexerProvider, MockBlockChainIndexerProvider>();
-        context.Services.AddSingleton<ICacheProvider,LocalCacheProvider>();
+        context.Services.AddSingleton<ICacheProvider, LocalCacheProvider>();
     }
 }

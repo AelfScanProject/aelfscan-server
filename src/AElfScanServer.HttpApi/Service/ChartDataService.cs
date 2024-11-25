@@ -324,12 +324,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<MonthlyActiveAddressCountResp> GetMonthlyActiveAddressCountAsync(ChartDataRequest request)
     {  
-        return await GetMergeMonthlyActiveAddressCountAsync();
-    }
-
-
-    public async Task<MonthlyActiveAddressCountResp> GetMergeMonthlyActiveAddressCountAsync()
-    {
         var mainList = _monthlyActiveAddressIndexRepository.GetQueryableAsync().Result
             .Where(c => c.ChainId == "AELF").OrderBy(c => c.DateMonth).Take(100000).ToList();
 
@@ -371,15 +365,12 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             LowestActiveCount = mainDataList.MinBy(c => c.MergeAddressCount),
             Total = mainDataList.Count()
         };
+        
     }
-
+    
+    
 
     public async Task<DailyHolderResp> GetDailyHolderRespAsync(ChartDataRequest request)
-    {
-        return await GetMergeDailyHolderRespAsync();
-    }
-
-    public async Task<DailyHolderResp> GetMergeDailyHolderRespAsync()
     {
         var tasks = new List<Task>();
 
@@ -461,26 +452,26 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
 
         var dailySupplyGrowthRespAsync = await GetDailySupplyGrowthRespAsync();
-        var supplyDic = dailySupplyGrowthRespAsync.List.ToDictionary(c => c.DateStr, c => c);
+        var supplyDic = dailySupplyGrowthRespAsync.List.ToDictionary(c => c.Date, c => c);
 
         datList[0].TotalStaked = _globalOptions.CurrentValue.InitStakedStr;
         datList[0].BpStaked = _globalOptions.CurrentValue.InitStakedStr;
 
         var totalStaked = decimal.Parse(datList[0].BpStaked) + decimal.Parse(datList[0].VoteStaked);
 
-        if (supplyDic.TryGetValue(datList[0].DateStr, out var v))
+        if (supplyDic.TryGetValue(datList[0].Date, out var v))
         {
             datList[0].Supply = v.TotalSupply;
         }
 
-        if (supplyDic.TryGetValue(datList[0].DateStr, out var dailySupply))
+        if (supplyDic.TryGetValue(datList[0].Date, out var dailySupply))
         {
             datList[0].Rate = (totalStaked / decimal.Parse(dailySupply.TotalSupply) * 100).ToString("F4");
         }
 
         for (var i = 1; i < datList.Count; i++)
         {
-            if (supplyDic.TryGetValue(datList[i].DateStr, out var supply))
+            if (supplyDic.TryGetValue(datList[i].Date, out var supply))
             {
                 datList[i].Supply = supply.TotalSupply;
             }
@@ -523,11 +514,11 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         var marketList = new List<DailyMarketCap>();
 
-        var priceDic = priceList.List.ToDictionary(c => c.DateStr, c => c);
+        var priceDic = priceList.List.ToDictionary(c => c.Date, c => c);
         foreach (var dailySupplyGrowth in dailySupplyGrowthRespAsync.List)
         {
             double curDatePrice = 0;
-            if (priceDic.TryGetValue(dailySupplyGrowth.DateStr, out var priceData))
+            if (priceDic.TryGetValue(dailySupplyGrowth.Date, out var priceData))
             {
                 curDatePrice = double.Parse(priceData.Price);
             }
@@ -590,18 +581,18 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
         var supplyGrowths = _objectMapper.Map<List<DailySupplyGrowthIndex>, List<DailySupplyGrowth>>(mainIndexList);
 
-        var sideDic = sideIndexList.ToDictionary(c => c.DateStr, c => c);
+        var sideDic = sideIndexList.ToDictionary(c => c.Date, c => c);
 
-        var sideSupplyDic = sideList.ToDictionary(c => c.DateStr, c => c);
+        var sideSupplyDic = sideList.ToDictionary(c => c.Date, c => c);
 
         foreach (var dailySupplyGrowth in supplyGrowths)
         {
-            if (sideDic.TryGetValue(dailySupplyGrowth.DateStr, out var sideIndex))
+            if (sideDic.TryGetValue(dailySupplyGrowth.Date, out var sideIndex))
             {
                 dailySupplyGrowth.SideChainBurnt = sideIndex.Burnt;
             }
 
-            if (sideSupplyDic.TryGetValue(dailySupplyGrowth.DateStr, out var sideSupplyIndex))
+            if (sideSupplyDic.TryGetValue(dailySupplyGrowth.Date, out var sideSupplyIndex))
             {
                 dailySupplyGrowth.TotalUnReceived += (decimal)sideSupplyIndex.TotalUnReceived;
             }
@@ -777,12 +768,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyTransactionFeeResp> GetDailyTransactionFeeRespAsync(ChartDataRequest request)
     { 
-        return await GetMergeDailyTransactionFeeRespAsync();
-    }
-
-    public async Task<DailyTransactionFeeResp> GetMergeDailyTransactionFeeRespAsync()
-    {
-        var queryable = await _avgTransactionFeeRepository.GetQueryableAsync();
+    var queryable = await _avgTransactionFeeRepository.GetQueryableAsync();
         var mainIndexList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
         var mainDataList =
             _objectMapper.Map<List<DailyAvgTransactionFeeIndex>, List<DailyTransactionFee>>(mainIndexList);
@@ -817,8 +803,10 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             Lowest = mainDataList.MinBy(c => decimal.Parse(c.MergeTotalFeeElf)),
         };
 
-        return resp;
+        return resp;    
     }
+
+ 
 
     public async Task<DailyAvgTransactionFeeResp> GetDailyAvgTransactionFeeRespAsync(ChartDataRequest request)
     {
@@ -872,12 +860,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyTotalBurntResp> GetDailyTotalBurntRespAsync(ChartDataRequest request)
     {
-        return await GetMergeDailyTotalBurntRespAsync();
-    }
-
-
-    public async Task<DailyTotalBurntResp> GetMergeDailyTotalBurntRespAsync()
-    {
         var queryable = await _totalBurntRepository.GetQueryableAsync();
         var mainList = queryable.Where(c => c.ChainId == "AELF").OrderBy(c => c.Date).Take(10000).ToList();
         var mainDataList = _objectMapper.Map<List<DailyTotalBurntIndex>, List<DailyTotalBurnt>>(mainList);
@@ -911,8 +893,8 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
             Lowest = mainDataList.MinBy(c => decimal.Parse(c.MergeBurnt)),
         };
 
-        return resp;
-    }
+        return resp;    }
+
 
 
     public async Task<DailyDeployContractResp> GetDailyDeployContractRespAsync(ChartDataRequest request)
@@ -997,12 +979,12 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         var datList = _objectMapper.Map<List<DailyBlockRewardIndex>, List<DailyBlockReward>>(indexList);
 
         var dailySupplyGrowthRespAsync = await GetDailySupplyGrowthRespAsync();
-        var supplyDic = dailySupplyGrowthRespAsync.List.ToDictionary(c => c.DateStr, c => c);
+        var supplyDic = dailySupplyGrowthRespAsync.List.ToDictionary(c => c.Date, c => c);
         foreach (var data in datList)
         {
-            if (supplyDic.ContainsKey(data.DateStr) && !supplyDic[data.DateStr].Reward.IsNullOrEmpty())
+            if (supplyDic.ContainsKey(data.Date) && !supplyDic[data.Date].Reward.IsNullOrEmpty())
             {
-                data.BlockReward = decimal.Parse(supplyDic[data.DateStr].Reward).ToString("F6");
+                data.BlockReward = decimal.Parse(supplyDic[data.Date].Reward).ToString("F6");
             }
             else
             {
@@ -1665,13 +1647,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<ActiveAddressCountResp> GetActiveAddressCountAsync(ChartDataRequest request)
     {
-       return await GetMergeActiveAddressCountAsync();
-    }
-
-
-    public async Task<ActiveAddressCountResp> GetMergeActiveAddressCountAsync()
-    {
-        var queryable = await _activeAddressRepository.GetQueryableAsync();
+      var queryable = await _activeAddressRepository.GetQueryableAsync();
         var mainList = queryable.Where(c => c.ChainId == "AELF").Take(10000).OrderBy(c => c.Date).ToList();
 
         var mainDataList =
@@ -1714,8 +1690,10 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         };
 
         return resp;
+        
     }
 
+    
 
     public async Task<string> GetBpName(string chainId, string address)
     {

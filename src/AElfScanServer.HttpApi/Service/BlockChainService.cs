@@ -57,13 +57,11 @@ public interface IBlockChainService
 
 {
     public Task<TransactionsResponseDto> GetTransactionsAsync(TransactionsRequestDto requestD);
-
-
+    
     public Task<BlocksResponseDto> GetBlocksAsync(BlocksRequestDto requestDto);
 
     public Task<BlockDetailResponseDto> GetBlockDetailAsync(BlockDetailRequestDto requestDto);
-
-
+    
     public Task<TransactionDetailResponseDto> GetTransactionDetailAsync(TransactionDetailRequestDto request);
 
 }
@@ -125,7 +123,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         {
             return transactionDetailResponseDto;
         }
-
       
             var detailResponseDto = await _transactionDetailCache.GetAsync(request.TransactionId);
             if (detailResponseDto != null)
@@ -179,46 +176,12 @@ public class BlockChainService : IBlockChainService, ITransientDependency
             return result;
       
     }
-
-
-    public async Task<List<long>> ParseTokenImageBlockHeight()
-    {
-        string[] lines = File.ReadAllLines("result.txt");
-
-        // 解析每一行为long类型，并存储到数组中
-        long[] numbers = new long[lines.Length];
-        for (int i = 0; i < lines.Length; i++)
-        {
-            if (long.TryParse(lines[i], out long number))
-            {
-                numbers[i] = number;
-            }
-            else
-            {
-                Console.WriteLine($"Error parsing line {i + 1}: {lines[i]}");
-            }
-        }
-
-        var result = new List<long>() { numbers[0] };
-
-        for (var i = 1; i < numbers.Length; i++)
-        {
-            if (numbers[i] - result[result.Count - 1] > 100)
-            {
-                result.Add(numbers[i]);
-            }
-        }
-
-        return numbers.ToList();
-    }
-
+    
     public async Task<BlockDetailResponseDto> GetBlockDetailAsync(BlockDetailRequestDto requestDto)
     {
         var blockResponseDto = new BlockDetailResponseDto();
-
-
+        
         List<Task> blockDetailsTasks = new List<Task>();
-
 
         var blockDto = new BlockDetailDto();
 
@@ -337,38 +300,7 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
         return blockResponseDto;
     }
-
-
-    public async Task<TransactionDetailDto> AnalysisTransaction(TransactionIndex transactionIndex, long blockHeight)
-    {
-        var detailDto = new TransactionDetailDto();
-
-        var transactionDetailAsync =
-            await _blockChainProvider.GetTransactionDetailAsync(transactionIndex.ChainId,
-                transactionIndex.TransactionId);
-
-
-        ;
-        detailDto.TransactionId = transactionIndex.TransactionId;
-        detailDto.Status = transactionIndex.Status;
-        detailDto.BlockConfirmations = detailDto.Status == TransactionStatus.Mined ? blockHeight : 0;
-        detailDto.BlockHeight = transactionIndex.BlockHeight;
-        detailDto.Timestamp = DateTimeHelper.GetTotalSeconds(transactionIndex.BlockTime);
-        detailDto.Method = transactionIndex.MethodName;
-        detailDto.TransactionParams = transactionDetailAsync.Transaction.Params;
-        detailDto.TransactionSignature = transactionIndex.Signature;
-        detailDto.Confirmed = transactionIndex.Confirmed;
-        detailDto.From = ConvertAddress(transactionIndex.From, transactionIndex.ChainId);
-        detailDto.To = ConvertAddress(transactionIndex.To, transactionIndex.ChainId);
-
-
-        await AnalysisExtraPropertiesAsync(detailDto, transactionIndex);
-        await AnalysisTransferredAsync(detailDto, transactionIndex);
-        await AnalysisLogEventAsync(detailDto, transactionIndex);
-
-        return detailDto;
-    }
-
+    
 
     public async Task AnalysisLogEventAsync(TransactionDetailDto detailDto, TransactionIndex transactionIndex)
     {

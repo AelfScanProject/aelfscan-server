@@ -187,7 +187,7 @@ public class ChartDataController : AbpController
     {
         return await _chartDataService.InitDailyNetwork(request);
     }
-    
+
     [HttpPost("fixDailyData")]
     public async Task FixDailyData(FixDailyData request)
     {
