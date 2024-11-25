@@ -36,9 +36,9 @@ namespace AElfScanServer.HttpApi.DataStrategy;
 public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewResponseDto>
 {
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
+    private readonly IAELFIndexerProvider _aelfIndexerProvider;
     private readonly HomePageProvider _homePageProvider;
-    private readonly BlockChainDataProvider _blockChainProvider;
+    private readonly IBlockChainDataProvider _blockChainProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IEntityMappingRepository<DailyUniqueAddressCountIndex, string> _uniqueAddressRepository;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
@@ -49,11 +49,11 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
     private readonly ITokenPriceService _tokenPriceService;
 
 
-    public OverviewDataStrategy(IOptions<RedisCacheOptions> optionsAccessor,
+    public OverviewDataStrategy(
         IOptionsMonitor<GlobalOptions> globalOptions,
-        AELFIndexerProvider aelfIndexerProvider,
+        IAELFIndexerProvider aelfIndexerProvider,
         HomePageProvider homePageProvider,
-        BlockChainDataProvider blockChainProvider,
+        IBlockChainDataProvider blockChainProvider,
         ITokenIndexerProvider tokenIndexerProvider,
         IBlockChainIndexerProvider blockChainIndexerProvider,
         IEntityMappingRepository<DailyUniqueAddressCountIndex, string> uniqueAddressRepository,
@@ -61,7 +61,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         IChartDataService chartDataService, IEntityMappingRepository<AddressIndex, string> addressRepository,
         IEntityMappingRepository<MergeAddressIndex, string> mergeAddressRepository,
         IOptionsMonitor<ElasticsearchOptions> options,ITokenPriceService tokenPriceService) : base(
-        optionsAccessor, logger, cache)
+         logger, cache)
     {
         _globalOptions = globalOptions;
         _aelfIndexerProvider = aelfIndexerProvider;

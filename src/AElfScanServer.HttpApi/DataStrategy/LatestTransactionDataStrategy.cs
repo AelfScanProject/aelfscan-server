@@ -26,10 +26,10 @@ public class LatestTransactionDataStrategy : DataStrategyBase<string, Transactio
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
 
 
-    public LatestTransactionDataStrategy(IOptions<RedisCacheOptions> optionsAccessor,
+    public LatestTransactionDataStrategy(
         ILogger<DataStrategyBase<string, TransactionsResponseDto>> logger,
         IOptionsMonitor<GlobalOptions> globalOptions,
-        IBlockChainIndexerProvider blockChainIndexerProvider, IDistributedCache<string> cache) : base(optionsAccessor,
+        IBlockChainIndexerProvider blockChainIndexerProvider, IDistributedCache<string> cache) : base(
         logger, cache)
     {
         _globalOptions = globalOptions;

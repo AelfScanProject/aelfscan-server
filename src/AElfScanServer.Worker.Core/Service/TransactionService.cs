@@ -97,7 +97,7 @@ public interface ITransactionService
 
 public class TransactionService : AbpRedisCache, ITransactionService, ITransientDependency
 {
-    private readonly AELFIndexerProvider _aelfIndexerProvider;
+    private readonly IAELFIndexerProvider _aelfIndexerProvider;
     private readonly BlockChainIndexerProvider _blockChainIndexerProvider;
     private readonly HomePageProvider _homePageProvider;
     private readonly IOptionsMonitor<AELFIndexerOptions> _aelfIndexerOptions;
@@ -176,7 +176,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     private static long PullTransactioninterval = 500 - 1;
 
 
-    public TransactionService(IOptions<RedisCacheOptions> optionsAccessor, AELFIndexerProvider aelfIndexerProvider,
+    public TransactionService(IOptions<RedisCacheOptions> optionsAccessor, IAELFIndexerProvider aelfIndexerProvider,
         IOptionsMonitor<AELFIndexerOptions> aelfIndexerOptions,
         ILogger<TransactionService> logger, IObjectMapper objectMapper,
         IOptionsMonitor<GlobalOptions> blockChainOptions,

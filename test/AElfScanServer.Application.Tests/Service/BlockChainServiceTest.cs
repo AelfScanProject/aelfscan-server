@@ -54,7 +54,8 @@ public class BlockChainServiceTest : AElfScanServerApplicationTestBase
         // Arrange
         var requestDto = new BlockDetailRequestDto
         {
-            // 初始化您的请求参数
+            ChainId = "AELF",
+            BlockHeight = 100
         };
 
         // Act

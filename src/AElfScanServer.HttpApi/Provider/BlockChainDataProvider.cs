@@ -44,7 +44,20 @@ using TokenInfo = AElf.Contracts.MultiToken.TokenInfo;
 
 namespace AElfScanServer.HttpApi.Provider;
 
-public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
+public interface IBlockChainDataProvider
+{
+    Task<string> GetBlockRewardAsync(long blockHeight, string chainId);
+    Task<string> GetContractAddressAsync(string chainId, string contractName);
+    Task<string> TransformTokenToUsdValueAsync(string symbol, long amount, string chainId);
+    Task<string> GetDecimalAmountAsync(string symbol, long amount, string chainId);
+    Task<string> GetTokenUsdPriceAsync(string symbol);
+    Task<BinancePriceDto> GetTokenUsd24ChangeAsync(string symbol);
+    Task<int> GetTokenDecimals(string symbol, string chainId);
+    Task<BlockDetailDto> GetBlockDetailAsync(string chainId, long blockHeight);
+    Task<NodeTransactionDto> GetTransactionDetailAsync(string chainId, string transactionId);
+    Task<string> GeFormatTransactionParamAsync(string chainId, string contractAddress, string methodName, string param);
+}
+public class BlockChainDataProvider : AbpRedisCache ,IBlockChainDataProvider,ISingletonDependency
 {
     private readonly GlobalOptions _globalOptions;
     private readonly IHttpProvider _httpProvider;
@@ -57,10 +70,10 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     private Dictionary<string, string> _tokenImageUrlCache;
     private  readonly ITokenPriceService _tokenPriceService;
     private readonly IDistributedCache<string> _tokenDecimalsCache;
-    private readonly ILogger<BlockChainDataProvider> _logger;
+    private readonly ILogger<IBlockChainDataProvider> _logger;
 
     public BlockChainDataProvider(
-        ILogger<BlockChainDataProvider> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
+        ILogger<IBlockChainDataProvider> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
         IOptions<ElasticsearchOptions> options,
         IOptions<RedisCacheOptions> optionsAccessor,
         IHttpProvider httpProvider,

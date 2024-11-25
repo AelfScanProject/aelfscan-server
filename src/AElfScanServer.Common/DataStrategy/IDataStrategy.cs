@@ -41,13 +41,13 @@ public class DataStrategyContext<TInput, TOutPut>
     }
 }
 
-public abstract class DataStrategyBase<TInput, TOutPut> : AbpRedisCache, IDataStrategy<TInput, TOutPut>
+public abstract class DataStrategyBase<TInput, TOutPut> : IDataStrategy<TInput, TOutPut>
 {
     protected ILogger<DataStrategyBase<TInput, TOutPut>> DataStrategyLogger { get; set; }
     protected IDistributedCache<string> _cache { get; set; }
 
-    protected DataStrategyBase(IOptions<RedisCacheOptions> optionsAccessor,
-        ILogger<DataStrategyBase<TInput, TOutPut>> logger, IDistributedCache<string> cache) : base(optionsAccessor)
+    protected DataStrategyBase(
+        ILogger<DataStrategyBase<TInput, TOutPut>> logger, IDistributedCache<string> cache) 
     {
         DataStrategyLogger = logger;
         _cache = cache;
