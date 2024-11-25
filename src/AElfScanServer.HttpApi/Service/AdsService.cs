@@ -106,7 +106,7 @@ public class AdsService : IAdsService, ITransientDependency
     {
         var result = new AdsBannerListResp();
         var searchResponse = await _elasticClient.SearchAsync<AdsBannerIndex>(s => s
-            .Index("adsbannerindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"adsbannerindex"))
             .Query(q => q
                 .Bool(b => b
                     .Must(m =>
@@ -182,7 +182,7 @@ public class AdsService : IAdsService, ITransientDependency
     {
         var result = new AdsListResp();
         var searchResponse = await _elasticClient.SearchAsync<AdsIndex>(s => s
-            .Index("adsindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"adsindex"))
             .Query(q => q
                 .Bool(b => b
                     .Must(m =>
@@ -347,7 +347,7 @@ public class AdsService : IAdsService, ITransientDependency
     {
         var utcMilliSeconds = DateTime.UtcNow.ToUtcMilliSeconds();
         var searchResponse = await _elasticClient.SearchAsync<AdsIndex>(s => s
-            .Index("adsindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"adsindex"))
             .Query(q => q
                 .Bool(b => b
                     .Must(
@@ -396,7 +396,7 @@ public class AdsService : IAdsService, ITransientDependency
     {
         var utcMilliSeconds = DateTime.UtcNow.ToUtcMilliSeconds();
         var searchResponse = await _elasticClient.SearchAsync<AdsBannerIndex>(s => s
-            .Index("adsbannerindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"adsbannerindex"))
             .Query(q => q
                 .Bool(b => b
                     .Must(

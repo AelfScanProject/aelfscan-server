@@ -12,6 +12,10 @@ public interface ICacheProvider
     public  Task StringIncrement(string key, long value, TimeSpan? expire);
     public  Task<string> StringGetAsync(string key);
 
+    public Task HashSetAsync(string key, HashEntry[] entries);
+    
+    public Task<HashEntry[]> HashGetAllAsync(string getRedisKey);
+    Task<bool> KeyExistsAsync(string key);
 }
 
 public class RedisCacheProvider : ICacheProvider, ISingletonDependency
@@ -42,5 +46,19 @@ public class RedisCacheProvider : ICacheProvider, ISingletonDependency
     { 
         return await _database.StringGetAsync(key);
     }
-  
+
+    public async Task HashSetAsync(string key, HashEntry[] entries)
+    {
+        await _database.HashSetAsync(key,entries);
+    }
+
+    public async Task<HashEntry[]> HashGetAllAsync(string getRedisKey)
+    {
+       return await _database.HashGetAllAsync(getRedisKey);
+    }
+
+    public async Task<bool> KeyExistsAsync(string key)
+    {
+        return await _database.KeyExistsAsync(key);
+    }
 }

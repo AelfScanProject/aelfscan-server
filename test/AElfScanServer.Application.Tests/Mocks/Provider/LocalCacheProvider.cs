@@ -6,6 +6,7 @@ using AElfScanServer.HttpApi.Provider;
 
 public class LocalCacheProvider : ICacheProvider
 {
+    private readonly Dictionary<string, Dictionary<string, RedisValue>> _hashCache = new Dictionary<string, Dictionary<string, RedisValue>>();
     private readonly Dictionary<string, (RedisValue value, DateTime? expiry)> _cache = new Dictionary<string, (RedisValue, DateTime?)>();
 
     public Task StringSetAsync(string key, RedisValue value, TimeSpan? expire)
@@ -37,5 +38,40 @@ public class LocalCacheProvider : ICacheProvider
             return Task.FromResult(entry.value.ToString());
         }
         return Task.FromResult<string>(null);
+    }
+
+    public async Task HashSetAsync(string key, HashEntry[] entries)
+    {
+        if (!_hashCache.ContainsKey(key))
+        {
+            _hashCache[key] = new Dictionary<string, RedisValue>();
+        }
+
+        foreach (var entry in entries)
+        {
+            _hashCache[key][entry.Name] = entry.Value;
+        }
+
+        await Task.CompletedTask; // 模拟异步操作
+    }
+
+    public async Task<HashEntry[]> HashGetAllAsync(string key)
+    {
+        if (_hashCache.TryGetValue(key, out var hashEntries))
+        {
+            var result = new List<HashEntry>();
+            foreach (var kvp in hashEntries)
+            {
+                result.Add(new HashEntry(kvp.Key, kvp.Value));
+            }
+            return await Task.FromResult(result.ToArray());
+        }
+        return await Task.FromResult(Array.Empty<HashEntry>());
+    }
+
+    public async Task<bool> KeyExistsAsync(string key)
+    {
+        bool exists = _hashCache.ContainsKey(key) || _cache.ContainsKey(key);
+        return await Task.FromResult(exists);
     }
 }

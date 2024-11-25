@@ -39,21 +39,25 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<ITokenIndexerProvider, MockTokenIndexerProvider>();
         context.Services.AddSingleton<IAddressInfoProvider, MockAddressInfoProvider>();
         context.Services.AddSingleton<IBlockChainIndexerProvider, MockBlockChainIndexerProvider>();
-        context.Services.AddSingleton<ICacheProvider,LocalCacheProvider>();
-        context.Services.AddSingleton<IBlockChainDataProvider,MockBlockChainDataProvider>();
-        context.Services.AddSingleton<IAELFIndexerProvider,MockAELFIndexerProvider>();
-        context.Services.AddSingleton<IIndexerGenesisProvider,MockIndexerGenesisProvider>();
-        context.Services.AddSingleton<IDecompilerProvider,MockDecompilerProvider>();
-        context.Services.AddSingleton<ITokenPriceService,MockTokenPriceService>();
+        context.Services.AddSingleton<ICacheProvider, LocalCacheProvider>();
+        context.Services.AddSingleton<IBlockChainDataProvider, MockBlockChainDataProvider>();
+        context.Services.AddSingleton<IAELFIndexerProvider, MockAELFIndexerProvider>();
+        context.Services.AddSingleton<IIndexerGenesisProvider, MockIndexerGenesisProvider>();
+        context.Services.AddSingleton<IDecompilerProvider, MockDecompilerProvider>();
+        context.Services.AddSingleton<ITokenPriceService, MockTokenPriceService>();
         Configure<GlobalOptions>(options =>
         {
             options.BPNames = new Dictionary<string, Dictionary<string, string>>();
             options.ContractNames = new Dictionary<string, Dictionary<string, string>>()
             {
                 {
-                    "AELF", new Dictionary<string, string>() { }
+                    "AELF", new Dictionary<string, string>()
+                    {
+                        { "TokenContractAddress", "TokenContractAddress" }
+                    }
                 }
             };
+
             options.SideChainId = "tDVW";
             options.FilterTypes = new Dictionary<string, int>()
             {
@@ -62,6 +66,22 @@ public class AElfScanServerApplicationTestModule : AbpModule
                 { "Accounts", 2 },
                 { "Contracts", 3 },
                 { "Nfts", 4 }
+            };
+        });
+        Configure<ChainOptions>(options => options.ChainInfos = new Dictionary<string, ChainOptions.ChainInfo>()
+        {
+            {
+                MockUtil.MainChainId, new ChainOptions.ChainInfo
+                {
+                    TokenContractAddress = "TokenContractAddress"
+                }
+            }
+        });
+        Configure<TokenInfoOptions>(options =>
+        {
+            options.NonResourceSymbols = new HashSet<string>()
+            {
+                "SGR-1"
             };
         });
     }

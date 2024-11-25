@@ -19,44 +19,39 @@ public interface ITokenHolderPercentProvider
     public Task<bool> CheckExistAsync(string chainId, string date);
 }
 
-public class TokenHolderPercentProvider : AbpRedisCache, ITokenHolderPercentProvider, ISingletonDependency
+public class TokenHolderPercentProvider :  ITokenHolderPercentProvider, ISingletonDependency
 {
     private const string TokenHolderCountRedisKey = "TokenHolderCount";
+    private readonly ICacheProvider _cacheProvider;
 
-    private readonly IDistributedCache<string> _distributedCache;
-
-    public TokenHolderPercentProvider(IOptions<RedisCacheOptions> optionsAccessor, IDistributedCache<string> distributedCache) : base(optionsAccessor)
+    public TokenHolderPercentProvider( ICacheProvider cacheProvider) 
     {
-        _distributedCache = distributedCache;
+        _cacheProvider = cacheProvider;
     }
 
 
     public async Task UpdateTokenHolderCount(Dictionary<string, long> counts, string chainId)
     {
-        await ConnectAsync();
 
         var today = DateTime.Now.ToString("yyyyMMdd");
         var key = GetRedisKey(chainId, today);
 
         var entries = counts.Select(kv => new HashEntry(kv.Key, kv.Value)).ToArray();
-        await RedisDatabase.HashSetAsync(key, entries);
+        await _cacheProvider.HashSetAsync(key, entries);
     }
 
     public async Task<Dictionary<string, long>> GetTokenHolderCount(string chainId, string date)
     {
-        await ConnectAsync();
 
-        var allEntries = await RedisDatabase.HashGetAllAsync(GetRedisKey(chainId, date));
+        var allEntries = await _cacheProvider.HashGetAllAsync(GetRedisKey(chainId, date));
 
         return allEntries.ToDictionary(entry => (string)entry.Name, entry => (long)entry.Value);
     }
 
     public async Task<bool> CheckExistAsync(string chainId, string date)
     { 
-        await ConnectAsync();
-
         var key = GetRedisKey(chainId, date);
-        return await RedisDatabase.KeyExistsAsync(key);
+        return await _cacheProvider.KeyExistsAsync(key);
     }
 
     private static string GetRedisKey(string chainId, string date)
