@@ -25,16 +25,16 @@ public class AElfScanServerTestBaseModule : AbpModule
             {
                 { "OpenTelemetry:ServiceName", "test" },
                 { "OpenTelemetry:ServiceVersion", "test" }
-            });
+            }!);
 
         var newConfiguration = configurationBuilder.Build();
-
         context.Services.Replace(ServiceDescriptor.Singleton<IConfiguration>(newConfiguration));
-
     }
+    
 
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
+        
         Configure<AbpBackgroundJobOptions>(options =>
         {
             options.IsJobExecutionEnabled = false;

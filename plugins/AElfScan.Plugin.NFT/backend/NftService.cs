@@ -1,4 +1,5 @@
 using System.Globalization;
+using AElf.EntityMapping.Options;
 using AElf.ExceptionHandler;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Commons;
@@ -51,6 +52,7 @@ public class NftService : INftService, ISingletonDependency
     private const int MaxResultCount = 1000;
     private readonly IOptionsMonitor<ChainOptions> _chainOptions;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
+    private readonly IOptionsMonitor<AElfEntityMappingOptions> _mappingOptions;
 
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly ILogger<NftService> _logger;
@@ -73,7 +75,8 @@ public class NftService : INftService, ISingletonDependency
         IOptionsMonitor<ChainOptions> chainOptions, IOptionsMonitor<TokenInfoOptions> tokenInfoOptionsMonitor,
         ITokenInfoProvider tokenInfoProvider, IGenesisPluginProvider genesisPluginProvider,
         IDistributedCache<string> distributedCache, IMemoryCache memoryCache,
-        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions
+        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions,
+        IOptionsMonitor<AElfEntityMappingOptions> mappingOptions
     )
     {
         _tokenIndexerProvider = tokenIndexerProvider;
@@ -88,12 +91,9 @@ public class NftService : INftService, ISingletonDependency
         _genesisPluginProvider = genesisPluginProvider;
         _distributedCache = distributedCache;
         _memoryCache = memoryCache;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
         _globalOptions = globalOptions;
+        _mappingOptions = mappingOptions;
     }
 
 

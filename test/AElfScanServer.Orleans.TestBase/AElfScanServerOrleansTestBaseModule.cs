@@ -23,11 +23,7 @@ public class AElfScanServerOrleansTestBaseModule : AbpModule
 
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
-        context.Services.AddTransient<IExchangeProvider, OkxProvider>();
-        context.Services.AddTransient<IExchangeProvider, BinanceProvider>();
-        context.Services.AddTransient<IExchangeProvider, CoinGeckoProvider>();
-        context.Services.AddSingleton<ClusterFixture>();
-        context.Services.AddSingleton<IClusterClient>(sp => context.Services.GetRequiredService<ClusterFixture>().Cluster.Client);
+        context.Services.AddSingleton<IClusterClient>(sp => sp.GetService<ClusterFixture>().Cluster.Client);
 
     }
 

@@ -40,7 +40,6 @@ public class ClusterFixture: IDisposable, ISingletonDependency
             hostBuilder.ConfigureServices(services =>
                 {
                     services.AddMemoryCache();
-                    services.AddDistributedMemoryCache();
                     services.AddAutoMapper(typeof(AElfScanServerGrainsModule).Assembly);
 
                     services.AddSingleton(typeof(IDistributedCache), typeof(MemoryDistributedCache));
@@ -81,7 +80,6 @@ public class ClusterFixture: IDisposable, ISingletonDependency
                     services.AddTransient<IMapperAccessor>(provider => provider.GetRequiredService<MapperAccessor>());
                 })
                 .AddMemoryStreams("AElfScan")
-                .AddMemoryGrainStorage("PubSubStore")
                 .AddMemoryGrainStorageAsDefault();
         }
     }

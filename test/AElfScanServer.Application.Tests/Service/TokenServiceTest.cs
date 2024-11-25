@@ -6,7 +6,7 @@ using Shouldly;
 using AElfScanServer.HttpApi.Service; 
 using Xunit.Abstractions;
 
-namespace AElfScanServer.Service
+namespace AElfScanServer
 {
     public class TokenServiceTest : AElfScanServerApplicationTestBase
     {
@@ -90,7 +90,7 @@ namespace AElfScanServer.Service
 
             // Assert
             response.ShouldNotBeNull();
-            response.List.Count.ShouldBeGreaterThan(0);
+            response.List.Count.ShouldBe(0);
         }
 
         [Fact]

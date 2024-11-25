@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Options;
 using AElf.ExceptionHandler;
 using AElfScanServer.Common;
 using AElfScanServer.Common.Commons;
@@ -44,7 +45,6 @@ public interface ITokenService
     Task<IndexerTokenInfoDto> GetTokenBaseInfoAsync(string symbol, string chainId);
 }
 
-[Ump]
 public class TokenService : ITokenService, ISingletonDependency
 {
     private readonly IObjectMapper _objectMapper;
@@ -53,36 +53,28 @@ public class TokenService : ITokenService, ISingletonDependency
     private readonly IOptionsMonitor<ChainOptions> _chainOptions;
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptions;
     private readonly ITokenPriceService _tokenPriceService;
-    private readonly ITokenInfoProvider _tokenInfoProvider;
     private readonly IGenesisPluginProvider _genesisPluginProvider;
     private readonly ILogger<TokenService> _logger;
-    private readonly IAddressTypeService _addressTypeService;
     private readonly IElasticClient _elasticClient;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
     public TokenService(ITokenIndexerProvider tokenIndexerProvider,
         ITokenHolderPercentProvider tokenHolderPercentProvider, IObjectMapper objectMapper,
         IOptionsMonitor<ChainOptions> chainOptions, ITokenPriceService tokenPriceService,
-        IOptionsMonitor<TokenInfoOptions> tokenInfoOptions, ITokenInfoProvider tokenInfoProvider,
-        IAddressTypeService addressTypeService,
+        IOptionsMonitor<TokenInfoOptions> tokenInfoOptions, 
         IGenesisPluginProvider genesisPluginProvider, ILogger<TokenService> logger,
-        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions)
+        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions,
+        IOptionsMonitor<AElfEntityMappingOptions> mappingOptions)
     {
         _objectMapper = objectMapper;
         _chainOptions = chainOptions;
         _tokenPriceService = tokenPriceService;
         _tokenInfoOptions = tokenInfoOptions;
-        _tokenInfoProvider = tokenInfoProvider;
         _genesisPluginProvider = genesisPluginProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
         _tokenHolderPercentProvider = tokenHolderPercentProvider;
         _logger = logger;
-        _addressTypeService = addressTypeService;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
         _globalOptions = globalOptions;
     }
 

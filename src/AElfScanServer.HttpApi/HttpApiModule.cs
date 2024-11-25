@@ -1,6 +1,5 @@
 using AElf.EntityMapping.Elasticsearch;
 using AElf.ExceptionHandler.ABP;
-using AElf.Indexing.Elasticsearch;
 using AElf.OpenTelemetry;
 using AElfScanServer.HttpApi.Options;
 using AElfScanServer.HttpApi.Provider;

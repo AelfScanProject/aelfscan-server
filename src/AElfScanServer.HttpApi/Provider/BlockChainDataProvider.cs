@@ -13,7 +13,6 @@ using AElf.Client.MultiToken;
 using AElf.Client.Service;
 using AElf.EntityMapping.Repositories;
 using AElf.ExceptionHandler;
-using AElf.Indexing.Elasticsearch;
 using AElf.Standards.ACS10;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;

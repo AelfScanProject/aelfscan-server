@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using AElf;
 using AElf.Client.Service;
 using AElf.ExceptionHandler;
-using AElf.Indexing.Elasticsearch;
 using Elasticsearch.Net;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;

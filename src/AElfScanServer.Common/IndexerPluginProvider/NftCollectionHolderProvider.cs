@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
-using AElf.Indexing.Elasticsearch;
 using AElfScanServer.Domain.Common.Entities;
 using Microsoft.Extensions.Logging;
 using Nest;

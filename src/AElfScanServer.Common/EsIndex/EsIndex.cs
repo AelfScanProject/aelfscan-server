@@ -2,12 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Options;
+using AElfScanServer.Common.Commons;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.Helper;
+using Elasticsearch.Net;
+using Microsoft.Extensions.Options;
 using Nest;
 using Volo.Abp.Caching;
 
@@ -15,12 +19,19 @@ namespace AElfScanServer.Common.EsIndex;
 
 public class EsIndex
 {
-    public static IElasticClient esClient;
-    public static IDistributedCache<string> _cache;
+    public  static IElasticClient esClient;
+    private static IOptionsMonitor<AElfEntityMappingOptions> _mappingOptions;
 
-    public static void SetElasticClient(IElasticClient client)
+
+    public static void SetElasticClient(List<string> urls,IOptionsMonitor<AElfEntityMappingOptions> mappingOptions)
     {
-        esClient = client;
+        if (esClient == null)
+        {
+            var connectionPool = new StaticConnectionPool(urls.ConvertAll(x => new Uri(x)));
+            var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
+            esClient = new ElasticClient(settings);
+        }
+        _mappingOptions = mappingOptions;
     }
 
     public static async Task<(List<TokenInfoIndex> list, long totalCount)> SearchMergeTokenList(
@@ -30,7 +41,7 @@ public class EsIndex
         string CollectionSymbol = "")
     {
         var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
-            .Index("tokeninfoindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"tokeninfoindex"))
             .Skip(skip)
             .Size(size)
             .Query(q => q
@@ -93,7 +104,7 @@ public class EsIndex
     public static async Task<TokenInfoIndex> SearchTokenDetail(string symbol)
     {
         var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
-            .Index("tokeninfoindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"tokeninfoindex"))
             .Skip(0)
             .Size(1)
             .Query(q => q
@@ -127,7 +138,8 @@ public class EsIndex
         string sortOrder = "desc", List<string> symbols = null, SymbolType symbolType = SymbolType.Token)
     {
         var searchDescriptor = new SearchDescriptor<TokenInfoIndex>()
-            .Index("tokeninfoindex").Skip(skip)
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"tokeninfoindex"))
+            .Skip(skip)
             .Size(size)
             .Query(q => q
                 .Bool(b =>
@@ -171,7 +183,7 @@ public class EsIndex
         int skip, int size)
     {
         var searchResponse = esClient.Search<BlockIndex>(s => s
-            .Index("blockindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"blockindex"))
             .Sort(sort => sort.Descending(p => p.Timestamp))
             .From(skip)
             .Size(size)
@@ -225,7 +237,8 @@ public class EsIndex
             GreaterThan = 0
         });
 
-        var searchRequest = new SearchRequest("accounttokenindex")
+        var searchRequest = new SearchRequest(
+            CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix, "accounttokenindex"))
         {
             Size = (int)input.MaxResultCount,
             Sort = new List<ISort>
@@ -322,7 +335,8 @@ public class EsIndex
             filterQueries.Add(new TermQuery { Field = "chainId", Value = input.ChainId });
         }
 
-        var searchRequest = new SearchRequest("accounttokenindex")
+        var searchRequest = new SearchRequest(
+            CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"accounttokenindex"))
         {
             From = (int)input.SkipCount,
             Size = (int)input.MaxResultCount,
@@ -356,7 +370,7 @@ public class EsIndex
         string symbol, string chainId)
     {
         var countResponse = await esClient.CountAsync<AccountTokenIndex>(c => c
-            .Index("accounttokenindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"accounttokenindex"))
             .Query(q => q
                 .Bool(b => b
                     .Must(must => must
@@ -377,7 +391,7 @@ public class EsIndex
         string chainId, List<SymbolType> tokenTypeList)
     {
         var countResponse = await esClient.CountAsync<AccountTokenIndex>(c => c
-            .Index("accounttokenindex")
+            .Index(CommonIndexUtil.GetIndexName(_mappingOptions.CurrentValue.CollectionPrefix,"accounttokenindex"))
             .Query(q => q
                 .Bool(b => b
                     .Must(must => must

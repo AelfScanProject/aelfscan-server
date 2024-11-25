@@ -45,12 +45,7 @@ public class ClusterFixture : IDisposable, ISingletonDependency
         {
             hostBuilder.ConfigureServices(services =>
                 {
-                    // var mockTokenProvider = new Mock<ITokenPriceProvider>();
-                    // mockTokenProvider.Setup(o => o.GetPriceAsync(It.IsAny<string>()))
-                    //     .ReturnsAsync(123);
-                    // mockTokenProvider.Setup(o => o.GetHistoryPriceAsync(It.IsAny<string>(), It.IsAny<string>()))
-                    //     .ReturnsAsync(123);
-                    // services.AddSingleton<ITokenPriceProvider>(mockTokenProvider.Object);
+              
 
                     services.AddMemoryCache();
                     services.AddDistributedMemoryCache();

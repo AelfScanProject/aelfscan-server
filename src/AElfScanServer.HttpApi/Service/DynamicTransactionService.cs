@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AElf.Client.Dto;
 using AElf.Client.Service;
-using AElf.Indexing.Elasticsearch;
 using AElf.Types;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;

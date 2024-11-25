@@ -7,7 +7,7 @@ using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace AElfScanServer.Service
+namespace AElfScanServer
 {
     public class ContractAppServiceTest : AElfScanServerApplicationTestBase
     {

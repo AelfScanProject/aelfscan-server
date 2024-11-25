@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Options;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.EsIndex;
 using AElfScanServer.Common.IndexerPluginProvider;
@@ -27,11 +28,11 @@ public class TokenHolderPercentWorker : AsyncPeriodicBackgroundWorkerBase
     private readonly IOptionsMonitor<WorkerOptions> _workerOptions;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IElasticClient _elasticClient;
-
+        
     public TokenHolderPercentWorker(AbpAsyncTimer timer, IServiceScopeFactory serviceScopeFactory,
         ILogger<TokenHolderPercentWorker> logger, ITokenHolderPercentProvider tokenHolderPercentProvider,
         ITokenIndexerProvider tokenIndexerProvider, IOptionsMonitor<WorkerOptions> workerOptionsMonitor,
-        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions)
+        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions,IOptionsMonitor<AElfEntityMappingOptions> mappingOptions)
         : base(timer, serviceScopeFactory)
     {
         _logger = logger;
@@ -40,11 +41,7 @@ public class TokenHolderPercentWorker : AsyncPeriodicBackgroundWorkerBase
         _workerOptions = workerOptionsMonitor;
         Timer.RunOnStart = true;
         timer.Period = _workerOptions.CurrentValue.GetWorkerPeriodMinutes(WorkerKey) * 60 * 1000;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
         _globalOptions = globalOptions;
     }
 

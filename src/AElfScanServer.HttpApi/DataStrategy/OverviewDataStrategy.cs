@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Options;
 using AElf.EntityMapping.Repositories;
 using AElf.ExceptionHandler;
 using AElfScanServer.Common.Dtos;
@@ -60,7 +61,8 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         ILogger<DataStrategyBase<string, HomeOverviewResponseDto>> logger, IDistributedCache<string> cache,
         IChartDataService chartDataService, IEntityMappingRepository<AddressIndex, string> addressRepository,
         IEntityMappingRepository<MergeAddressIndex, string> mergeAddressRepository,
-        IOptionsMonitor<ElasticsearchOptions> options,ITokenPriceService tokenPriceService) : base(
+        IOptionsMonitor<ElasticsearchOptions> options,ITokenPriceService tokenPriceService,
+        IOptionsMonitor<AElfEntityMappingOptions> mappingOptions) : base(
          logger, cache)
     {
         _globalOptions = globalOptions;
@@ -72,11 +74,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
         _uniqueAddressRepository = uniqueAddressRepository;
         _chartDataService = chartDataService;
         _addressRepository = addressRepository;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
         _mergeAddressRepository = mergeAddressRepository;
         _tokenPriceService = tokenPriceService;
     }

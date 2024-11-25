@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AElf.EntityMapping.Options;
 using AElf.EntityMapping.Repositories;
 using AElf.ExceptionHandler;
 using AElf.Indexing.Elasticsearch;
@@ -55,7 +56,7 @@ public class AddressService : IAddressService, ISingletonDependency
         IEntityMappingRepository<TokenInfoIndex, string> tokenInfoRepository,
         IEntityMappingRepository<AccountTokenIndex, string> accountTokenRepository,
         IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options,
-        ILogger<AddressService> logger)
+        ILogger<AddressService> logger, IOptionsMonitor<AElfEntityMappingOptions> mappingOptions)
     {
         _logger = logger;
         _tokenIndexerProvider = tokenIndexerProvider;
@@ -63,11 +64,7 @@ public class AddressService : IAddressService, ISingletonDependency
         _cache = cache;
         _objectMapper = objectMapper;
         _accountTokenRepository = accountTokenRepository;
-        var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
-        var connectionPool = new StaticConnectionPool(uris);
-        var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
-        _elasticClient = new ElasticClient(settings);
-        EsIndex.SetElasticClient(_elasticClient);
+        EsIndex.SetElasticClient(options.CurrentValue.Url,mappingOptions);
     }
 
     public async Task DeleteMergeBlock()
