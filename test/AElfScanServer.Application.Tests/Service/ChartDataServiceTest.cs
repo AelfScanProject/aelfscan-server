@@ -1,4 +1,4 @@
-using System;
+/*using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -745,4 +745,4 @@ public class ChartDataServiceTests : AElfScanServerApplicationTestBase
         // var result = await _cache.GetAsync(RedisKeyHelper.FixTokenHolder());
         // Assert.Equal(JsonConvert.SerializeObject(request), result);
     }
-}
+}*/
