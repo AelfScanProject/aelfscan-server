@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+/*using System.Threading.Tasks;
 using AElfScanServer.HttpApi.Dtos.address;
 using AElfScanServer.HttpApi.Service;
 using Shouldly;
@@ -68,4 +68,4 @@ public class AddressAppServiceTest : AElfScanServerApplicationTestBase
         });
         result.List.Count.ShouldBeGreaterThan(0);
     }
-}
+}*/

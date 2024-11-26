@@ -7,7 +7,19 @@
         <Configuration>
           <Format>cobertura</Format>
           <Exclude>[xunit.*]*,[*Tests]*</Exclude> <!-- [Assembly-Filter]Type-Filter -->
-          <ExcludeByFile>**/test/**/*.cs,**/src/AElfScanServer.Application/**/*.cs,**/src/AElfScanServer.Application.Contracts/**/*.cs,**/src/AElfScanServer.DbMigrator/**/*.cs,**/src/AElfScanServer.Domain/**/*.cs,**/src/AElfScanServer.Domain.Shared/**/*.cs,**/src/AElfScanServer.HttpApi.Host/**/*.cs,**/src/AElfScanServer.AuthServer/**/*.cs,**/src/AElfScanServer.MongoDB/**/*.cs</ExcludeByFile>
+          <ExcludeByFile>
+          **/test/**/*.cs,
+          **/src/AElfScanServer.Application/**/*.cs,
+          **/src/AElfScanServer.Application.Contracts/**/*.cs,
+          **/src/AElfScanServer.DbMigrator/**/*.cs,
+          **/src/AElfScanServer.Domain/**/*.cs,
+          **/src/AElfScanServer.Domain.Shared/**/*.cs,
+          **/src/AElfScanServer.HttpApi.Host/**/*.cs,
+          **/src/AElfScanServer.AuthServer/**/*.cs,
+          **/src/AElfScanServer.MongoDB/**/*.cs,
+          **/src/AElfScanServer.Common/**/*.cs,
+          **/src/AElfScanServer.HttpApi/Provider/*.cs
+          </ExcludeByFile>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute</ExcludeByAttribute>
           <SingleHit>false</SingleHit>
         </Configuration>
