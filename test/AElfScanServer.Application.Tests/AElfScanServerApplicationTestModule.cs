@@ -4,6 +4,7 @@ using AElfScanServer.Common.Address.Provider;
 using AElfScanServer.Common.Contract.Provider;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.ThirdPart.Exchange;
 using AElfScanServer.Common.Token;
 using AElfScanServer.HttpApi;
 using AElfScanServer.HttpApi.Options;
@@ -20,7 +21,6 @@ using Volo.Abp.Modularity;
 namespace AElfScanServer;
 
 [DependsOn(
-    
     typeof(HttpApiModule),
     typeof(AElfScanServerApplicationContractsModule),
     typeof(AElfScanServerOrleansTestBaseModule),
@@ -44,7 +44,8 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<IIndexerGenesisProvider, MockIndexerGenesisProvider>();
         context.Services.AddSingleton<IDecompilerProvider, MockDecompilerProvider>();
         context.Services.AddSingleton<ITokenPriceService, MockTokenPriceService>();
-        context.Services.AddSingleton<IGenesisPluginProvider,MockGenesisPluginProvider>();
+        context.Services.AddSingleton<IGenesisPluginProvider, MockGenesisPluginProvider>();
+        context.Services.AddSingleton<ICoinMarketCapProvider, MockCoinMarketCapProvider>();
         Configure<GlobalOptions>(options =>
         {
             options.OrganizationAddress = "OrganizationAddress";

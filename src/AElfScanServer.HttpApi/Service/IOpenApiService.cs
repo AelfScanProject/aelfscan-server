@@ -34,12 +34,12 @@ public class OpenApiService : IOpenApiService
     private readonly decimal MaxSupply = 1000000000;
     private readonly ITokenIndexerProvider _indexerTokenProvider;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
-    private readonly CoinMarketCapProvider _coinMarketCapProvider;
+    private readonly ICoinMarketCapProvider _coinMarketCapProvider;
     private readonly List<string> CurrencyList = new List<string>() { "krw", "usd", "idr", "sgd", "thb" };
 
     public OpenApiService(IChartDataService chartDataService, ILogger<OpenApiService> logger,
         ITokenIndexerProvider indexerTokenProvider,
-        IOptionsMonitor<GlobalOptions> globalOptions, CoinMarketCapProvider coinMarketCapProvider)
+        IOptionsMonitor<GlobalOptions> globalOptions, ICoinMarketCapProvider coinMarketCapProvider)
     {
         _chartDataService = chartDataService;
         _logger = logger;
@@ -65,7 +65,8 @@ public class OpenApiService : IOpenApiService
                 task => { organizationAddressBalance = task.Result; }));
 
         tasks.Add(_indexerTokenProvider
-            .GetAddressElfBalanceAsync("AELF", _globalOptions.CurrentValue.ContractAddressConsensus["AELF"]).ContinueWith(
+            .GetAddressElfBalanceAsync("AELF", _globalOptions.CurrentValue.ContractAddressConsensus["AELF"])
+            .ContinueWith(
                 task => { consensusContractAddressBalance = task.Result; }));
 
         await tasks.WhenAll();
@@ -172,8 +173,6 @@ public class OpenApiService : IOpenApiService
 
     public async Task<List<CurrencyPrice>> GetCurrencyPriceAsync()
     {
-        
-        
         var result = new List<CurrencyPrice>();
         var tasks = new List<Task>();
 
@@ -194,7 +193,7 @@ public class OpenApiService : IOpenApiService
 
         var elfPriceUsdPrice = volume24HFromCmc.Quote["USD"].Price;
         var volume24H = volume24HFromCmc.Quote["USD"].Volume_24h;
-       
+
         foreach (var keyValuePair in currencyPrice.Market_Data.Current_Price)
         {
             if (CurrencyList.Contains(keyValuePair.Key))

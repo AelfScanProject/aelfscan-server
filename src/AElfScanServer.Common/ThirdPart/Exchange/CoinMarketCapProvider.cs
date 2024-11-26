@@ -19,7 +19,13 @@ using Volo.Abp.Caching;
 
 namespace AElfScanServer.Common.ThirdPart.Exchange;
 
-public class CoinMarketCapProvider
+public interface ICoinMarketCapProvider
+{
+    Task<SymbolInfo> GetVolume24hFromCMC(string symbol);
+    Task<CoinInfo> GetCurrencyPrice();
+}
+
+public class CoinMarketCapProvider : ICoinMarketCapProvider
 {
     private readonly IOptionsMonitor<GlobalOptions> _options;
     private readonly IHttpProvider _httpProvider;
@@ -29,13 +35,9 @@ public class CoinMarketCapProvider
     private readonly IDistributedCache<CoinInfo> _coinInfoCache;
     private readonly IDistributedCache<SymbolInfo> _symbolInfoCache;
     private readonly string CMCDomain = "https://pro-api.coinmarketcap.com";
-
-    private readonly string CMCUrl =
-        "/v1/cryptocurrency/listings/latest?start=50&limit=200&convert=USD";
-
-    public readonly string CurrencyPriceDomain = "https://api.coingecko.com/";
+    private readonly string CMCUrl = "/v1/cryptocurrency/listings/latest?start=50&limit=200&convert=USD";
+    public readonly string CurrencyPriceDomain = "https://api.coingecko.com";
     public readonly string CurrencyPriceUrl = "api/v3/coins/aelf";
-
 
     public CoinMarketCapProvider(IOptionsMonitor<GlobalOptions> options, IHttpProvider httpProvider,
         IDistributedCache<string> blocked, ILogger<CoinMarketCapProvider> logger,
@@ -51,7 +53,6 @@ public class CoinMarketCapProvider
         _symbolInfoCache = symbolInfoCache;
     }
 
-
     public async Task<SymbolInfo> GetVolume24hFromCMC(string symbol)
     {
         var symbolInfo = await _symbolInfoCache.GetAsync("symbolInfo");
@@ -63,14 +64,14 @@ public class CoinMarketCapProvider
         var head = new Dictionary<string, string>();
         head["X-CMC_PRO_API_KEY"] = _secretOptions.CMCApiKey;
         var response =
-            await _httpProvider.InvokeAsync<CMCCryptoCurrency>(CMCDomain,
-                new ApiInfo(HttpMethod.Get, CMCUrl), header: head);
+            await _httpProvider.InvokeAsync<CMCCryptoCurrency>(CMCDomain, new ApiInfo(HttpMethod.Get, CMCUrl),
+                header: head);
 
         symbolInfo = response.Data.Where(c => c.Symbol == symbol).ToList().First();
 
         if (symbolInfo == null)
         {
-            await _symbolInfoCache.SetAsync("symbolInfo", symbolInfo, new DistributedCacheEntryOptions()
+            await _symbolInfoCache.SetAsync("symbolInfo", symbolInfo, new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
             });
@@ -79,11 +80,9 @@ public class CoinMarketCapProvider
         return symbolInfo;
     }
 
-
     public async Task<CoinInfo> GetCurrencyPrice()
     {
         var coinInfo = await _coinInfoCache.GetAsync("coinInfo");
-
         if (coinInfo != null)
         {
             return coinInfo;
@@ -95,12 +94,11 @@ public class CoinMarketCapProvider
 
         if (response != null)
         {
-            await _coinInfoCache.SetAsync("coinInfo", response, new DistributedCacheEntryOptions()
+            await _coinInfoCache.SetAsync("coinInfo", response, new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
             });
         }
-
 
         return response;
     }
