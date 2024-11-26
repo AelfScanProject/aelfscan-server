@@ -196,12 +196,17 @@ public class AddressService : IAddressService, ISingletonDependency
     private async Task<(Dictionary<string, List<string>> symbolList, DateTime beginTime)> GetChangeSymbolList(
         DateTime beginTime)
     {
+        DateTime endTime = beginTime;
         var symbolDictionary = new Dictionary<string, List<string>>();
-        while (beginTime != default)
+        long skipCount = 0;
+        long maxResultCount = 300;
+        long queryCount = 0;
+
+        do
         {
             var tokenTransferInput = new TokenTransferInput();
             tokenTransferInput.BeginBlockTime = beginTime;
-            tokenTransferInput.OrderInfos = new List<OrderInfo>()
+            tokenTransferInput.OrderInfos = new List<OrderInfo>
             {
                 new OrderInfo()
                 {
@@ -209,14 +214,11 @@ public class AddressService : IAddressService, ISingletonDependency
                     OrderBy = "BlockTime"
                 }
             };
-            tokenTransferInput.SkipCount = 0;
-            tokenTransferInput.MaxResultCount = 1000;
+            tokenTransferInput.SkipCount = skipCount;
+            tokenTransferInput.MaxResultCount = maxResultCount;
             tokenTransferInput.Types = new() { SymbolType.Token, SymbolType.Nft };
             var tokenTransferListDto = await _tokenIndexerProvider.GetTokenTransferInfoAsync(tokenTransferInput);
-            if (tokenTransferListDto.Items.Count == 0)
-            {
-                break;
-            }
+
 
             foreach (var indexerTransferInfoDto in tokenTransferListDto.Items)
             {
@@ -228,10 +230,16 @@ public class AddressService : IAddressService, ISingletonDependency
                 }
             }
 
-            beginTime = tokenTransferListDto.Items.Last().Metadata.Block.BlockTime;
-        }
+            if (!tokenTransferListDto.Items.IsNullOrEmpty())
+            {
+                endTime = tokenTransferListDto.Items.Last().Metadata.Block.BlockTime;
+            }
+            queryCount = tokenTransferListDto.Items.Count;
+            skipCount += maxResultCount;
 
-        return (symbolDictionary, beginTime);
+        } while (queryCount == maxResultCount);
+
+        return (symbolDictionary, endTime);
     }
 
     private static void SetSymbolMap(Dictionary<string, List<string>> symbolList,

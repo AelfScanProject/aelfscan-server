@@ -282,10 +282,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
             Query =
                 @"query($chainId:String,$symbol:String!,$collectionSymbol:String,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
                     $search:String,$types:[SymbolType!],$symbols:[String],$searchSymbols:[String],
-                    $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo],$AmountGreaterThanZero:Boolean){
+                    $fuzzySearch:String,$sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo],$amountGreaterThanZero:Boolean){
                     accountToken(input: {chainId:$chainId,symbol:$symbol,collectionSymbol:$collectionSymbol,skipCount:$skipCount,types:$types,
                     search:$search,symbols:$symbols,searchSymbols:$searchSymbols,maxResultCount:$maxResultCount,address:$address,addressList:$addressList,
-                    fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos,amountGreaterThanZero:$AmountGreaterThanZero}){
+                    fuzzySearch:$fuzzySearch,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos,amountGreaterThanZero:$amountGreaterThanZero}){
                     totalCount,
                     items{
                         id,
@@ -326,10 +326,10 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
         {
             Query =
                 @"query($chainId:String!,$symbol:String!,$skipCount:Int!,$maxResultCount:Int!,$address:String,$addressList:[String],
-                   $sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo],$AmountGreaterThanZero:Boolean){
+                   $sort:String,$orderBy:String,$searchAfter:[String],$orderInfos:[OrderInfo],$amountGreaterThanZero:Boolean){
                     accountCollection(input: {chainId:$chainId,symbol:$symbol,skipCount:$skipCount,
                    maxResultCount:$maxResultCount,address:$address,addressList:$addressList,sort:$sort,orderBy:$orderBy,searchAfter:$searchAfter,orderInfos:$orderInfos,
-                   amountGreaterThanZero:$AmountGreaterThanZero}){
+                   amountGreaterThanZero:$amountGreaterThanZero}){
                     totalCount,
                     items{
                         id,
