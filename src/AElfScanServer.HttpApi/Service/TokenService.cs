@@ -96,7 +96,28 @@ public class TokenService : ITokenService, ISingletonDependency
     public virtual async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
     {
         
-       return await GetMergeTokenListAsync(input);
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeTokenListAsync(input);
+        }
+
+        input.SetDefaultSort();
+
+        var indexerTokenListDto = await _tokenIndexerProvider.GetTokenListAsync(input);
+
+        if (indexerTokenListDto.Items.IsNullOrEmpty())
+        {
+            return new ListResponseDto<TokenCommonDto>();
+        }
+
+        var list = await ConvertIndexerTokenDtoAsync(indexerTokenListDto.Items, input.ChainId);
+
+        return new ListResponseDto<TokenCommonDto>
+        {
+            Total = indexerTokenListDto.TotalCount,
+            List = list
+        };
+            
     }
 
     public async Task<ListResponseDto<TokenCommonDto>> GetMergeTokenListAsync(TokenListInput input)
@@ -300,7 +321,24 @@ public class TokenService : ITokenService, ISingletonDependency
 
     public async Task<ListResponseDto<TokenHolderInfoDto>> GetTokenHolderInfosAsync(TokenHolderInput input)
     {
-        return await GetMergeTokenHolderInfosAsync(input);
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeTokenHolderInfosAsync(input);
+        }
+
+        input.SetDefaultSort();
+
+        var indexerTokenHolderInfo = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
+
+        var list = await ConvertIndexerTokenHolderInfoDtoAsync(indexerTokenHolderInfo.Items, input.ChainId,
+            input.Symbol);
+
+        return new ListResponseDto<TokenHolderInfoDto>
+        {
+            Total = indexerTokenHolderInfo.TotalCount,
+            List = list
+        };
+    
     }
 
     public async Task<ListResponseDto<TokenHolderInfoDto>> GetMergeTokenHolderInfosAsync(TokenHolderInput input)
