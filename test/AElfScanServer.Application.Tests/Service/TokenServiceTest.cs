@@ -1,4 +1,4 @@
-/*using AElfScanServer.Common.Dtos;
+using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Input;
 using System.Threading.Tasks;
 using Xunit;
@@ -123,4 +123,4 @@ namespace AElfScanServer
             // 验证代币的基本信息
         }
     }
-}*/
+}
