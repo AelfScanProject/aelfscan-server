@@ -26,7 +26,6 @@ public class AElfScanServerDomainTestModule : AbpModule
         Configure<CollectionCreateOptions>(x =>
         {
             x.AddModule(typeof(AElfScanCommonModule));
-          //  x.AddModule(typeof(HttpApiModule));
         });
         
          

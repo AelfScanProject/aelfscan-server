@@ -19,6 +19,7 @@
           **/src/AElfScanServer.MongoDB/**/*.cs,
           **/src/AElfScanServer.Common/**/*.cs,
           **/src/AElfScanServer.HttpApi/Provider/*.cs
+          **/src/AElfScanServer.HttpApi/Protobuf/**/*.cs
           </ExcludeByFile>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute</ExcludeByAttribute>
           <SingleHit>false</SingleHit>
