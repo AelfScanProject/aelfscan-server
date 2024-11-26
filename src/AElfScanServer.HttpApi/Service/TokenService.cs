@@ -209,11 +209,13 @@ public class TokenService : ITokenService, ISingletonDependency
         var sideTokenDetailDto = new TokenDetailDto();
         var mergeHolders = 0l;
 
+        decimal pricePercentChange24h = 0;
+        decimal tokenPrice = 0;
 
         tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync(symbol).ContinueWith(
                 task =>
                 {
-                    tokenDetailDto.PricePercentChange24h = task.Result.PriceChangePercent;
+                    pricePercentChange24h = task.Result.PriceChangePercent;
                     _logger.LogInformation("GetMergeTokenDetailAsync GetTokenUsd24ChangeAsync:{price}", task.Result.PriceChangePercent);
                 }));
             
@@ -223,7 +225,7 @@ public class TokenService : ITokenService, ISingletonDependency
                 {
                     if (task.Result != null)
                     {
-                     tokenDetailDto.Price = task.Result.Price;
+                     tokenPrice = task.Result.Price;
                      _logger.LogInformation("GetMergeTokenDetailAsync GetTokenPriceAsync:{price}", task.Result.Price);
 
                     }
@@ -261,6 +263,8 @@ public class TokenService : ITokenService, ISingletonDependency
                                             tokenDetailDto.SideChainTransferCount;
 
         tokenDetailDto.MergeHolders = mergeHolders;
+        tokenDetailDto.Price = tokenPrice;
+        tokenDetailDto.PricePercentChange24h = pricePercentChange24h;
 
         var list = new List<string>();
         if (mainTokenDetailDto.Holders > 0)

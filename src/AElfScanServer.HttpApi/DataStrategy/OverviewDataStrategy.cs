@@ -284,7 +284,12 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                 task =>
                 {
                     overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
-                    overviewResp.TokenPriceInUsd = task.Result.LastPrice;
+                }));
+            
+              tasks.Add(_tokenPriceService.GetTokenPriceAsync("ELF").ContinueWith(
+                task =>
+                {
+                    overviewResp.TokenPriceInUsd = task.Result.Price;
                 }));
 
             tasks.Add(_homePageProvider.GetTransactionCountPerLastMinute("AELF").ContinueWith(
