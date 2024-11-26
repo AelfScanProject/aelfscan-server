@@ -54,7 +54,8 @@ public class TokenService : ITokenService, ISingletonDependency
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptions;
     private readonly ITokenPriceService _tokenPriceService;
     private readonly ITokenInfoProvider _tokenInfoProvider;
-    private readonly IGenesisPluginProvider _genesisPluginProvider;
+    private readonly IGenesisPluginProvider _genesisPluginProvider; 
+    private readonly BlockChainDataProvider _blockChainProvider;
     private readonly ILogger<TokenService> _logger;
     private readonly IAddressTypeService _addressTypeService;
     private readonly IElasticClient _elasticClient;
@@ -66,7 +67,8 @@ public class TokenService : ITokenService, ISingletonDependency
         IOptionsMonitor<TokenInfoOptions> tokenInfoOptions, ITokenInfoProvider tokenInfoProvider,
         IAddressTypeService addressTypeService,
         IGenesisPluginProvider genesisPluginProvider, ILogger<TokenService> logger,
-        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions)
+        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions,
+        BlockChainDataProvider blockChainProvider)
     {
         _objectMapper = objectMapper;
         _chainOptions = chainOptions;
@@ -76,6 +78,7 @@ public class TokenService : ITokenService, ISingletonDependency
         _genesisPluginProvider = genesisPluginProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
         _tokenHolderPercentProvider = tokenHolderPercentProvider;
+        _blockChainProvider = blockChainProvider;
         _logger = logger;
         _addressTypeService = addressTypeService;
         var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
@@ -207,6 +210,22 @@ public class TokenService : ITokenService, ISingletonDependency
         var mergeHolders = 0l;
 
 
+        tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync("ELF").ContinueWith(
+                task =>
+                {
+                    tokenDetailDto.PricePercentChange24h = task.Result.PriceChangePercent;
+                }));
+            
+                  
+        tasks.Add(_tokenPriceService.GetTokenPriceAsync("ELF").ContinueWith(
+                task =>
+                {
+                    if (task.Result != null)
+                    {
+                     tokenDetailDto.Price = task.Result.Price;
+
+                    }
+                }));
         tasks.Add(EsIndex.GetTokenHolders(symbol, "").ContinueWith(task => { mergeHolders = task.Result; }));
 
         tasks.Add(GetTokenDetailAsync(symbol, "AELF").ContinueWith(task => { mainTokenDetailDto = task.Result; }));
