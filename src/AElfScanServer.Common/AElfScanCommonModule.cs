@@ -60,10 +60,10 @@ public class AElfScanCommonModule : AbpModule
         context.Services.AddTransient<INftCollectionHolderProvider, NftCollectionHolderProvider>();
         context.Services.AddTransient<INftInfoProvider, NftInfoProvider>();
         context.Services.AddTransient<ITokenInfoProvider, TokenInfoProvider>();
-        context.Services.AddTransient<CoinMarketCapProvider, CoinMarketCapProvider>();
         context.Services.AddSingleton<IBlockchainClientFactory<AElfClient>, AElfClientFactory>();
         context.Services.AddSingleton<IK8sProvider, K8sProvider>();
         context.Services.AddSingleton<IPriceServerProvider, PriceServerProvider>();
+        context.Services.AddSingleton<ICoinMarketCapProvider, CoinMarketCapProvider>();
         context.Services.AddHttpClient();
         context.Services.Replace(ServiceDescriptor.Singleton<IInterceptor, TotalExecutionTimeRecorder>());
         ExceptionHandlingService.Initialize(context.Services.BuildServiceProvider());

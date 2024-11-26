@@ -53,8 +53,7 @@ namespace AElfScanServer.HttpApi.Service;
 public interface IChartDataService
 {
     public Task<DailyTransactionCountResp> GetDailyTransactionCountAsync(ChartDataRequest request);
-
-
+    
     public Task<UniqueAddressCountResp> GetUniqueAddressCountAsync(ChartDataRequest request);
 
 

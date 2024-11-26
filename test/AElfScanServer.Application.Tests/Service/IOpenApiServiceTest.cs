@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
 using AElfScanServer.Common.Dtos.ChartData;
+using AElfScanServer.Common.HttpClient;
 using AElfScanServer.Common.IndexerPluginProvider;
+using AElfScanServer.Common.ThirdPart.Exchange;
 using AElfScanServer.HttpApi.Dtos.ChartData;
 using AElfScanServer.HttpApi.Provider;
 using AElfScanServer.HttpApi.Service;
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -181,5 +184,36 @@ public class IOpenApiServiceTest : AElfScanServerApplicationTestBase
         Assert.NotNull(result);
         Assert.Equal(166, result.MainChain.TransactionAvgByAllType);
         Assert.Equal(166, result.MainChain.TransactionAvgByExcludeSystem);
+    }
+
+
+    [Fact]
+    public async Task GetCurrencyPriceAsyncTest()
+    {
+        var mockData = new List<DailySupplyGrowthIndex>
+        {
+            new()
+            {
+                Date = 20230101,
+                ChainId = "AELF",
+                TotalBurnt = 500000,
+                DailyOrganizationBalance = 100000000,
+                TotalOrganizationBalance = 200000000
+            },
+            new()
+            {
+                Date = 20230102,
+                ChainId = "AELF",
+                TotalBurnt = 600000,
+                DailyOrganizationBalance = 100000000,
+                TotalOrganizationBalance = 200000000
+            }
+        };
+
+        await _dailySupplyGrowthIndexRepository.AddOrUpdateManyAsync(mockData);
+        
+        var result = await _openApiService.GetCurrencyPriceAsync();
+        
+        Assert.NotNull(result);
     }
 }
