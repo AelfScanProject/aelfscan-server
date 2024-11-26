@@ -649,8 +649,109 @@ public class BlockChainService : IBlockChainService, ITransientDependency
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["requestDto"])]
     public virtual async Task<BlocksResponseDto> GetBlocksAsync(BlocksRequestDto requestDto)
     
+  {
+    
+        if (requestDto.ChainId.IsNullOrEmpty())
     { 
         return await GetMergeBlocksAsync(requestDto);
+    }
+    
+        var result = new BlocksResponseDto() { };
+       
+            Stopwatch stopwatch1 = new Stopwatch();
+            stopwatch1.Start();
+            var summariesList = await _aelfIndexerProvider.GetLatestSummariesAsync(requestDto.ChainId);
+
+            var blockHeightAsync = summariesList.First().LatestBlockHeight;
+            stopwatch1.Stop();
+            var endBlockHeight = blockHeightAsync - requestDto.SkipCount;
+            var startBlockHeight = endBlockHeight - requestDto.MaxResultCount;
+
+            if (requestDto.IsLastPage)
+            {
+                endBlockHeight = requestDto.MaxResultCount;
+                startBlockHeight = 1;
+            }
+
+
+            _logger.LogInformation($"Cost time by get last blockHeight:{stopwatch1.Elapsed.TotalSeconds}");
+
+            List<Task> getBlockRawDataTasks = new List<Task>();
+            List<IndexerBlockDto> blockList = new List<IndexerBlockDto>();
+            Dictionary<long, long> blockBurntFee = new Dictionary<long, long>();
+            Stopwatch stopwatch2 = new Stopwatch();
+            stopwatch2.Start();
+
+            var blockListTask = _aelfIndexerProvider.GetLatestBlocksAsync(requestDto.ChainId,
+                startBlockHeight,
+                endBlockHeight).ContinueWith(task => { blockList = task.Result; });
+
+            getBlockRawDataTasks.Add(blockListTask);
+
+            var blockBurntFeeTask = ParseBlockBurntAsync(requestDto.ChainId,
+                startBlockHeight,
+                endBlockHeight).ContinueWith(task => { blockBurntFee = task.Result; });
+
+
+            getBlockRawDataTasks.Add(blockBurntFeeTask);
+
+            await Task.WhenAll(getBlockRawDataTasks);
+
+            stopwatch2.Stop();
+            _logger.LogInformation($"Cost time by get block raw data :{stopwatch2.Elapsed.TotalSeconds}");
+
+            result.Blocks = new List<BlockRespDto>();
+            result.Total = blockHeightAsync;
+
+
+            Stopwatch stopwatch3 = new Stopwatch();
+            stopwatch3.Start();
+
+
+            for (var i = blockList.Count - 1; i >= 0; i--)
+            {
+                var indexerBlockDto = blockList[i];
+                var latestBlockDto = new BlockRespDto();
+
+                latestBlockDto.BlockHeight = indexerBlockDto.BlockHeight;
+                latestBlockDto.Timestamp = DateTimeHelper.GetTotalSeconds(indexerBlockDto.BlockTime);
+                latestBlockDto.TransactionCount = indexerBlockDto.TransactionIds.Count;
+                latestBlockDto.ProducerAddress = indexerBlockDto.Miner;
+                latestBlockDto.ProducerName = await GetBpNameAsync(indexerBlockDto.ChainId, indexerBlockDto.Miner);
+
+
+                latestBlockDto.BurntFees = blockBurntFee.TryGetValue(indexerBlockDto.BlockHeight, out var value)
+                    ? value.ToString()
+                    : "0";
+
+                if (i == 0)
+                {
+                    latestBlockDto.TimeSpan = result.Blocks.Last().TimeSpan;
+                }
+                else
+                {
+                    latestBlockDto.TimeSpan = (Convert.ToDouble(0 < blockList.Count
+                        ? DateTimeHelper.GetTotalMilliseconds(indexerBlockDto.BlockTime) -
+                          DateTimeHelper.GetTotalMilliseconds(blockList[i - 1].BlockTime)
+                        : 0) / 1000).ToString("0.0");
+                }
+
+
+                result.Blocks.Add(latestBlockDto);
+                if (indexerBlockDto.ChainId == "AELF")
+                {
+                    latestBlockDto.Reward = CommomHelper
+                        .GetMiningRewardPerBlock(_globalOptions.CurrentValue.BlockchainStartTimestamp).ToString();
+                }
+
+                latestBlockDto.ChainIds.Add(requestDto.ChainId);
+            }
+
+
+            stopwatch3.Stop();
+            _logger.LogInformation($"Cost time by parse block raw data:{stopwatch3.Elapsed.TotalSeconds}");
+            return result;
+      
     }
     
 

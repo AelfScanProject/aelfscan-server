@@ -300,7 +300,24 @@ public class TokenService : ITokenService, ISingletonDependency
 
     public async Task<ListResponseDto<TokenHolderInfoDto>> GetTokenHolderInfosAsync(TokenHolderInput input)
     {
-        return await GetMergeTokenHolderInfosAsync(input);
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeTokenHolderInfosAsync(input);
+        }
+
+        input.SetDefaultSort();
+
+        var indexerTokenHolderInfo = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
+
+        var list = await ConvertIndexerTokenHolderInfoDtoAsync(indexerTokenHolderInfo.Items, input.ChainId,
+            input.Symbol);
+
+        return new ListResponseDto<TokenHolderInfoDto>
+        {
+            Total = indexerTokenHolderInfo.TotalCount,
+            List = list
+        };
+    
     }
 
     public async Task<ListResponseDto<TokenHolderInfoDto>> GetMergeTokenHolderInfosAsync(TokenHolderInput input)

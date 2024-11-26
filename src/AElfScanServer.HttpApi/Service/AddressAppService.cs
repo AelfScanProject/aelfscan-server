@@ -105,7 +105,52 @@ public class AddressAppService : IAddressAppService
             SearchAfter = input.SearchAfter
         };
 
+        if (input.ChainId.IsNullOrEmpty())
+        {
         return await GetMergeAddressListAsync(holderInput);
+        }
+
+        var tokenHolderInfoTask = _tokenIndexerProvider.GetTokenHolderInfoAsync(holderInput);
+        var tokenDetailTask = _tokenIndexerProvider.GetTokenDetailAsync(input.ChainId, CurrencyConstant.ElfCurrency);
+
+        await Task.WhenAll(tokenHolderInfoTask, tokenDetailTask);
+
+        var tokenHolderAccountlist = await tokenHolderInfoTask;
+        var indexerTokenList = await tokenDetailTask;
+        var tokenInfo = indexerTokenList[0];
+
+        var result = new GetAddressListResultDto
+        {
+            Total = tokenHolderAccountlist.TotalCount,
+            TotalBalance = DecimalHelper.Divide(indexerTokenList.Sum(c => c.Supply), tokenInfo.Decimals)
+        };
+
+
+        var contractInfosDict =
+            await _indexerGenesisProvider.GetContractListAsync(input.ChainId,
+                tokenHolderAccountlist.Items.Select(address => address.Address).ToList());
+
+
+        var addressList = new List<GetAddressInfoResultDto>();
+        foreach (var info in tokenHolderAccountlist.Items)
+        {
+            var addressResult = _objectMapper.Map<IndexerTokenHolderInfoDto, GetAddressInfoResultDto>(info);
+            addressResult.ChainIds = new List<string>() { info.Metadata.ChainId };
+            addressResult.Percentage = Math.Round((decimal)info.Amount / tokenInfo.Supply * 100,
+                CommonConstant.LargerPercentageValueDecimals);
+            addressResult.AddressType =
+                contractInfosDict.TryGetValue(info.Address + info.Metadata.ChainId, out var addressInfo)
+                    ? AddressType.ContractAddress
+                    : AddressType.EoaAddress;
+            addressList.Add(addressResult);
+        }
+
+        //add sort 
+        addressList = addressList.OrderByDescending(item => item.Balance)
+            .ThenByDescending(item => item.TransactionCount)
+            .ToList();
+        result.List = addressList;
+        return result;
     }
 
     public async Task<GetAddressListResultDto> GetMergeAddressListAsync(TokenHolderInput input)
