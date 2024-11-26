@@ -44,20 +44,17 @@ namespace AElfScanServer.HttpApi.Host;
 )]
 public class HttpApiHostModule : AbpModule
 {
-    
     public override void PreConfigureServices(ServiceConfigurationContext context)
     {
-        PreConfigure<IdentityBuilder>(builder =>
-        {
-            builder.AddDefaultTokenProviders();
-        });
-        
+        PreConfigure<IdentityBuilder>(builder => { builder.AddDefaultTokenProviders(); });
+
         // IdentityBuilderExtensions.AddDefaultTokenProviders(context.Services.AddIdentity<IdentityUser, IdentityRole>());
     }
+
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
         var configuration = context.Services.GetConfiguration();
-        
+
         ConfigureAuthentication(context, configuration);
         ConfigureGraphQl(context, configuration);
         ConfigureCache(context, configuration);
@@ -80,7 +77,6 @@ public class HttpApiHostModule : AbpModule
                 options.Authority = configuration["AuthServer:Authority"];
                 options.RequireHttpsMetadata = Convert.ToBoolean(configuration["AuthServer:RequireHttpsMetadata"]);
                 options.Audience = "AElfScanServer";
-                
             });
         context.Services.AddAuthorization(options =>
         {
@@ -88,7 +84,7 @@ public class HttpApiHostModule : AbpModule
                 policy.RequireRole("admin"));
         });
     }
-    
+
     // private void ConfigureAuthentication(ServiceConfigurationContext context, IConfiguration configuration)
     // {
     //     context.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -127,9 +123,9 @@ public class HttpApiHostModule : AbpModule
             });
         });
     }
+
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
-        
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
 
@@ -150,6 +146,8 @@ public class HttpApiHostModule : AbpModule
             app.UseMultiTenancy();
         }
 
+        app.UseAuthorization();
+        app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
         app.UseAbpSwaggerUI(options =>
         {
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "AElfScanServer API");
@@ -164,7 +162,6 @@ public class HttpApiHostModule : AbpModule
         app.UseAbpSerilogEnrichers();
         app.UseUnitOfWork();
         app.UseConfiguredEndpoints();
-
     }
 
 
@@ -174,7 +171,7 @@ public class HttpApiHostModule : AbpModule
             new NewtonsoftJsonSerializer()));
         context.Services.AddScoped<IGraphQLClient>(sp => sp.GetRequiredService<GraphQLHttpClient>());
     }
-    
+
     private void ConfigureCache(
         ServiceConfigurationContext context,
         IConfiguration configuration)
