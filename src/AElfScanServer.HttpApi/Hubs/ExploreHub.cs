@@ -50,6 +50,7 @@ public class ExploreHub : AbpHub
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IObjectMapper _objectMapper;
     private readonly IElasticClient _elasticClient;
+    private readonly IDistributedCache<BlocksResponseDto> _latestMergeBlocksCache;
 
 
     private static readonly ConcurrentDictionary<string, bool>
@@ -63,7 +64,8 @@ public class ExploreHub : AbpHub
         LatestBlocksDataStrategy latestBlocksDataStrategy, IOptionsMonitor<GlobalOptions> globalOptions,
         IChartDataService chartDataService,
         IDistributedCache<List<TopTokenDto>> cache, ITokenIndexerProvider tokenIndexerProvider,
-        IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options)
+        IObjectMapper objectMapper, IOptionsMonitor<ElasticsearchOptions> options,
+        IDistributedCache<BlocksResponseDto> latestMergeBlocksCache)
     {
         _HomePageService = homePageService;
         _logger = logger;
@@ -85,6 +87,7 @@ public class ExploreHub : AbpHub
         var settings = new ConnectionSettings(connectionPool).DisableDirectStreaming();
         _elasticClient = new ElasticClient(settings);
         EsIndex.SetElasticClient(_elasticClient);
+        _latestMergeBlocksCache = latestMergeBlocksCache;
     }
 
 
@@ -172,6 +175,13 @@ public class ExploreHub : AbpHub
 
     public async Task<BlocksResponseDto> GetLatestBlocks()
     {
+        var key = "mergeBlocks";
+        var blocksResult = await _latestMergeBlocksCache.GetAsync(key);
+        if (blocksResult != null)
+        {
+            return blocksResult;
+        }
+
         var result = new BlocksResponseDto() { };
         var searchMergeBlockList = await EsIndex.SearchMergeBlockList(0, 10);
 
@@ -189,6 +199,10 @@ public class ExploreHub : AbpHub
 
         result.Blocks = blockRespDtos;
 
+        await _latestMergeBlocksCache.SetAsync(key, result, new DistributedCacheEntryOptions()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(2)
+        });
         return result;
     }
 
