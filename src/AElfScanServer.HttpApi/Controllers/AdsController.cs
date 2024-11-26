@@ -40,7 +40,6 @@ public class AdsController : AbpController
 
     [HttpGet]
     [Route("detail/list")]
-    [Authorize]
     public async Task<List<AdsResp>> GetAdsDetailListAsync(int size)
     {
         return await _adsService.GetAdsDetailList(size);
@@ -58,6 +57,7 @@ public class AdsController : AbpController
 
     [HttpPost]
     [Route("detail")]
+    [Authorize]
     public async Task<AdsIndex> UpdateAdsDetailAsync(UpdateAdsReq req)
     {
         return await _adsService.UpdateAds(req);

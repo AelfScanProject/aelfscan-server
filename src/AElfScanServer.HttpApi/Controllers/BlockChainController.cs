@@ -36,17 +36,6 @@ public class BlockChainController : AbpController
         _dynamicTransactionService = dynamicTransactionService;
     }
 
-    [HttpGet]
-    [Route("latestBlocks")]
-    public async Task<BlocksResponseDto> GetLatestBlocksAsync(LatestBlocksRequestDto requestDto)
-    {
-        return await _blockChainService.GetBlocksAsync(new BlocksRequestDto()
-        {
-            ChainId = requestDto.ChainId,
-            MaxResultCount = requestDto.MaxResultCount
-        });
-    }
-
 
     [HttpGet]
     [Route("blockDetail")]
