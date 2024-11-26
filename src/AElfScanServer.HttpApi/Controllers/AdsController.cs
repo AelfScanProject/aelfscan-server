@@ -40,6 +40,7 @@ public class AdsController : AbpController
 
     [HttpGet]
     [Route("detail/list")]
+    [Authorize]
     public async Task<List<AdsResp>> GetAdsDetailListAsync(int size)
     {
         return await _adsService.GetAdsDetailList(size);
@@ -65,7 +66,7 @@ public class AdsController : AbpController
 
     [HttpPost]
     [Route("banner/detail")]
-    // [Authorize]
+    [Authorize]
     public async Task<AdsBannerIndex> UpdateAdsBannerDetailAsync(UpdateAdsBannerReq req)
     {
         return await _adsService.UpdateAdsBanner(req);
@@ -74,7 +75,7 @@ public class AdsController : AbpController
 
     [HttpDelete]
     [Route("detail")]
-    // [Authorize]
+    [Authorize]
     public async Task<AdsIndex> DeleteAdsDetailAsync(DeleteAdsReq req)
     {
         return await _adsService.DeleteAds(req);
@@ -82,7 +83,7 @@ public class AdsController : AbpController
 
     [HttpDelete]
     [Route("banner/detail")]
-    // [Authorize]
+    [Authorize]
     public async Task<AdsBannerIndex> DeleteAdsBannerDetailAsync(DeleteAdsBannerReq req)
     {
         return await _adsService.DeleteAdsBanner(req);
@@ -91,6 +92,7 @@ public class AdsController : AbpController
 
     [HttpGet]
     [Route("list")]
+    [Authorize]
     public async Task<AdsListResp> GetAdsListAsync(GetAdsListReq req)
     {
         return await _adsService.GetAdsList(req);
@@ -98,7 +100,7 @@ public class AdsController : AbpController
 
     [HttpGet]
     [Route("banner/list")]
-    // [Authorize]
+    [Authorize]
     public async Task<AdsBannerListResp> GetAdsBannerListAsync(GetAdsBannerListReq req)
     {
         return await _adsService.GetAdsBannerList(req);
