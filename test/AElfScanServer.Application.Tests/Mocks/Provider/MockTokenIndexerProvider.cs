@@ -21,7 +21,25 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
         int skipCount = 0,
         int maxResultCount = 10)
     {
-        throw new System.NotImplementedException();
+        return new List<AccountTokenDto>()
+        {
+          new AccountTokenDto
+          {
+              Id = "Id",
+              ChainId = chainId,
+              BlockHash = "BlockHash",
+              BlockHeight = 100,
+              CodeHash = "CodeHash",
+              BlockTime = default,
+              Address = "Address",
+              Amount = 100,
+              FormatAmount = 1,
+              TransferCount = 10,
+              FirstNftTransactionId = null,
+              FirstNftTime = null,
+              Metadata = MockUtil.CreateDefaultMetaData()
+          }
+        };
     }
 
     public async Task<IndexerTokenInfoListDto> GetTokenListAsync(TokenListInput input)

@@ -42,9 +42,9 @@ public class MockBlockChainIndexerProvider :IBlockChainIndexerProvider
         };
     }
 
-    public Task<long> GetTransactionCount(string chainId)
+    public async Task<long> GetTransactionCount(string chainId)
     {
-        throw new System.NotImplementedException();
+        return 10;
     }
 
     public Task<IndexerTransactionListResultDto> GetTransactionsByHashsAsync(TransactionsByHashRequestDto input)
