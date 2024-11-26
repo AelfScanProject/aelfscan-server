@@ -11,7 +11,6 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.Common.Helper;
-using AElfScanServer.Grains.State.Ads;
 using AElfScanServer.HttpApi.Dtos.AdsData;
 using AElfScanServer.HttpApi.Dtos.ChartData;
 using AElfScanServer.Worker.Core.Dtos;

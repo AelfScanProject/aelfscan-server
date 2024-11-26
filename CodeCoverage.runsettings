@@ -18,8 +18,10 @@
           **/src/AElfScanServer.AuthServer/**/*.cs,
           **/src/AElfScanServer.MongoDB/**/*.cs,
           **/src/AElfScanServer.Common/**/*.cs,
-          **/src/AElfScanServer.HttpApi/Provider/*.cs
-          **/src/AElfScanServer.HttpApi/Protobuf/**/*.cs
+          **/src/AElfScanServer.HttpApi/Provider/*.cs,
+          **/src/AElfScanServer.HttpApi/Protobuf/**/*.cs,
+          **/src/AElfScanServer.HttpApi/Hubs/*.cs,
+          **/src/AElfScanServer.HttpApi/DataStrategy/*.cs
           </ExcludeByFile>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute</ExcludeByAttribute>
           <SingleHit>false</SingleHit>
