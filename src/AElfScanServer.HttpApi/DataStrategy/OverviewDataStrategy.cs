@@ -130,6 +130,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                 task =>
                 {
                     overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
+                    DataStrategyLogger.LogInformation("Overview TokenPriceRate24h:{0}", task.Result.PriceChangePercent);
                 }));
             
                   
@@ -139,6 +140,7 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                     if (task.Result != null)
                     {
                      overviewResp.TokenPriceInUsd = task.Result.Price;
+                     DataStrategyLogger.LogInformation("Overview TokenPriceInUsd:{0}", task.Result.Price);
 
                     }
                 }));

@@ -48,9 +48,6 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
                 return new CommonTokenPriceDto { Price = 1.00m };
             }
 
-            var result = new CommonTokenPriceDto
-            {
-            };
 
             var tokenPriceAsync = await _tokenExchangeProvider.GetTokenPriceAsync(baseCoin, quoteCoin);
             

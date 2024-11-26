@@ -223,7 +223,6 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     public virtual async Task<BinancePriceDto> GetTokenUsd24ChangeAsync(string symbol)
     {
         
-            var tokenPriceAsync = await _tokenPriceService.GetTokenPriceAsync(symbol);
             
             _logger.LogInformation("[TokenPriceProvider] [Binance] Start.");
             var market = new Market();

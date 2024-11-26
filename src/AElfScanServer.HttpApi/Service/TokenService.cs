@@ -210,19 +210,21 @@ public class TokenService : ITokenService, ISingletonDependency
         var mergeHolders = 0l;
 
 
-        tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync("ELF").ContinueWith(
+        tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync(symbol).ContinueWith(
                 task =>
                 {
                     tokenDetailDto.PricePercentChange24h = task.Result.PriceChangePercent;
+                    _logger.LogInformation("GetMergeTokenDetailAsync GetTokenUsd24ChangeAsync:{price}", task.Result.PriceChangePercent);
                 }));
             
                   
-        tasks.Add(_tokenPriceService.GetTokenPriceAsync("ELF").ContinueWith(
+        tasks.Add(_tokenPriceService.GetTokenPriceAsync(symbol).ContinueWith(
                 task =>
                 {
                     if (task.Result != null)
                     {
                      tokenDetailDto.Price = task.Result.Price;
+                     _logger.LogInformation("GetMergeTokenDetailAsync GetTokenPriceAsync:{price}", task.Result.Price);
 
                     }
                 }));
