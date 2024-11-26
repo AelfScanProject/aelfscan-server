@@ -140,7 +140,7 @@ public class NftService : INftService, ISingletonDependency
     public async Task<ListResponseDto<NftInfoDto>> GetMergeNftCollectionListAsync(TokenListInput input)
     {
         var result = await EsIndex.SearchMergeTokenList(
-            (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
+            (int)input.SkipCount, (int)input.MaxResultCount, input.Sort == null ? "desc" : input.Sort.ToLower(),
             null, null,
             SymbolType.Nft_Collection);
 

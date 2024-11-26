@@ -44,8 +44,8 @@ public class ChartDataController : AbpController
     {
         return await _chartDataService.GetActiveAddressCountAsync(request);
     }
-    
-    
+
+
     [HttpGet("monthlyActiveAddresses")]
     public async Task<MonthlyActiveAddressCountResp> GetMonthlyActiveAddressesCountAsync(ChartDataRequest request)
     {
@@ -54,21 +54,21 @@ public class ChartDataController : AbpController
 
 
     [HttpGet("blockProduceRate")]
-    public async Task<BlockProduceRateResp> GetBlockProduceRateAsync(ChartDataRequest request)
+    public async Task<BlockProduceRateResp> GetBlockProduceRateAsync()
     {
-        return await _chartDataService.GetBlockProduceRateAsync(request);
+        return await _chartDataService.GetBlockProduceRateAsync();
     }
 
     [HttpGet("avgBlockDuration")]
-    public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync(ChartDataRequest request)
+    public async Task<AvgBlockDurationResp> GetAvgBlockDurationRespAsync()
     {
-        return await _chartDataService.GetAvgBlockDurationRespAsync(request);
+        return await _chartDataService.GetAvgBlockDurationRespAsync();
     }
 
     [HttpGet("cycleCount")]
-    public async Task<CycleCountResp> GetCycleCountRespAsync(ChartDataRequest request)
+    public async Task<CycleCountResp> GetCycleCountRespAsync()
     {
-        return await _chartDataService.GetCycleCountRespAsync(request);
+        return await _chartDataService.GetCycleCountRespAsync();
     }
 
 
@@ -203,7 +203,7 @@ public class ChartDataController : AbpController
     {
         await _chartDataService.FixDailyData(request);
     }
-    
+
     [HttpPost("fixTokenHolder")]
     public async Task FixTokenHolderAsync(FixTokenHolderInput request)
     {

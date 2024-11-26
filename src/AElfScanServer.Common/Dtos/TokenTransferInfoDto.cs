@@ -26,6 +26,7 @@ public class TokenTransferInfoDto
     public CommonAddressDto From { get; set; }
     public CommonAddressDto To { get; set; }
     public decimal Quantity { get; set; }
+    
 
     public TransactionStatus Status { get; set; }
 

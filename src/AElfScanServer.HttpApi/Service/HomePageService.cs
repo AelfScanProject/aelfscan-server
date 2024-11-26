@@ -20,6 +20,7 @@ using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
@@ -58,6 +59,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
     private readonly BlockChainDataProvider _blockChainProvider;
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IBlockChainIndexerProvider _blockChainIndexerProvider;
+    private readonly ITokenPriceService _tokenPriceService;
 
     private readonly ILogger<HomePageService> _logger;
     private const string SearchKeyPattern = "[^a-zA-Z0-9-_]";
@@ -68,7 +70,8 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         AELFIndexerProvider aelfIndexerProvider,
         INESTRepository<AddressIndex, string> addressIndexRepository,
         HomePageProvider homePageProvider, ITokenIndexerProvider tokenIndexerProvider,
-        BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider
+        BlockChainDataProvider blockChainProvider, IBlockChainIndexerProvider blockChainIndexerProvider,
+        ITokenPriceService tokenPriceService
     ) : base(optionsAccessor)
     {
         _logger = logger;
@@ -79,6 +82,7 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
         _tokenIndexerProvider = tokenIndexerProvider;
         _blockChainProvider = blockChainProvider;
         _blockChainIndexerProvider = blockChainIndexerProvider;
+        _tokenPriceService = tokenPriceService;
     }
 
     public async Task<TransactionPerMinuteResponseDto> GetTransactionPerMinuteAsync(
@@ -159,7 +163,17 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
                 task =>
                 {
                     overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
-                    overviewResp.TokenPriceInUsd = task.Result.LastPrice;
+                }));
+            
+            
+                tasks.Add(_tokenPriceService.GetTokenPriceAsync("ELF").ContinueWith(
+                task =>
+                {
+                    if (task.Result != null)
+                    {
+                     overviewResp.TokenPriceInUsd = task.Result.Price;
+
+                    }
                 }));
             tasks.Add(_homePageProvider.GetTransactionCountPerLastMinute(req.ChainId).ContinueWith(
                 task => { overviewResp.Tps = (task.Result / 60).ToString("F2"); }));
@@ -169,15 +183,14 @@ public class HomePageService : AbpRedisCache, IHomePageService, ITransientDepend
 
         return overviewResp;
     }
-
     
     public async Task<FilterTypeResponseDto> GetFilterType()
     {
         var filterTypeResp = new FilterTypeResponseDto();
-
         filterTypeResp.FilterTypes = new List<FilterTypeDto>();
         foreach (var keyValuePair in _globalOptions.CurrentValue.FilterTypes)
         {
+            _logger.LogInformation("filterType:{0},filterInfo:{1}", keyValuePair.Key, keyValuePair.Value);
             var filterTypeDto = new FilterTypeDto();
             filterTypeDto.FilterType = keyValuePair.Value;
             filterTypeDto.FilterInfo = keyValuePair.Key;

@@ -39,6 +39,13 @@ public class AdsController : AbpController
     }
 
     [HttpGet]
+    [Route("detail/list")]
+    public async Task<List<AdsResp>> GetAdsDetailListAsync(int size)
+    {
+        return await _adsService.GetAdsDetailList(size);
+    }
+
+    [HttpGet]
     [Route("banner/detail")]
     public async Task<AdsBannerResp> GetAdsBannerDetailAsync(AdsBannerReq req)
     {
@@ -97,5 +104,12 @@ public class AdsController : AbpController
     public async Task<AdsBannerListResp> GetAdsBannerListAsync(GetAdsBannerListReq req)
     {
         return await _adsService.GetAdsBannerList(req);
+    }
+
+    [HttpGet]
+    [Route("LatestTwitter")]
+    public async Task<List<TwitterIndex>> GetLatestTwitterListAsync(int maxResultCount)
+    {
+        return await _adsService.GetLatestTwitterListAsync(maxResultCount);
     }
 }

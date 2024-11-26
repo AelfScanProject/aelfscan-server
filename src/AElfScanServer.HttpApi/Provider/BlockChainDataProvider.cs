@@ -222,23 +222,12 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenUsd24ChangeAsync), LogTargets = ["symbol"])]
     public virtual async Task<BinancePriceDto> GetTokenUsd24ChangeAsync(string symbol)
     {
-        // var market = new Market(_blockChainOptions.BNBaseUrl, _blockChainOptions.BNApiKey,
-        //     _blockChainOptions.BNSecretKey);
-
-     
+        
+            
             _logger.LogInformation("[TokenPriceProvider] [Binance] Start.");
             var market = new Market();
-
-            // await ConnectAsync();
-            // var redisValue = await RedisDatabase.StringGetAsync(symbol);
-            // if (redisValue.HasValue)
-            // {
-            //     return _serializer.Deserialize<BinancePriceDto>(redisValue);
-            // }
-
             var symbolPriceTicker = await market.TwentyFourHrTickerPriceChangeStatistics(symbol + "USDT");
             var binancePriceDto = JsonConvert.DeserializeObject<BinancePriceDto>(symbolPriceTicker);
-            // await RedisDatabase.StringSetAsync(symbol, _serializer.Serialize(binancePriceDto), TimeSpan.FromHours(2));
             return binancePriceDto;
     
     }

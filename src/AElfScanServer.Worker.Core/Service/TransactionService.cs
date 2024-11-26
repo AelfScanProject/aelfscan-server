@@ -2512,13 +2512,18 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
             }
 
 
-            var merge = mergeList.SelectMany(c => c).GroupBy(c => c.Start).Select(c =>
-                new TransactionCountPerMinuteDto()
+            var merge = mergeList
+                .SelectMany(c => c)
+                .GroupBy(c => c.Start)
+                .Select(c => new TransactionCountPerMinuteDto()
                 {
                     Start = c.Key,
                     End = c.Key + 60000,
                     Count = c.Sum(d => d.Count)
-                }).ToList();
+                })
+                .OrderBy(c => c.Start) 
+                .ToList();
+
 
             if (merge.Count > 180)
             {

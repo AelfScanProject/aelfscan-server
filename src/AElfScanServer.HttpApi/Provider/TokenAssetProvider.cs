@@ -34,7 +34,7 @@ public interface ITokenAssetProvider
 {
     public Task HandleDailyTokenValuesAsync(string chainId = "");
 
-    public Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address);
+    public Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address,List<SymbolType> symbolTypes=null);
 }
 
 [Ump]
@@ -49,11 +49,12 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptions;
     private readonly IAddressInfoProvider _addressInfoProvider;
     private readonly IAbpDistributedLock _distributedLock;
+    private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
     public TokenAssetProvider(ITokenPriceService tokenPriceService, ILogger<TokenAssetProvider> logger,
         ITokenIndexerProvider tokenIndexerProvider, INftInfoProvider nftInfoProvider,
         IOptionsMonitor<TokenInfoOptions> tokenInfoOptions, IOptions<RedisCacheOptions> optionsAccessor,
-        IAddressInfoProvider addressInfoProvider, IAbpDistributedLock distributedLock) : base(optionsAccessor)
+        IAddressInfoProvider addressInfoProvider, IAbpDistributedLock distributedLock,IOptionsMonitor<GlobalOptions> globalOptions) : base(optionsAccessor)
     {
         _tokenPriceService = tokenPriceService;
         _logger = logger;
@@ -62,6 +63,7 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         _tokenInfoOptions = tokenInfoOptions;
         _addressInfoProvider = addressInfoProvider;
         _distributedLock = distributedLock;
+        _globalOptions = globalOptions;
     }
 
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
@@ -99,11 +101,11 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
         Message = "GetTokenValuesAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["chainId","address"])]
-    public virtual async Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address)
+    public virtual async Task<AddressAssetDto> GetTokenValuesAsync(string chainId, string address,List<SymbolType> symbolTypes)
     {
        
             var addressAsset =
-                await _addressInfoProvider.GetAddressAssetAsync(AddressAssetType.Current, chainId, address);
+                await _addressInfoProvider.GetAddressAssetAsync(AddressAssetType.Current, chainId, address,symbolTypes);
 
             if (addressAsset != null)
             {
@@ -112,20 +114,29 @@ public class TokenAssetProvider : RedisCacheExtension, ITokenAssetProvider, ISin
 
             await using var handle = await _distributedLock.TryAcquireAsync($"GetTokenValues-{address}");
 
-            return await HandleTokenValuesAsync(AddressAssetType.Current, chainId, address);
+            return await HandleTokenValuesAsync(AddressAssetType.Current, chainId, address,symbolTypes);
        
     }
 
     /**
      * if address is null, return the last address asset info
      */
-private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type, string chainId = "", string address = null)
+private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type, string chainId = "", string address = null,
+        List<SymbolType> symbolTypes=null)
 {
     var stopwatch = Stopwatch.StartNew();
     var lastAddressProcessed = new AddressAssetDto();
     var symbolPriceDict = new Dictionary<string, decimal>();
     int skipCount = 0;
 
+    var types = new List<SymbolType>(){SymbolType.Token, SymbolType.Nft};
+    if (symbolTypes!= null)
+    {
+        types = symbolTypes;
+    }
+    
+    var totalCount = 0;
+    var symbolSet = new HashSet<string>();
     while (true)
     {
         var input = new TokenHolderInput
@@ -134,17 +145,22 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
             Address = address,
             MaxResultCount = 1000,
             SkipCount = skipCount,
-            Types = new List<SymbolType> { SymbolType.Token, SymbolType.Nft },
+            Types = types,
         };
 
-        var searchMergeAccountList = await EsIndex.SearchAccountIndexList(input);
+        var searchMergeAccountList = await EsIndex.SearchAccountIndexList(input,_globalOptions.CurrentValue.SpecialSymbols);
         
         if (searchMergeAccountList.list.Count == 0)
         {
-            _logger.LogInformation("HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
+            _logger.LogInformation($"HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
             break;
         }
         
+        foreach (var accountTokenIndex in searchMergeAccountList.list)
+        {
+            symbolSet.Add(accountTokenIndex.Token.Symbol);
+        }
+        totalCount += searchMergeAccountList.list.Count;
         var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
 
         foreach (var (valueAddress, assetDto) in valuesDict)
@@ -170,8 +186,11 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
     }
 
     await _addressInfoProvider.CreateAddressAssetAsync(type, chainId, lastAddressProcessed);
+    lastAddressProcessed.Count = totalCount;
+    lastAddressProcessed.SymbolSet = symbolSet;
 
-    _logger.LogInformation("LastAddressProcessed chainId:{chainId} addressAssetDto: {totalNftValueOfElf}", chainId, JsonConvert.SerializeObject(lastAddressProcessed));
+    _logger.LogInformation("LastAddressProcessed chainId:{chainId} totalNftValueOfElf:{totalNftValueOfElf}, count:{count},symbolTypes:{symbolTypes}", 
+        chainId, JsonConvert.SerializeObject(lastAddressProcessed),totalCount,symbolTypes);
     _logger.LogInformation("It took {Elapsed} ms to execute handle token values for chainId: {chainId}", stopwatch.ElapsedMilliseconds, chainId);
 
     return address.IsNullOrEmpty() ? null : lastAddressProcessed;

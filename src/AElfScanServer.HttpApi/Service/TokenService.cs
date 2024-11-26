@@ -54,7 +54,8 @@ public class TokenService : ITokenService, ISingletonDependency
     private readonly IOptionsMonitor<TokenInfoOptions> _tokenInfoOptions;
     private readonly ITokenPriceService _tokenPriceService;
     private readonly ITokenInfoProvider _tokenInfoProvider;
-    private readonly IGenesisPluginProvider _genesisPluginProvider;
+    private readonly IGenesisPluginProvider _genesisPluginProvider; 
+    private readonly BlockChainDataProvider _blockChainProvider;
     private readonly ILogger<TokenService> _logger;
     private readonly IAddressTypeService _addressTypeService;
     private readonly IElasticClient _elasticClient;
@@ -66,7 +67,8 @@ public class TokenService : ITokenService, ISingletonDependency
         IOptionsMonitor<TokenInfoOptions> tokenInfoOptions, ITokenInfoProvider tokenInfoProvider,
         IAddressTypeService addressTypeService,
         IGenesisPluginProvider genesisPluginProvider, ILogger<TokenService> logger,
-        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions)
+        IOptionsMonitor<ElasticsearchOptions> options, IOptionsMonitor<GlobalOptions> globalOptions,
+        BlockChainDataProvider blockChainProvider)
     {
         _objectMapper = objectMapper;
         _chainOptions = chainOptions;
@@ -76,6 +78,7 @@ public class TokenService : ITokenService, ISingletonDependency
         _genesisPluginProvider = genesisPluginProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
         _tokenHolderPercentProvider = tokenHolderPercentProvider;
+        _blockChainProvider = blockChainProvider;
         _logger = logger;
         _addressTypeService = addressTypeService;
         var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
@@ -93,34 +96,13 @@ public class TokenService : ITokenService, ISingletonDependency
     public virtual async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
     {
         
-            if (input.ChainId.IsNullOrEmpty())
-            {
-                return await GetMergeTokenListAsync(input);
-            }
-
-            input.SetDefaultSort();
-
-            var indexerTokenListDto = await _tokenIndexerProvider.GetTokenListAsync(input);
-
-            if (indexerTokenListDto.Items.IsNullOrEmpty())
-            {
-                return new ListResponseDto<TokenCommonDto>();
-            }
-
-            var list = await ConvertIndexerTokenDtoAsync(indexerTokenListDto.Items, input.ChainId);
-
-            return new ListResponseDto<TokenCommonDto>
-            {
-                Total = indexerTokenListDto.TotalCount,
-                List = list
-            };
-            
+       return await GetMergeTokenListAsync(input);
     }
 
     public async Task<ListResponseDto<TokenCommonDto>> GetMergeTokenListAsync(TokenListInput input)
     {
         var result = await EsIndex.SearchMergeTokenList(
-            (int)input.SkipCount, (int)input.MaxResultCount, input.OrderBy == null ? "desc" : input.OrderBy.ToLower(),
+            (int)input.SkipCount, (int)input.MaxResultCount, input.Sort == null ? "desc" : input.Sort.ToLower(),
             null, _globalOptions.CurrentValue.SpecialSymbols);
 
         _logger.LogInformation("GetMergeTokenListAsync:{count}", result.list.Count);
@@ -152,6 +134,7 @@ public class TokenService : ITokenService, ISingletonDependency
                 tokenInfo.HolderPercentChange24H = Math.Round(
                     (double)(tokenInfo.Holders - beforeCount) / beforeCount * 100,
                     CommonConstant.PercentageValueDecimals);
+                tokenInfo.BeforeCount = beforeCount;
             }
 
             tokenInfo.ChainIds = tokenInfo.ChainIds.OrderByDescending(c => c).ToList();
@@ -164,15 +147,7 @@ public class TokenService : ITokenService, ISingletonDependency
             List = list
         };
     }
-
-
-    public class TokenAggregationResult
-    {
-        public string Symbol { get; set; }
-        public double HolderCount { get; set; }
-        public double Supply { get; set; }
-        public List<string> ChainIds { get; set; }
-    }
+    
 
     [ExceptionHandler(typeof(Exception),
         Message = "GetTokenDetailAsync err",
@@ -216,7 +191,7 @@ public class TokenService : ITokenService, ISingletonDependency
                 tokenDetailDto.Price = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
                 if (priceHisDto.Price > 0)
                 {
-                    tokenDetailDto.PricePercentChange24h = (double)Math.Round(
+                    tokenDetailDto.PricePercentChange24h = Math.Round(
                         (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
                         CommonConstant.PercentageValueDecimals);
                 }
@@ -234,7 +209,27 @@ public class TokenService : ITokenService, ISingletonDependency
         var sideTokenDetailDto = new TokenDetailDto();
         var mergeHolders = 0l;
 
+        decimal pricePercentChange24h = 0;
+        decimal tokenPrice = 0;
 
+        tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync(symbol).ContinueWith(
+                task =>
+                {
+                    pricePercentChange24h = task.Result.PriceChangePercent;
+                    _logger.LogInformation("GetMergeTokenDetailAsync GetTokenUsd24ChangeAsync:{price}", task.Result.PriceChangePercent);
+                }));
+            
+                  
+        tasks.Add(_tokenPriceService.GetTokenPriceAsync(symbol).ContinueWith(
+                task =>
+                {
+                    if (task.Result != null)
+                    {
+                     tokenPrice = task.Result.Price;
+                     _logger.LogInformation("GetMergeTokenDetailAsync GetTokenPriceAsync:{price}", task.Result.Price);
+
+                    }
+                }));
         tasks.Add(EsIndex.GetTokenHolders(symbol, "").ContinueWith(task => { mergeHolders = task.Result; }));
 
         tasks.Add(GetTokenDetailAsync(symbol, "AELF").ContinueWith(task => { mainTokenDetailDto = task.Result; }));
@@ -268,6 +263,8 @@ public class TokenService : ITokenService, ISingletonDependency
                                             tokenDetailDto.SideChainTransferCount;
 
         tokenDetailDto.MergeHolders = mergeHolders;
+        tokenDetailDto.Price = tokenPrice;
+        tokenDetailDto.PricePercentChange24h = pricePercentChange24h;
 
         var list = new List<string>();
         if (mainTokenDetailDto.Holders > 0)
@@ -303,23 +300,7 @@ public class TokenService : ITokenService, ISingletonDependency
 
     public async Task<ListResponseDto<TokenHolderInfoDto>> GetTokenHolderInfosAsync(TokenHolderInput input)
     {
-        if (input.ChainId.IsNullOrEmpty())
-        {
-            return await GetMergeTokenHolderInfosAsync(input);
-        }
-
-        input.SetDefaultSort();
-
-        var indexerTokenHolderInfo = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
-
-        var list = await ConvertIndexerTokenHolderInfoDtoAsync(indexerTokenHolderInfo.Items, input.ChainId,
-            input.Symbol);
-
-        return new ListResponseDto<TokenHolderInfoDto>
-        {
-            Total = indexerTokenHolderInfo.TotalCount,
-            List = list
-        };
+        return await GetMergeTokenHolderInfosAsync(input);
     }
 
     public async Task<ListResponseDto<TokenHolderInfoDto>> GetMergeTokenHolderInfosAsync(TokenHolderInput input)

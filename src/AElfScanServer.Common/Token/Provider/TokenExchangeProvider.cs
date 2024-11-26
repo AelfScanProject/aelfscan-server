@@ -81,10 +81,10 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
             }
             
         
-            var res = await _priceServerProvider.GetDailyPriceAsync(new GetDailyPriceRequestDto()
+            var res = await _priceServerProvider.GetAggregatedTokenPriceAsync(new ()
             {
                 TokenPair =pair,
-                TimeStamp =  DateTime.Now.ToString("yyyyMMdd")
+                AggregateType = AggregateType.Latest
             });
 
             if (res == null || res.Data == null)
@@ -96,7 +96,7 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
             var price = res.Data.Price / (decimal)Math.Pow(10, (double)res.Data.Decimal);
             await _priceCache.SetAsync(key, price.ToString(), new DistributedCacheEntryOptions()
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(3)
 
             });
         

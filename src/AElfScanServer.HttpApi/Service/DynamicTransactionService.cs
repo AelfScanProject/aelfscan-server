@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using AElf.Client.Dto;
@@ -543,13 +544,56 @@ public class DynamicTransactionService : IDynamicTransactionService
                 result.Transactions.Add(transactionRespDto);
             }
 
-            result.Transactions = result.Transactions.OrderByDescending(item => item.BlockTime)
-                .ThenByDescending(item => item.TransactionId)
-                .ToList();
+
+            if (!requestDto.OrderInfos.IsNullOrEmpty() && requestDto.OrderInfos.Count > 1)
+            {
+
+                var primarySortOrder = requestDto.OrderInfos[0].Sort.ToLower() == "desc"
+                    ? SortOrder.Descending
+                    : SortOrder.Ascending;
+                var secondarySortOrder = requestDto.OrderInfos[1].Sort.ToLower() == "desc"
+                    ? SortOrder.Descending
+                    : SortOrder.Ascending;
+                result.Transactions = Sort(result.Transactions, requestDto.OrderInfos[0].OrderBy, primarySortOrder,
+                    requestDto.OrderInfos[1].OrderBy, secondarySortOrder);
+
+            }
+
+            // result.Transactions = result.Transactions.OrderByDescending(item => item.BlockTime)
+            //     .ThenByDescending(item => item.TransactionId)
+            //     .ToList();
 
             result.Total = indexerTransactionList.TotalCount;
 
         return result;
+    }
+    
+    public List<TransactionResponseDto> Sort(List<TransactionResponseDto> transactions, string primarySortBy, SortOrder primarySortOrder, string secondarySortBy, SortOrder secondarySortOrder)
+    {
+        var sortedTransactions = SortBy(transactions, primarySortBy, primarySortOrder);
+        sortedTransactions = SortBy(sortedTransactions, secondarySortBy, secondarySortOrder, true);
+        return sortedTransactions.ToList();
+    }
+    
+    private IOrderedEnumerable<TransactionResponseDto> SortBy(IEnumerable<TransactionResponseDto> transactions, string sortBy, SortOrder sortOrder, bool isSecondary = false)
+    {
+        PropertyInfo propInfo = typeof(TransactionResponseDto).GetProperty(sortBy);
+        if (propInfo == null)
+            throw new ArgumentException($"Invalid sort field: {sortBy}");
+        Func<TransactionResponseDto, object> keySelector = item => propInfo.GetValue(item);
+        if (!isSecondary)
+        {
+            return sortOrder == SortOrder.Ascending
+                ? transactions.OrderBy(keySelector)
+                : transactions.OrderByDescending(keySelector);
+        }
+        else
+        {
+            var orderedTransactions = transactions as IOrderedEnumerable<TransactionResponseDto>;
+            return sortOrder == SortOrder.Ascending
+                ? orderedTransactions.ThenBy(keySelector)
+                : orderedTransactions.ThenByDescending(keySelector);
+        }
     }
 
     public IMessage? ParseMessage(string eventName, ByteString byteString)

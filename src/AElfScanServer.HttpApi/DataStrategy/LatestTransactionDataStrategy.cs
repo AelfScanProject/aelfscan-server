@@ -54,7 +54,7 @@ public class LatestTransactionDataStrategy : DataStrategyBase<string, Transactio
             var input = new TransactionsRequestDto()
             {
                 ChainId = chainId,
-                MaxResultCount = 6
+                MaxResultCount = 10
             };
             input.SetDefaultSort();
             var indexerTransactionList = await _blockChainIndexerProvider.GetTransactionsAsync(input);
