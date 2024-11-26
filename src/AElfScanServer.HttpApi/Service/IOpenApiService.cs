@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Helper;
+using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.ThirdPart.Exchange;
 using AElfScanServer.HttpApi.Dtos.ChartData;
@@ -31,13 +32,13 @@ public class OpenApiService : IOpenApiService
     private readonly IChartDataService _chartDataService;
     private readonly ILogger<OpenApiService> _logger;
     private readonly decimal MaxSupply = 1000000000;
-    private readonly IndexerTokenProvider _indexerTokenProvider;
+    private readonly ITokenIndexerProvider _indexerTokenProvider;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly CoinMarketCapProvider _coinMarketCapProvider;
     private readonly List<string> CurrencyList = new List<string>() { "krw", "usd", "idr", "sgd", "thb" };
 
     public OpenApiService(IChartDataService chartDataService, ILogger<OpenApiService> logger,
-        IndexerTokenProvider indexerTokenProvider,
+        ITokenIndexerProvider indexerTokenProvider,
         IOptionsMonitor<GlobalOptions> globalOptions, CoinMarketCapProvider coinMarketCapProvider)
     {
         _chartDataService = chartDataService;

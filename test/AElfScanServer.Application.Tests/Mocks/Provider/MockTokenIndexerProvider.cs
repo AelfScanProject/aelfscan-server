@@ -11,6 +11,18 @@ namespace AElfScanServer.Mocks.Provider;
 
 public class MockTokenIndexerProvider : ITokenIndexerProvider
 {
+    public async Task<long> GetAddressElfBalanceAsync(string chainId, string address)
+    {
+        return 100000000000000;
+    }
+
+    public async Task<List<AccountTokenDto>> GetAddressTokenListAsync(string chainId, string symbol,
+        List<string> addressList,
+        int skipCount = 0,
+        int maxResultCount = 10)
+    {
+        throw new System.NotImplementedException();
+    }
 
     public async Task<IndexerTokenInfoListDto> GetTokenListAsync(TokenListInput input)
     {
@@ -45,32 +57,34 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
 
     public async Task<List<IndexerTokenInfoDto>> GetAllTokenInfosAsync(TokenListInput input)
     {
-        return new List<IndexerTokenInfoDto>(){
-                new IndexerTokenInfoDto
-                {
-                    Symbol = "ELF",
-                    CollectionSymbol = null,
-                    TokenName = "Token",
-                    TotalSupply = 10000000,
-                    Supply = 1000000,
-                    Issued = 1000000,
-                    Issuer = "Test",
-                    Owner = "Test",
-                    IsPrimaryToken = false,
-                    IsBurnable = false,
-                    Decimals = 8,
-                    Type = SymbolType.Token,
-                    ExternalInfo = null,
-                    HolderCount = 100,
-                    TransferCount = 200,
-                    ItemCount = 0,
-                }
+        return new List<IndexerTokenInfoDto>()
+        {
+            new IndexerTokenInfoDto
+            {
+                Symbol = "ELF",
+                CollectionSymbol = null,
+                TokenName = "Token",
+                TotalSupply = 10000000,
+                Supply = 1000000,
+                Issued = 1000000,
+                Issuer = "Test",
+                Owner = "Test",
+                IsPrimaryToken = false,
+                IsBurnable = false,
+                Decimals = 8,
+                Type = SymbolType.Token,
+                ExternalInfo = null,
+                HolderCount = 100,
+                TransferCount = 200,
+                ItemCount = 0,
+            }
         };
     }
 
     public async Task<List<IndexerTokenInfoDto>> GetTokenDetailAsync(string chainId, string symbol)
     {
-        return new List<IndexerTokenInfoDto>(){
+        return new List<IndexerTokenInfoDto>()
+        {
             new IndexerTokenInfoDto
             {
                 Symbol = "ELF",
@@ -99,7 +113,9 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
         return new IndexerTokenTransferListDto
         {
             TotalCount = 1,
-            Items = { new IndexerTransferInfoDto
+            Items =
+            {
+                new IndexerTransferInfoDto
                 {
                     Id = "Id",
                     TransactionId = "TransactionId",
@@ -120,7 +136,8 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
         };
     }
 
-    public async Task<string> GetTokenImageAsync(string symbol, string chainId, List<ExternalInfoDto> externalInfo = null)
+    public async Task<string> GetTokenImageAsync(string symbol, string chainId,
+        List<ExternalInfoDto> externalInfo = null)
     {
         return "http://www.test.jpg";
     }
@@ -137,34 +154,33 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
             TotalCount = 1,
             Items = new List<IndexerTokenHolderInfoDto>
             {
-               new IndexerTokenHolderInfoDto
-               {
-                   Id = "Id",
-                   Address = "Address",
-                   Token =  new IndexerTokenBaseDto
-                   {
-                       Symbol = "SGR-1",
-                       CollectionSymbol = "SGR-0",
-                       Type = SymbolType.Nft,
-                       Decimals = 4
-                   },
-                   Amount = 10000,
-                   FormatAmount = 1,
-                   TransferCount = 200,
-                   Metadata = new MetadataDto
-                   {
-                       ChainId = "AELF",
-                       Block = new BlockMetadataDto
-                       {
-                           BlockHash = "BlockHash",
-                           BlockHeight = 100,
-                           BlockTime = default
-                       }
-                   }
-               }
+                new IndexerTokenHolderInfoDto
+                {
+                    Id = "Id",
+                    Address = "Address",
+                    Token = new IndexerTokenBaseDto
+                    {
+                        Symbol = "SGR-1",
+                        CollectionSymbol = "SGR-0",
+                        Type = SymbolType.Nft,
+                        Decimals = 4
+                    },
+                    Amount = 10000,
+                    FormatAmount = 1,
+                    TransferCount = 200,
+                    Metadata = new MetadataDto
+                    {
+                        ChainId = "AELF",
+                        Block = new BlockMetadataDto
+                        {
+                            BlockHash = "BlockHash",
+                            BlockHeight = 100,
+                            BlockTime = default
+                        }
+                    }
+                }
             }
         };
-
     }
 
     public async Task<List<HolderInfo>> GetHolderInfoAsync(string chainId, string address, List<SymbolType> types)
@@ -272,7 +288,8 @@ public class MockTokenIndexerProvider : ITokenIndexerProvider
         };
     }
 
-    public async Task<List<BlockBurnFeeDto>> GetBlockBurntFeeListAsync(string chainId, long startBlockHeight, long endBlockHeight)
+    public async Task<List<BlockBurnFeeDto>> GetBlockBurntFeeListAsync(string chainId, long startBlockHeight,
+        long endBlockHeight)
     {
         return new List<BlockBurnFeeDto>
         {

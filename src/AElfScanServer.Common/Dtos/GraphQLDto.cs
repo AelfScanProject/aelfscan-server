@@ -1,6 +1,6 @@
 using System;
 
-namespace AElfScanServer.HttpApi.Dtos.address;
+namespace AElfScanServer.Common.Dtos;
 
 public class GraphQLDto
 {

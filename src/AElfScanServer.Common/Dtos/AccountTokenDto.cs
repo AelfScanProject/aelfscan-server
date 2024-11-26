@@ -1,7 +1,7 @@
 using System;
 using AElfScanServer.Common.Dtos;
 
-namespace AElfScanServer.HttpApi.Dtos.address;
+namespace AElfScanServer.Common.Dtos;
 
 public class AccountTokenDto : GraphQLDto
 {

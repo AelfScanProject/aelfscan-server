@@ -47,6 +47,11 @@ public class AElfScanServerApplicationTestModule : AbpModule
         context.Services.AddSingleton<IGenesisPluginProvider,MockGenesisPluginProvider>();
         Configure<GlobalOptions>(options =>
         {
+            options.OrganizationAddress = "OrganizationAddress";
+            options.ContractAddressConsensus = new Dictionary<string, string>()
+            {
+                { "AELF", "ContractAddressConsensusAddress" }
+            };
             options.BPNames = new Dictionary<string, Dictionary<string, string>>();
             options.ContractNames = new Dictionary<string, Dictionary<string, string>>()
             {

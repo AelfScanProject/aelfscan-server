@@ -85,7 +85,7 @@ public class HttpApiModule : AbpModule
         context.Services.AddSingleton<LatestBlocksDataStrategy, LatestBlocksDataStrategy>();
         context.Services.AddSingleton<IIndexerGenesisProvider, IndexerGenesisProvider>();
         context.Services.AddTransient<IAddressAppService, AddressAppService>();
-        context.Services.AddSingleton<IIndexerTokenProvider, IndexerTokenProvider>();
+        context.Services.AddSingleton<ITokenIndexerProvider, TokenIndexerProvider>();
         context.Services.AddTransient<IContractAppService, ContractAppService>();
         context.Services.AddSingleton<IDecompilerProvider, DecompilerProvider>();
         context.Services.AddSingleton<INftInfoProvider, NftInfoProvider>();

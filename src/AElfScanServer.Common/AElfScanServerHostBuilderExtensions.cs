@@ -1,5 +1,4 @@
 using AElfScanServer.Common.Reporter;
-using AElfScanServer.Common.Reporter;
 using Com.Ctrip.Framework.Apollo.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
