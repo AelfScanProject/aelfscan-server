@@ -191,7 +191,7 @@ public class TokenService : ITokenService, ISingletonDependency
                 tokenDetailDto.Price = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);
                 if (priceHisDto.Price > 0)
                 {
-                    tokenDetailDto.PricePercentChange24h = (double)Math.Round(
+                    tokenDetailDto.PricePercentChange24h = Math.Round(
                         (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
                         CommonConstant.PercentageValueDecimals);
                 }
