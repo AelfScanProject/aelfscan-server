@@ -96,7 +96,28 @@ public class TokenService : ITokenService, ISingletonDependency
     public virtual async Task<ListResponseDto<TokenCommonDto>> GetTokenListAsync(TokenListInput input)
     {
         
-       return await GetMergeTokenListAsync(input);
+        if (input.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeTokenListAsync(input);
+        }
+
+        input.SetDefaultSort();
+
+        var indexerTokenListDto = await _tokenIndexerProvider.GetTokenListAsync(input);
+
+        if (indexerTokenListDto.Items.IsNullOrEmpty())
+        {
+            return new ListResponseDto<TokenCommonDto>();
+        }
+
+        var list = await ConvertIndexerTokenDtoAsync(indexerTokenListDto.Items, input.ChainId);
+
+        return new ListResponseDto<TokenCommonDto>
+        {
+            Total = indexerTokenListDto.TotalCount,
+            List = list
+        };
+            
     }
 
     public async Task<ListResponseDto<TokenCommonDto>> GetMergeTokenListAsync(TokenListInput input)
