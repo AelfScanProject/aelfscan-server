@@ -561,24 +561,3 @@ public enum OrderField
     Timestamp
 }
 
-// public class GetLogEventRequestDto : PagedResultRequestDto
-// {
-//     public string ChainId { get; set; }
-//     public string ContractName { get; set; }
-//     public long BlockHeight { get; set; }
-//     public int Index { get; set; }
-//     public SortOrder SortOrder { get; set; }
-// }
-
-public class GetLogEventRequestDto : PagedResultRequestDto
-{
-    public string ChainId { get; set; }
-    public string ContractAddress { get; set; }
-    public SortOrder SortOrder { get; set; }
-}
-
-public class LogEventResponseDto
-{
-    public long Total { get; set; }
-    public List<LogEventIndex> LogEvents { get; set; }
-}

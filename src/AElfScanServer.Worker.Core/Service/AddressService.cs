@@ -27,7 +27,6 @@ using Newtonsoft.Json;
 using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
-using AddressIndex = AElfScanServer.HttpApi.Dtos.AddressIndex;
 
 namespace AElfScanServer.Worker.Core.Service;
 

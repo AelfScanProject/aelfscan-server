@@ -16,7 +16,6 @@ using AElfScanServer.HttpApi.Dtos.AdsData;
 using AElfScanServer.HttpApi.Dtos.ChartData;
 using AElfScanServer.Worker.Core.Dtos;
 using AutoMapper;
-using AddressIndex = AElfScanServer.HttpApi.Dtos.AddressIndex;
 
 namespace AElfScanServer.HttpApi;
 
@@ -126,7 +125,6 @@ public class BlockChainAutoMapperProfile : Profile
         CreateMap<ContractInfoDto, GetAddressDetailResultDto>();
         CreateMap<ContractInfoDto, ContractRecordDto>();
         CreateMap<TransactionsResponseDto, GetTransactionListResultDto>();
-        CreateMap<LogEventResponseDto, GetContractEventListResultDto>();
 
         CreateMap<IndexerTokenHolderInfoDto, GetAddressInfoResultDto>()
             .ForPath(t => t.Balance, m => m.MapFrom(u => u.FormatAmount))

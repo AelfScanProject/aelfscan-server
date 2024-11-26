@@ -4,7 +4,6 @@ using AElfScanServer.Common.Dtos.Indexer;
 using AElfScanServer.Common.Dtos.MergeData;
 using AElfScanServer.HttpApi.Dtos;
 using AutoMapper;
-using AddressIndex = AElfScanServer.HttpApi.Dtos.AddressIndex;
 
 namespace AElfScanServer.Worker.Core;
 
