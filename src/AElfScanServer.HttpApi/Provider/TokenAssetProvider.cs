@@ -148,20 +148,23 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
             Types = types,
         };
 
-        var searchMergeAccountList = await EsIndex.SearchAccountIndexList(input,_globalOptions.CurrentValue.SpecialSymbols);
+        var searchMergeAccountList = await _tokenIndexerProvider.GetTokenHolderInfoAsync(input);
+
         
-        if (searchMergeAccountList.list.Count == 0)
+        
+        if (searchMergeAccountList.Items==null || searchMergeAccountList.Items.IsNullOrEmpty())
         {
             _logger.LogInformation($"HandleTokenValuesAsync: No more data, chainId: {chainId}, address: {address}");
             break;
         }
         
-        foreach (var accountTokenIndex in searchMergeAccountList.list)
+        foreach (var accountTokenIndex in searchMergeAccountList.Items)
         {
             symbolSet.Add(accountTokenIndex.Token.Symbol);
         }
-        totalCount += searchMergeAccountList.list.Count;
-        var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.list, symbolPriceDict);
+        
+        totalCount += searchMergeAccountList.Items.Count;
+        var valuesDict = await CalculateTokenValuesAsync(chainId, searchMergeAccountList.Items, symbolPriceDict);
 
         foreach (var (valueAddress, assetDto) in valuesDict)
         {
@@ -201,7 +204,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
      * return OrderedDictionary, Guaranteed order of returned addresses
      */
     private async Task<OrderedDictionary<string, AddressAssetDto>> CalculateTokenValuesAsync(string chainId,
-        List<AccountTokenIndex> validTokenHolderInfos,
+        List<IndexerTokenHolderInfoDto> validTokenHolderInfos,
         Dictionary<string, decimal> symbolPriceDict)
     {
 
@@ -258,7 +261,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
     }
 
     private async Task PreProcessSymbolPriceAsync(string chainId, Dictionary<string, decimal> symbolPriceDict,
-        List<AccountTokenIndex> tokenHolderInfos)
+        List<IndexerTokenHolderInfoDto> tokenHolderInfos)
     {
         //Need to get Price Nft Symbols
         var getPriceNftSymbols = new HashSet<string>();
