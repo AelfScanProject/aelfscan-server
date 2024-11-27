@@ -303,7 +303,7 @@ public class AddressAppService : IAddressAppService
                 new decimal(addressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
                 CommonConstant.UsdValueDecimals);
             result.Portfolio.SideTokenValueOfElf = Math.Round(
-                new decimal(addressAssetToken.GetTotalValueOfElf()));
+                new decimal(addressAssetToken.GetTotalValueOfElf()),CommonConstant.UsdValueDecimals);
             result.Portfolio.SideNftCount = addressAssetNft.Count;
             result.Portfolio.SideTokenCount = addressAssetToken.Count;
         }
