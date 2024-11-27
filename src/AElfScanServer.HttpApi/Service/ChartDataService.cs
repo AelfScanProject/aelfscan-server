@@ -984,22 +984,15 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<DailyDeployContractResp> GetDailyDeployContractRespAsync(ChartDataRequest request)
     {
-      
-        return await GetMergeDailyDeployContractRespAsync();
-    }
-
-
-    public async Task<DailyDeployContractResp> GetMergeDailyDeployContractRespAsync()
-    {
         var tasks = new List<Task>();
         var mainResp = new DailyDeployContractResp();
         var sideResp = new DailyDeployContractResp();
-        tasks.Add(GetDailyDeployContractRespAsync(new ChartDataRequest
+        tasks.Add(GetDailyChainIdDeployContractRespAsync(new ChartDataRequest
         {
             ChainId = _globalOptions.CurrentValue.SideChainId
         }).ContinueWith(task => { sideResp = task.Result; }));
 
-        tasks.Add(GetDailyDeployContractRespAsync(new ChartDataRequest
+        tasks.Add(GetDailyChainIdDeployContractRespAsync(new ChartDataRequest
         {
             ChainId = "AELF"
         }).ContinueWith(task => { mainResp = task.Result; }));
@@ -1029,6 +1022,40 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         return mainResp;
     }
 
+
+    public async Task<DailyDeployContractResp> GetDailyChainIdDeployContractRespAsync(ChartDataRequest request)
+    {
+        
+        var queryable = await _deployContractRepository.GetQueryableAsync();
+        var indexList = queryable.Where(c => c.ChainId == request.ChainId).OrderBy(c => c.Date).Take(10000).ToList();
+
+        var dataList = _objectMapper.Map<List<DailyDeployContractIndex>, List<DailyDeployContract>>(indexList);
+
+        dataList = dataList.OrderBy(c => c.DateStr).ToList();
+
+
+        dataList[0].TotalCount = dataList[0].Count;
+
+        for (int i = 1; i < dataList.Count; i++)
+        {
+            var count1 = int.Parse(dataList[i - 1].TotalCount);
+            var count2 = dataList[i].Count.IsNullOrEmpty() ? 0 : int.Parse(dataList[i].Count);
+            dataList[i].TotalCount = (count1 + count2).ToString();
+        }
+
+
+        var resp = new DailyDeployContractResp()
+        {
+            List = dataList,
+            Total = dataList.Count,
+            Highest = dataList.MaxBy(c => decimal.Parse(c.Count)),
+            Lowest = dataList.MinBy(c => decimal.Parse(c.Count)),
+        };
+
+        return resp;
+    }
+
+    
     public async Task<ElfPriceIndexResp> GetElfPriceIndexRespAsync()
     {
         var queryable = await _elfPriceRepository.GetQueryableAsync();
