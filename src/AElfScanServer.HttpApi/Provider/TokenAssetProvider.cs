@@ -270,7 +270,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
         {
             var token = indexerTokenHolderInfoDto.Token;
             //only token is NonResourceSymbols
-            if (token.Type == SymbolType.Token &&
+            if (
                 _tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(token.Symbol))
             {
                 var priceDto = await _tokenPriceService.GetTokenPriceAsync(token.Symbol, CurrencyConstant.UsdCurrency);
@@ -296,10 +296,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
                     }
                 }
             }
-            else if (token.Type == SymbolType.Nft && !symbolPriceDict.ContainsKey(token.Symbol))
-            {
-                getPriceNftSymbols.Add(token.Symbol);
-            }
+           
         }
 
         //for batch query nft price
