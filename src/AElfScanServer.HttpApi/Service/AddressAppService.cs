@@ -293,7 +293,8 @@ public class AddressAppService : IAddressAppService
                 new decimal(addressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
                 CommonConstant.UsdValueDecimals);
             result.Portfolio.MainTokenValueOfElf = Math.Round(
-                new decimal(addressAssetToken.GetTotalValueOfElf()));
+                new decimal(addressAssetToken.GetTotalValueOfElf()),
+                CommonConstant.ElfValueDecimals);
             result.Portfolio.MainNftCount = addressAssetNft.Count;
             result.Portfolio.MainTokenCount = addressAssetToken.Count;
         }
@@ -303,7 +304,8 @@ public class AddressAppService : IAddressAppService
                 new decimal(addressAssetToken.GetTotalValueOfElf()) * priceDto.Price,
                 CommonConstant.UsdValueDecimals);
             result.Portfolio.SideTokenValueOfElf = Math.Round(
-                new decimal(addressAssetToken.GetTotalValueOfElf()),CommonConstant.UsdValueDecimals);
+                new decimal(addressAssetToken.GetTotalValueOfElf()),
+                CommonConstant.ElfValueDecimals);
             result.Portfolio.SideNftCount = addressAssetNft.Count;
             result.Portfolio.SideTokenCount = addressAssetToken.Count;
         }
@@ -411,9 +413,11 @@ public class AddressAppService : IAddressAppService
             CommonConstant.UsdValueDecimals);
 
         result.Portfolio.MainTokenValueOfElf = Math.Round(
-            new decimal(mainChainCurAddressAssetToken.GetTotalValueOfElf()));
+            new decimal(mainChainCurAddressAssetToken.GetTotalValueOfElf()),
+            CommonConstant.ElfValueDecimals);
         result.Portfolio.SideTokenValueOfElf = Math.Round(
-            new decimal(sideChainCurAddressAssetToken.GetTotalValueOfElf()));
+            new decimal(sideChainCurAddressAssetToken.GetTotalValueOfElf()),
+            CommonConstant.ElfValueDecimals);
 
         result.Portfolio.MainNftCount = mainChainCurAddressAssetNft.Count;
         result.Portfolio.SideNftCount = sideChainCurAddressAssetNft.Count;
