@@ -270,7 +270,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
         {
             var token = indexerTokenHolderInfoDto.Token;
             //only token is NonResourceSymbols
-            if (token.Type == SymbolType.Token &&
+            if (
                 _tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(token.Symbol))
             {
                 var priceDto = await _tokenPriceService.GetTokenPriceAsync(token.Symbol, CurrencyConstant.UsdCurrency);
@@ -296,26 +296,7 @@ private async Task<AddressAssetDto> HandleTokenValuesAsync(AddressAssetType type
                     }
                 }
             }
-            else if (token.Type == SymbolType.Nft && !symbolPriceDict.ContainsKey(token.Symbol))
-            {
-                getPriceNftSymbols.Add(token.Symbol);
-            }
-        }
-
-        //for batch query nft price
-        var nftPriceDict = await _nftInfoProvider.GetLatestPriceAsync(chainId, new List<string>(getPriceNftSymbols));
-
-        foreach (var (symbol, nftActivityItem) in nftPriceDict)
-        {
-            if (!symbolPriceDict.ContainsKey(symbol) && nftActivityItem.PriceTokenInfo != null)
-            {
-                //PriceTokenInfo.Symbol Maybe it always was ELF
-                var priceDto = await _tokenPriceService.GetTokenPriceAsync(nftActivityItem.PriceTokenInfo.Symbol,
-                    CurrencyConstant.ElfCurrency);
-
-                symbolPriceDict[symbol] =
-                    Math.Round(nftActivityItem.Price * priceDto.Price, CommonConstant.ElfValueDecimals);
-            }
+           
         }
     }
 
