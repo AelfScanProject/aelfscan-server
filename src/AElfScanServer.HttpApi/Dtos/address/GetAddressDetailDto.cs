@@ -47,7 +47,7 @@ public class Portfolio
 
     public decimal TotalTokenValueOfElf
     {
-        get { return MainTokenValue + SideTokenValue; }
+        get { return MainTokenValueOfElf + SideTokenValueOfElf; }
     }
 }
 
