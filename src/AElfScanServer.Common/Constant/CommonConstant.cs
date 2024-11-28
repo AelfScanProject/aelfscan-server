@@ -34,3 +34,9 @@ public class CurrencyConstant
     public const string UsdCurrency = "USDT";
     public const string ElfCurrency = "ELF";
 }
+
+public static class TransferMethodName
+{
+    public const string CrossChainTransfer = "CrossChainTransfer";
+    public const string CrossChainReceive = "CrossChainReceive";
+}
