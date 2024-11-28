@@ -14,7 +14,8 @@ public class CommonAddressHelper
     {
         var addressDto = new CommonAddressDto()
         {
-            Address = address
+            Address = address,
+            ChainId = chainId
         };
 
 

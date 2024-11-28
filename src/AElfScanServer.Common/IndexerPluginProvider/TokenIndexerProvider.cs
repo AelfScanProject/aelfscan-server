@@ -575,12 +575,24 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
             tokenTransferDto.To = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.To,
                 indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
-          
+            if (tokenTransferDto.Method.Equals(nameof(CrossChainTransferred)))
+            {
+                tokenTransferDto.To.ChainId = GetCrossChainId(indexerTransferInfoDto);
+            }
+            if (tokenTransferDto.Method.Equals(nameof(CrossChainReceived)))
+            {
+                tokenTransferDto.From.ChainId = GetCrossChainId(indexerTransferInfoDto);
+            }
             tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }
 
         return list;
+    }
+
+    private string GetCrossChainId(IndexerTransferInfoDto indexerTransferInfoDto)
+    {
+        return indexerTransferInfoDto.Metadata.ChainId == CommonConstant.MainChainId ?_globalOptions.SideChainId : CommonConstant.MainChainId;
     }
 
 

@@ -16,6 +16,8 @@ public class TokenTransferInfoDto
     public string Symbol { get; set; }
 
     public string SymbolName { get; set; }
+    
+    public int IsIn { get; set; }
 
     public DateTime DateTime
     {
