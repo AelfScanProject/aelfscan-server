@@ -507,9 +507,9 @@ public class SearchService : ISearchService, ISingletonDependency
         {
             searchResponseDto.Transaction = new SearchTransaction
             {
-                TransactionId = mainChainTxn.TransactionId,
-                BlockHash = mainChainTxn.BlockHash,
-                BlockHeight = mainChainTxn.BlockNumber,
+                TransactionId = sideChainTxn.TransactionId,
+                BlockHash = sideChainTxn.BlockHash,
+                BlockHeight = sideChainTxn.BlockNumber,
                 ChainIds = new List<string>
                 {
                     _globalOptions.CurrentValue.SideChainId
