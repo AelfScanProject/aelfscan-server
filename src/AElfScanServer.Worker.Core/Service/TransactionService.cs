@@ -761,9 +761,13 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 if (blockSize.Header == null)
                 {
                     _logger.LogInformation("Block size index header is null:{chainId}", chainId);
+                    failCount++;
+                    if (failCount == 5)
+                    {
+                        return;
+                    }
                     continue;
                 }
-
 
                 string date = "";
                 if (long.Parse(blockSize.Header.Height) == 1)
@@ -807,14 +811,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 "BatchPullBlockSize :{chainId},count:{count},time:{costTime},startBlockHeight:{startBlockHeight},endBlockHeight:{endBlockHeight}",
                 chainId, blockSizeIndices.Count, startNew.Elapsed.TotalSeconds, lastBlockHeight - BlockSizeInterval,
                 lastBlockHeight);
-            if (blockSizeIndices.Count == 0)
-            {
-                failCount++;
-                if (failCount == 5)
-                {
-                    return;
-                }
-            }
+            
 
             if (dic.Count >= 2)
             {
