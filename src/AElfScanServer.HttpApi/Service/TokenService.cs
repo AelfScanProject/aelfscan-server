@@ -179,8 +179,10 @@ public class TokenService : ITokenService, ISingletonDependency
       
             var indexerTokenList = await _tokenIndexerProvider.GetTokenDetailAsync(chainId, symbol);
 
-            AssertHelper.NotEmpty(indexerTokenList, "this token not exist");
-
+            if (indexerTokenList.IsNullOrEmpty())
+            {
+                return new TokenDetailDto();
+            }
             var list = await ConvertIndexerTokenDtoAsync(indexerTokenList, chainId);
 
             var tokenInfo = list[0];

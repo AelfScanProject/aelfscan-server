@@ -12,4 +12,6 @@ public class SecretOptions
     public string S3SecretKey { get; set; }
     
     public string TwitterBearToken { get; set; }
+    
+    public string ContractPrivateKey { get; set; }
 }

@@ -28,6 +28,7 @@ public class CommonAddressDto
     public AddressType AddressType { get; set; }
     public bool IsManager { get; set; }
     public bool IsProducer { get; set; }
+    public string ChainId { get; set; }
 }
 
 public class AddressAssetDto

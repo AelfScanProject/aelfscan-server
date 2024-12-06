@@ -49,7 +49,7 @@ public class SearchService : ISearchService, ISingletonDependency
     private readonly ITokenInfoProvider _tokenInfoProvider;
     private readonly IIndexerGenesisProvider _indexerGenesisProvider;
     private readonly AELFIndexerProvider _aelfIndexerProvider;
-    private readonly IBlockchainClientFactory<AElfClient> _blockchainClientFactory;
+    private readonly BlockChainDataProvider _blockChainProvider;
 
     public SearchService(ILogger<SearchService> logger, ITokenIndexerProvider tokenIndexerProvider,
         IOptionsMonitor<GlobalOptions> globalOptions, INftInfoProvider nftInfoProvider,
@@ -57,7 +57,7 @@ public class SearchService : ISearchService, ISingletonDependency
         IOptionsMonitor<TokenInfoOptions> tokenInfoOptions,
         IIndexerGenesisProvider indexerGenesisProvider,
         AELFIndexerProvider aelfIndexerProvider,
-        IBlockchainClientFactory<AElfClient> blockchainClientFactory)
+        BlockChainDataProvider blockChainProvider)
     {
         _logger = logger;
         _tokenIndexerProvider = tokenIndexerProvider;
@@ -67,7 +67,7 @@ public class SearchService : ISearchService, ISingletonDependency
         _tokenInfoProvider = tokenInfoProvider;
         _tokenInfoOptions = tokenInfoOptions;
         _aelfIndexerProvider = aelfIndexerProvider;
-        _blockchainClientFactory = blockchainClientFactory;
+        _blockChainProvider = blockChainProvider;
         _indexerGenesisProvider = indexerGenesisProvider;
     }
 
@@ -455,9 +455,7 @@ public class SearchService : ISearchService, ISingletonDependency
         }
 
 
-        var transactionResult = await _blockchainClientFactory.GetClient(request.ChainId)
-            .GetTransactionResultAsync(request.Keyword);
-
+        var transactionResult = await _blockChainProvider.GetTransactionDetailAsync(request.ChainId, request.Keyword);
         if (!transactionResult.TransactionId.IsNullOrEmpty() && transactionResult.Status is "MINED" or "PENDING")
         {
             searchResponseDto.Transaction = new SearchTransaction
@@ -477,17 +475,17 @@ public class SearchService : ISearchService, ISingletonDependency
             return;
         }
 
-        var mainChainTxn = new TransactionResultDto();
-        var sideChainTxn = new TransactionResultDto();
+        var mainChainTxn = new NodeTransactionDto();
+        var sideChainTxn = new NodeTransactionDto();
 
 
         var tasks = new List<Task>();
 
-        tasks.Add(_blockchainClientFactory.GetClient("AELF")
-            .GetTransactionResultAsync(request.Keyword).ContinueWith(task => { mainChainTxn = task.Result; }));
+        tasks.Add(_blockChainProvider.GetTransactionDetailAsync(CommonConstant.MainChainId, request.Keyword)
+            .ContinueWith(task => { mainChainTxn = task.Result; }));
 
-        tasks.Add(_blockchainClientFactory.GetClient(_globalOptions.CurrentValue.SideChainId)
-            .GetTransactionResultAsync(request.Keyword).ContinueWith(task => { sideChainTxn = task.Result; }));
+        tasks.Add(_blockChainProvider.GetTransactionDetailAsync(_globalOptions.CurrentValue.SideChainId,request.Keyword)
+            .ContinueWith(task => { sideChainTxn = task.Result; }));
 
         await tasks.WhenAll();
 
@@ -509,9 +507,9 @@ public class SearchService : ISearchService, ISingletonDependency
         {
             searchResponseDto.Transaction = new SearchTransaction
             {
-                TransactionId = mainChainTxn.TransactionId,
-                BlockHash = mainChainTxn.BlockHash,
-                BlockHeight = mainChainTxn.BlockNumber,
+                TransactionId = sideChainTxn.TransactionId,
+                BlockHash = sideChainTxn.BlockHash,
+                BlockHeight = sideChainTxn.BlockNumber,
                 ChainIds = new List<string>
                 {
                     _globalOptions.CurrentValue.SideChainId

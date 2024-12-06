@@ -4,10 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using AElf;
-using AElf.Client.Dto;
-using AElf.Client.Service;
-using AElf.Contracts.MultiToken;
 using AElfScanServer.Common.Commons;
 using AElf.ExceptionHandler;
 using AElfScanServer.Common.Constant;
@@ -20,13 +16,11 @@ using AElfScanServer.Common.GraphQL;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token.Provider;
-using Google.Protobuf;
 using GraphQL;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.ObjectMapping;
-using GetTokenInfoInput = AElf.Client.MultiToken.GetTokenInfoInput;
 
 namespace AElfScanServer.Common.IndexerPluginProvider;
 
@@ -575,12 +569,24 @@ public class TokenIndexerProvider : ITokenIndexerProvider, ISingletonDependency
                 indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
             tokenTransferDto.To = CommonAddressHelper.GetCommonAddress(indexerTransferInfoDto.To,
                 indexerTransferInfoDto.Metadata.ChainId, contractInfoDict, _globalOptions.ContractNames);
-          
+            if (tokenTransferDto.Method.Equals(TransferMethodName.CrossChainTransfer))
+            {
+                tokenTransferDto.To.ChainId = GetCrossChainId(indexerTransferInfoDto);
+            }
+            if (tokenTransferDto.Method.Equals(TransferMethodName.CrossChainReceive))
+            {
+                tokenTransferDto.From.ChainId = GetCrossChainId(indexerTransferInfoDto);
+            }
             tokenTransferDto.ChainIds.Add(indexerTransferInfoDto.Metadata.ChainId);
             list.Add(tokenTransferDto);
         }
 
         return list;
+    }
+
+    private string GetCrossChainId(IndexerTransferInfoDto indexerTransferInfoDto)
+    {
+        return indexerTransferInfoDto.Metadata.ChainId == CommonConstant.MainChainId ?_globalOptions.SideChainId : CommonConstant.MainChainId;
     }
 
 

@@ -33,16 +33,13 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
     private readonly INESTRepository<AddressIndex, string> _addressIndexRepository;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IElasticClient _elasticClient;
-    private const string TransactionCountRedisKey = "transaction_count";
-    private const string AddressCountRedisKey = "address_count";
-    private const string BlockHeightRedisKey = "address_count";
-
+    private readonly IOptionsMonitor<SecretOptions> _secretOptions;
 
     private readonly ILogger<HomePageProvider> _logger;
 
     public HomePageProvider(
         ILogger<HomePageProvider> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
-        IOptions<ElasticsearchOptions> options,
+        IOptions<ElasticsearchOptions> options,IOptionsMonitor<SecretOptions> secretOptions,
         INESTRepository<BlockExtraIndex, string> blockExtraIndexRepository,
         INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor) : base(optionsAccessor)
@@ -55,6 +52,7 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
         _elasticClient = new ElasticClient(settings);
         _blockExtraIndexRepository = blockExtraIndexRepository;
         _addressIndexRepository = addressIndexRepository;
+        _secretOptions = secretOptions;
     }
     [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
         Message = "GetRewardAsync err",
@@ -88,12 +86,12 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
 
             var transactionGetCurrentTermMiningReward =
                 await aElfClient.GenerateTransactionAsync(
-                    aElfClient.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+                    aElfClient.GetAddressFromPrivateKey(_secretOptions.CurrentValue.ContractPrivateKey),
                     _globalOptions.CurrentValue.ConsensusContractAddress,
                     "GetCurrentTermMiningReward", new Empty());
 
             var signTransaction =
-                aElfClient.SignTransaction(GlobalOptions.PrivateKey, transactionGetCurrentTermMiningReward);
+                aElfClient.SignTransaction(_secretOptions.CurrentValue.ContractPrivateKey, transactionGetCurrentTermMiningReward);
             var transactionResult = await aElfClient.ExecuteTransactionAsync(new ExecuteTransactionDto
             {
                 RawTransaction = signTransaction.ToByteArray().ToHex()
@@ -110,13 +108,13 @@ public class HomePageProvider : AbpRedisCache, ISingletonDependency
 
             var transactionGetUndistributedDividends =
                 await aElfClient.GenerateTransactionAsync(
-                    aElfClient.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+                    aElfClient.GetAddressFromPrivateKey(_secretOptions.CurrentValue.ContractPrivateKey),
                     _globalOptions.CurrentValue.TreasuryContractAddress,
                     "GetUndistributedDividends", new Empty());
 
 
             signTransaction =
-                aElfClient.SignTransaction(GlobalOptions.PrivateKey, transactionGetUndistributedDividends);
+                aElfClient.SignTransaction(_secretOptions.CurrentValue.ContractPrivateKey, transactionGetUndistributedDividends);
             transactionResult = await aElfClient.ExecuteTransactionAsync(new ExecuteTransactionDto
             {
                 RawTransaction = signTransaction.ToByteArray().ToHex()
