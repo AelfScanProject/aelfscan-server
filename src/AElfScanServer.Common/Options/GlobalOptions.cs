@@ -6,7 +6,6 @@ namespace AElfScanServer.Common.Options;
 
 public class GlobalOptions
 {
-    public  string PrivateKey { get; set; }
     public int MaxResultCount { get; set; }
 
     public string K8sNamespace { get; set; }
