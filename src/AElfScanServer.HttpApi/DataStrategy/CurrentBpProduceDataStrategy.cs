@@ -10,6 +10,7 @@ using AElfScanServer.Common.Options;
 using AElfScanServer.DataStrategy;
 using AElfScanServer.HttpApi.Dtos;
 using AElfScanServer.HttpApi.Helper;
+using AElfScanServer.HttpApi.Options;
 using AElfScanServer.HttpApi.Provider;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
@@ -25,15 +26,17 @@ namespace AElfScanServer.HttpApi.DataStrategy;
 public class CurrentBpProduceDataStrategy : DataStrategyBase<string, BlockProduceInfoDto>
 {
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
+    private readonly IOptionsMonitor<SecretOptions> _secretOptions;
 
 
     public CurrentBpProduceDataStrategy(IOptions<RedisCacheOptions> optionsAccessor,
-        IOptionsMonitor<GlobalOptions> globalOptions,
+        IOptionsMonitor<GlobalOptions> globalOptions, IOptionsMonitor<SecretOptions> secretOptions,
         ILogger<DataStrategyBase<string, BlockProduceInfoDto>> logger, IDistributedCache<string> cache
     ) : base(
         optionsAccessor, logger,cache)
     {
         _globalOptions = globalOptions;
+        _secretOptions = secretOptions;
     }
 
     public override async Task<BlockProduceInfoDto> QueryData(string chainId)
@@ -45,13 +48,13 @@ public class CurrentBpProduceDataStrategy : DataStrategyBase<string, BlockProduc
         };
 
         var transaction = await client.GenerateTransactionAsync(
-            client.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+            client.GetAddressFromPrivateKey(_secretOptions.CurrentValue.ContractPrivateKey),
             _globalOptions.CurrentValue.ContractAddressConsensus[chainId],
             "GetCurrentRoundInformation", param);
 
 
         var blockProduceInfoDto = new BlockProduceInfoDto();
-        var signTransaction = client.SignTransaction(GlobalOptions.PrivateKey, transaction);
+        var signTransaction = client.SignTransaction(_secretOptions.CurrentValue.ContractPrivateKey, transaction);
 
         var result = await client.ExecuteTransactionAsync(new ExecuteTransactionDto()
         {

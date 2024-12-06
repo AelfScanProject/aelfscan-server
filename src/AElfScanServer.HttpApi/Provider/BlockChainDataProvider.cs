@@ -20,13 +20,11 @@ using AElfScanServer.HttpApi.Options;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.ExceptionHandling;
-using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.HttpClient;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token;
 using Binance.Spot;
-using Binance.Spot.Models;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Caching.Distributed;
@@ -38,8 +36,6 @@ using Newtonsoft.Json.Linq;
 using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.DependencyInjection;
-using Convert = System.Convert;
-using TokenInfo = AElf.Contracts.MultiToken.TokenInfo;
 
 namespace AElfScanServer.HttpApi.Provider;
 
@@ -58,10 +54,10 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     private  readonly ITokenPriceService _tokenPriceService;
     private readonly IDistributedCache<string> _tokenDecimalsCache;
     private readonly ILogger<BlockChainDataProvider> _logger;
-
+    private readonly IOptionsMonitor<SecretOptions> _secretOptions;
     public BlockChainDataProvider(
         ILogger<BlockChainDataProvider> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
-        IOptions<ElasticsearchOptions> options,
+        IOptions<ElasticsearchOptions> options,IOptionsMonitor<SecretOptions> secretOptions,
         INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor,
         IHttpProvider httpProvider,
@@ -83,6 +79,7 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         _tokenIndexerProvider = tokenIndexerProvider;
         _tokenPriceService = tokenPriceService;
         _tokenDecimalsCache = tokenDecimalsCache;
+        _secretOptions = secretOptions;
     }
 
 
@@ -119,11 +116,11 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
 
             var transaction =
                 await elfClient.GenerateTransactionAsync(
-                    elfClient.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+                    elfClient.GetAddressFromPrivateKey(_secretOptions.CurrentValue.ContractPrivateKey),
                     address,
                     "GetDividends", int64Value);
             var signTransaction =
-                elfClient.SignTransaction(GlobalOptions.PrivateKey, transaction);
+                elfClient.SignTransaction(_secretOptions.CurrentValue.ContractPrivateKey, transaction);
             var transactionResult = await elfClient.ExecuteTransactionAsync(new ExecuteTransactionDto
             {
                 RawTransaction = signTransaction.ToByteArray().ToHex()

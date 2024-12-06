@@ -2230,12 +2230,12 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
 
         var transaction = await client.GenerateTransactionAsync(
-            client.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+            client.GetAddressFromPrivateKey(_secretOptions.ContractPrivateKey),
             _globalOptions.CurrentValue.ContractAddressConsensus[chainId],
             "GetRoundInformation", param);
 
 
-        var signTransaction = client.SignTransaction(GlobalOptions.PrivateKey, transaction);
+        var signTransaction = client.SignTransaction(_secretOptions.ContractPrivateKey, transaction);
 
         var result = await client.ExecuteTransactionAsync(new ExecuteTransactionDto()
         {
@@ -2256,12 +2256,12 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
 
         var transaction = await client.GenerateTransactionAsync(
-            client.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+            client.GetAddressFromPrivateKey(_secretOptions.ContractPrivateKey),
             _globalOptions.CurrentValue.ContractAddressConsensus[chainId],
             "GetCurrentRoundInformation", param);
 
 
-        var signTransaction = client.SignTransaction(GlobalOptions.PrivateKey, transaction);
+        var signTransaction = client.SignTransaction(_secretOptions.ContractPrivateKey, transaction);
 
         var result = await client.ExecuteTransactionAsync(new ExecuteTransactionDto()
         {
