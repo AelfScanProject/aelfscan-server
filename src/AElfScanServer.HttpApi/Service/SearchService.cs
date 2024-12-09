@@ -223,6 +223,18 @@ public class SearchService : ISearchService, ISingletonDependency
                 ChainIds = keyValuePair.Value.ToList()
             });
         }
+        // add default chain
+        if (dic.IsNullOrEmpty())
+        {
+            result.Add(new SearchAccount()
+            {
+                Address = address,
+                ChainIds = new List<string>()
+                {
+                    CommonConstant.MainChainId
+                }
+            });
+        }
 
 
         return result;
