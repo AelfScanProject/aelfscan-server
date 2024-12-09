@@ -78,6 +78,10 @@ public class NodeTransactionDto
 {
     public NodeTransactionInfo Transaction { get; set; }
     public long BlockNumber { get; set; }
+    
+    public string Status { get; set; }
+    public string TransactionId { get; set; }
+    public string BlockHash { get; set; }
 }
 
 

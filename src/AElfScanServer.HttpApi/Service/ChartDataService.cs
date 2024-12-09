@@ -146,6 +146,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly IObjectMapper _objectMapper;
     private readonly IDistributedCache<string> _cache;
+    private readonly IOptionsMonitor<SecretOptions> _secretOptions;
 
     public ChartDataService(IOptions<RedisCacheOptions> optionsAccessor, ILogger<ChartDataService> logger,
         IEntityMappingRepository<RoundIndex, string> roundIndexRepository,
@@ -177,6 +178,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         IDailyHolderProvider dailyHolderProvider,
         IDistributedCache<string> cache,
         IEntityMappingRepository<DailyMergeUniqueAddressCountIndex, string> uniqueMergeAddressRepository,
+        IOptionsMonitor<SecretOptions> secretOptions,
         IOptionsMonitor<ElasticsearchOptions> options) : base(
         optionsAccessor)
     {
@@ -215,6 +217,7 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
         _monthlyActiveAddressIndexRepository = monthlyActiveAddressIndexRepository;
         _uniqueMergeAddressRepository = uniqueMergeAddressRepository;
         _cache = cache;
+        _secretOptions = secretOptions;
     }
 
     public async Task FixDailyData(FixDailyData request)
@@ -233,50 +236,6 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     {
         await ConnectAsync();
         var jonInfoResp = new JonInfoResp() { };
-
-        // var v1 = RedisDatabase.StringGet(RedisKeyHelper.TransactionLastBlockHeight(request.ChainId));
-        // var v2 = RedisDatabase.StringGet(RedisKeyHelper.BlockSizeLastBlockHeight(request.ChainId));
-        // var v3 = RedisDatabase.StringGet(RedisKeyHelper.LatestRound(request.ChainId));
-        //
-        //
-        // var queryable1 = await _roundIndexRepository.GetQueryableAsync();
-        // var roundIndices = queryable1.Where(c => c.ChainId == request.ChainId)
-        //     .OrderByDescending(c => c.RoundNumber).Take(1).ToList();
-        //
-        //
-        // jonInfoResp.RedisLastBlockHeight = long.Parse(v1);
-        // jonInfoResp.BlockSizeBlockHeight = long.Parse(v2);
-        // jonInfoResp.RedisLastRound = long.Parse(v3);
-        //
-        //
-        // jonInfoResp.EsLastRound = roundIndices[0].RoundNumber;
-        // jonInfoResp.EsLastRoundDate = roundIndices[0].DateStr;
-        //
-        // if (request.SetBlockHeight > 0)
-        // {
-        //     RedisDatabase.StringSet(RedisKeyHelper.TransactionLastBlockHeight(request.ChainId), request.SetBlockHeight);
-        // }
-        //
-        // if (request.SetSizBlockHeight > 0)
-        // {
-        //     RedisDatabase.StringSet(RedisKeyHelper.BlockSizeLastBlockHeight(request.ChainId),
-        //         request.SetSizBlockHeight);
-        // }
-        //
-        // if (request.SetLastRound > 0)
-        // {
-        //     RedisDatabase.StringSet(RedisKeyHelper.LatestRound(request.ChainId),
-        //         request.SetLastRound);
-        // }
-
-
-        // var queryable2 = await _transactionRecordIndexRepository.GetQueryableAsync();
-        // queryable2 = queryable2.Where(c => c.ChainId == request.ChainId);
-        // var count = queryable2.Count();
-        // var dailyTransactionRecordIndices = queryable2.OrderByDescending(c => c.DateStr).Take(1);
-        // jonInfoResp.TransactionLastDate = dailyTransactionRecordIndices.First().DateStr;
-        // jonInfoResp.TransactionDateCount = count;
-
         return jonInfoResp;
     }
 
@@ -1670,7 +1629,25 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     public async Task<DailyTransactionCountResp> GetDailyTransactionCountAsync(ChartDataRequest request)
 
     { 
-        return await GetMergeDailyTransactionCountAsync();
+        if (request.ChainId.IsNullOrEmpty())
+        { 
+            return await GetMergeDailyTransactionCountAsync();
+        }
+
+        var queryable = await _transactionCountRepository.GetQueryableAsync();
+        var indexList = queryable.Where(c => c.ChainId == request.ChainId).Take(10000).OrderBy(c => c.Date).ToList();
+
+        var datList = _objectMapper.Map<List<DailyTransactionCountIndex>, List<DailyTransactionCount>>(indexList);
+
+        var resp = new DailyTransactionCountResp()
+        {
+            List = datList.GetRange(1, datList.Count - 1),
+            Total = datList.Count,
+            HighestTransactionCount = datList.MaxBy(c => c.TransactionCount),
+            LowesTransactionCount = datList.MinBy(c => c.TransactionCount),
+        };
+
+        return resp;
     }
 
     public async Task<DailyTransactionCountResp> GetMergeDailyTransactionCountAsync()
@@ -1768,7 +1745,25 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<ActiveAddressCountResp> GetActiveAddressCountAsync(ChartDataRequest request)
     {
-       return await GetMergeActiveAddressCountAsync();
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeActiveAddressCountAsync();
+        }
+
+        var queryable = await _activeAddressRepository.GetQueryableAsync();
+        var indexList = queryable.Where(c => c.ChainId == request.ChainId).Take(10000).OrderBy(c => c.Date).ToList();
+
+        var datList = _objectMapper.Map<List<DailyActiveAddressCountIndex>, List<DailyActiveAddressCount>>(indexList);
+
+        var resp = new ActiveAddressCountResp()
+        {
+            List = datList,
+            Total = datList.Count,
+            HighestActiveCount = datList.MaxBy(c => c.AddressCount),
+            LowestActiveCount = datList.MinBy(c => c.AddressCount),
+        };
+
+        return resp;
     }
 
 
@@ -1856,12 +1851,12 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
 
         var transaction = await client.GenerateTransactionAsync(
-            client.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+            client.GetAddressFromPrivateKey(_secretOptions.CurrentValue.ContractPrivateKey),
             _globalOptions.CurrentValue.ContractAddressConsensus[chainId],
             "GetCurrentRoundInformation", param);
 
 
-        var signTransaction = client.SignTransaction(GlobalOptions.PrivateKey, transaction);
+        var signTransaction = client.SignTransaction(_secretOptions.CurrentValue.ContractPrivateKey, transaction);
 
         var result = await client.ExecuteTransactionAsync(new ExecuteTransactionDto()
         {
@@ -1883,12 +1878,12 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
 
         var transaction = await client.GenerateTransactionAsync(
-            client.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+            client.GetAddressFromPrivateKey(_secretOptions.CurrentValue.ContractPrivateKey),
             _globalOptions.CurrentValue.ContractAddressConsensus[chainId],
             "GetRoundInformation", param);
 
 
-        var signTransaction = client.SignTransaction(GlobalOptions.PrivateKey, transaction);
+        var signTransaction = client.SignTransaction(_secretOptions.CurrentValue.ContractPrivateKey, transaction);
 
         var result = await client.ExecuteTransactionAsync(new ExecuteTransactionDto()
         {

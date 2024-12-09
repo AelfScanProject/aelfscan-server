@@ -262,7 +262,6 @@ public class BlockChainService : IBlockChainService, ITransientDependency
 
         blockResponseDto.BlockHeight = requestDto.BlockHeight;
         blockResponseDto.ChainId = requestDto.ChainId;
-        var fee = await _blockChainProvider.GetBlockRewardAsync(requestDto.BlockHeight, requestDto.ChainId);
 
         if (blockBurntFee.TryGetValue(requestDto.BlockHeight, out var burnt))
         {

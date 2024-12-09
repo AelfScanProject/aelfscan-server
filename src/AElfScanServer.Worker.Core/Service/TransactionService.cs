@@ -761,9 +761,13 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 if (blockSize.Header == null)
                 {
                     _logger.LogInformation("Block size index header is null:{chainId}", chainId);
+                    failCount++;
+                    if (failCount == 5)
+                    {
+                        return;
+                    }
                     continue;
                 }
-
 
                 string date = "";
                 if (long.Parse(blockSize.Header.Height) == 1)
@@ -807,14 +811,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 "BatchPullBlockSize :{chainId},count:{count},time:{costTime},startBlockHeight:{startBlockHeight},endBlockHeight:{endBlockHeight}",
                 chainId, blockSizeIndices.Count, startNew.Elapsed.TotalSeconds, lastBlockHeight - BlockSizeInterval,
                 lastBlockHeight);
-            if (blockSizeIndices.Count == 0)
-            {
-                failCount++;
-                if (failCount == 5)
-                {
-                    return;
-                }
-            }
+            
 
             if (dic.Count >= 2)
             {
@@ -2233,12 +2230,12 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
 
         var transaction = await client.GenerateTransactionAsync(
-            client.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+            client.GetAddressFromPrivateKey(_secretOptions.ContractPrivateKey),
             _globalOptions.CurrentValue.ContractAddressConsensus[chainId],
             "GetRoundInformation", param);
 
 
-        var signTransaction = client.SignTransaction(GlobalOptions.PrivateKey, transaction);
+        var signTransaction = client.SignTransaction(_secretOptions.ContractPrivateKey, transaction);
 
         var result = await client.ExecuteTransactionAsync(new ExecuteTransactionDto()
         {
@@ -2259,12 +2256,12 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
 
         var transaction = await client.GenerateTransactionAsync(
-            client.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
+            client.GetAddressFromPrivateKey(_secretOptions.ContractPrivateKey),
             _globalOptions.CurrentValue.ContractAddressConsensus[chainId],
             "GetCurrentRoundInformation", param);
 
 
-        var signTransaction = client.SignTransaction(GlobalOptions.PrivateKey, transaction);
+        var signTransaction = client.SignTransaction(_secretOptions.ContractPrivateKey, transaction);
 
         var result = await client.ExecuteTransactionAsync(new ExecuteTransactionDto()
         {

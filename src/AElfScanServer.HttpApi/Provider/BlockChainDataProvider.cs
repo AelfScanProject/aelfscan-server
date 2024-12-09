@@ -20,13 +20,11 @@ using AElfScanServer.HttpApi.Options;
 using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.ExceptionHandling;
-using AElfScanServer.Common.Helper;
 using AElfScanServer.Common.HttpClient;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
 using AElfScanServer.Common.Token;
 using Binance.Spot;
-using Binance.Spot.Models;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Caching.Distributed;
@@ -38,8 +36,6 @@ using Newtonsoft.Json.Linq;
 using Volo.Abp.Caching;
 using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.DependencyInjection;
-using Convert = System.Convert;
-using TokenInfo = AElf.Contracts.MultiToken.TokenInfo;
 
 namespace AElfScanServer.HttpApi.Provider;
 
@@ -58,10 +54,10 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
     private  readonly ITokenPriceService _tokenPriceService;
     private readonly IDistributedCache<string> _tokenDecimalsCache;
     private readonly ILogger<BlockChainDataProvider> _logger;
-
+    private readonly IOptionsMonitor<SecretOptions> _secretOptions;
     public BlockChainDataProvider(
         ILogger<BlockChainDataProvider> logger, IOptionsMonitor<GlobalOptions> blockChainOptions,
-        IOptions<ElasticsearchOptions> options,
+        IOptions<ElasticsearchOptions> options,IOptionsMonitor<SecretOptions> secretOptions,
         INESTRepository<AddressIndex, string> addressIndexRepository,
         IOptions<RedisCacheOptions> optionsAccessor,
         IHttpProvider httpProvider,
@@ -83,79 +79,8 @@ public class BlockChainDataProvider : AbpRedisCache, ISingletonDependency
         _tokenIndexerProvider = tokenIndexerProvider;
         _tokenPriceService = tokenPriceService;
         _tokenDecimalsCache = tokenDecimalsCache;
+        _secretOptions = secretOptions;
     }
-
-
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
-        Message = "GetBlockRewardAsync err",
-        TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleException), ReturnDefault = ReturnDefault.New,LogTargets = ["blockHeight","chainId"])]
-    public virtual async Task<string> GetBlockRewardAsync(long blockHeight, string chainId)
-    {
-        
-            await ConnectAsync();
-            var redisValue = RedisDatabase.StringGet(RedisKeyHelper.BlockRewardKey(chainId, blockHeight));
-            if (!redisValue.IsNullOrEmpty)
-            {
-                _logger.LogInformation("hit cache");
-                return redisValue;
-            }
-
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-            var elfClient = new AElfClient(_globalOptions.ChainNodeHosts[chainId]);
-
-
-            var name = chainId == "AELF" ? "Treasury" : "Consensus";
-
-            var int64Value = new Int64Value();
-            int64Value.Value = blockHeight;
-
-            var address = _globalOptions.ContractAddressConsensus[chainId];
-            if (address.IsNullOrEmpty())
-            {
-                return "";
-            }
-
-            var transaction =
-                await elfClient.GenerateTransactionAsync(
-                    elfClient.GetAddressFromPrivateKey(GlobalOptions.PrivateKey),
-                    address,
-                    "GetDividends", int64Value);
-            var signTransaction =
-                elfClient.SignTransaction(GlobalOptions.PrivateKey, transaction);
-            var transactionResult = await elfClient.ExecuteTransactionAsync(new ExecuteTransactionDto
-            {
-                RawTransaction = signTransaction.ToByteArray().ToHex()
-            });
-
-            var mapField = Dividends.Parser.ParseFrom(ByteArrayHelper.HexStringToByteArray(transactionResult)).Value;
-            mapField.TryGetValue("ELF", out var reward);
-            RedisDatabase.StringSet(RedisKeyHelper.BlockRewardKey(chainId, blockHeight), reward.ToString());
-            stopwatch.Stop();
-
-            _logger.LogInformation($"time get block reward {stopwatch.Elapsed.TotalSeconds} ,{blockHeight}");
-            return reward.ToString();
-     
-    }
-
-    public async Task<string> GetContractAddressAsync(string chainId, string contractName)
-    {
-        if (_contractAddressCache.TryGetValue($"{chainId}_{contractName}", out var address))
-        {
-            return address;
-        }
-
-
-        var elfClient = new AElfClient(_globalOptions.ChainNodeHosts[chainId]);
-        var contractAddress = (await elfClient.GetContractAddressByNameAsync(
-            HashHelper.ComputeFrom(contractName))).ToBase58();
-
-        _contractAddressCache.TryAdd(contractName, contractAddress);
-
-        return contractAddress;
-    }
-
 
     public async Task<string> TransformTokenToUsdValueAsync(string symbol, long amount,string chainId)
     {

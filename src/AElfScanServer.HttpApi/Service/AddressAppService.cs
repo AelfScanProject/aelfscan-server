@@ -558,6 +558,18 @@ public class AddressAppService : IAddressAppService
         tokenTransferInput.Types = new List<SymbolType> { input.TokenType };
         tokenTransferInput.SetDefaultSort();
         var tokenTransferInfos = await _tokenIndexerProvider.GetTokenTransfersAsync(tokenTransferInput);
+        if (!tokenTransferInfos.List.IsNullOrEmpty())
+        {
+            foreach (var transferInfoDto in tokenTransferInfos.List)
+            {
+                transferInfoDto.IsIn = CommonConstant.IsTrue;
+                if (transferInfoDto.From != null && input.Address.Equals(transferInfoDto.From.Address))
+                {
+                    transferInfoDto.IsIn = CommonConstant.IsFalse;
+                }
+            }
+        }
+
         return new GetTransferListResultDto
         {
             Total = tokenTransferInfos.Total,

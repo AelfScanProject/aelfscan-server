@@ -24,10 +24,19 @@ public static class CommonConstant
 
     public static DateTime AELFOneBlockTime = new DateTime(2020, 12, 15, 21, 04, 20);
     public static DateTime TDVVOneBlockTime = new DateTime(2020, 12, 10, 15, 23, 24);
+    
+    public const int IsTrue = 1;
+    public const int IsFalse = 0;
 }
 
 public class CurrencyConstant
 {
     public const string UsdCurrency = "USDT";
     public const string ElfCurrency = "ELF";
+}
+
+public static class TransferMethodName
+{
+    public const string CrossChainTransfer = "CrossChainTransfer";
+    public const string CrossChainReceive = "CrossChainReceive";
 }
