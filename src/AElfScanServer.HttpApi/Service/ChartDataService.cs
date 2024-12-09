@@ -1629,7 +1629,25 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
     public async Task<DailyTransactionCountResp> GetDailyTransactionCountAsync(ChartDataRequest request)
 
     { 
-        return await GetMergeDailyTransactionCountAsync();
+        if (request.ChainId.IsNullOrEmpty())
+        { 
+            return await GetMergeDailyTransactionCountAsync();
+        }
+
+        var queryable = await _transactionCountRepository.GetQueryableAsync();
+        var indexList = queryable.Where(c => c.ChainId == request.ChainId).Take(10000).OrderBy(c => c.Date).ToList();
+
+        var datList = _objectMapper.Map<List<DailyTransactionCountIndex>, List<DailyTransactionCount>>(indexList);
+
+        var resp = new DailyTransactionCountResp()
+        {
+            List = datList.GetRange(1, datList.Count - 1),
+            Total = datList.Count,
+            HighestTransactionCount = datList.MaxBy(c => c.TransactionCount),
+            LowesTransactionCount = datList.MinBy(c => c.TransactionCount),
+        };
+
+        return resp;
     }
 
     public async Task<DailyTransactionCountResp> GetMergeDailyTransactionCountAsync()
@@ -1727,7 +1745,25 @@ public class ChartDataService : AbpRedisCache, IChartDataService, ITransientDepe
 
     public async Task<ActiveAddressCountResp> GetActiveAddressCountAsync(ChartDataRequest request)
     {
-       return await GetMergeActiveAddressCountAsync();
+        if (request.ChainId.IsNullOrEmpty())
+        {
+            return await GetMergeActiveAddressCountAsync();
+        }
+
+        var queryable = await _activeAddressRepository.GetQueryableAsync();
+        var indexList = queryable.Where(c => c.ChainId == request.ChainId).Take(10000).OrderBy(c => c.Date).ToList();
+
+        var datList = _objectMapper.Map<List<DailyActiveAddressCountIndex>, List<DailyActiveAddressCount>>(indexList);
+
+        var resp = new ActiveAddressCountResp()
+        {
+            List = datList,
+            Total = datList.Count,
+            HighestActiveCount = datList.MaxBy(c => c.AddressCount),
+            LowestActiveCount = datList.MinBy(c => c.AddressCount),
+        };
+
+        return resp;
     }
 
 
