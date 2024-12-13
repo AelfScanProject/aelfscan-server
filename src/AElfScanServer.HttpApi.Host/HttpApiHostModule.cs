@@ -58,7 +58,7 @@ public class HttpApiHostModule : AbpModule
         ConfigureAuthentication(context, configuration);
         ConfigureGraphQl(context, configuration);
         ConfigureCache(context, configuration);
-      //  ConfigureCors(context, configuration);
+        ConfigureCors(context, configuration);
         Configure<AbpAutoMapperOptions>(options => { options.AddMaps<HttpApiHostModule>(); });
         context.Services.AddAutoResponseWrapper();
 
