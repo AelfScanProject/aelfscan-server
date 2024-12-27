@@ -46,7 +46,7 @@ public class TokenExchangeProvider : ITokenExchangeProvider, ISingletonDependenc
             {
                 baseCoin = s;
             };
-            var pair = $"{baseCoin}-{quoteCoin.ToLower()}";
+            var pair = $"{baseCoin.ToLower()}-{quoteCoin.ToLower()}";
             var key = "GetTokenPrice" + pair;
             var priceCache = await _priceCache.GetAsync(key);
             
@@ -92,7 +92,7 @@ public class TokenExchangeProvider : ITokenExchangeProvider, ISingletonDependenc
         {
             baseCoin = s;
         };
-        var pair = $"{baseCoin}-{quoteCoin.ToLower()}";
+        var pair = $"{baseCoin.ToLower()}-{quoteCoin.ToLower()}";
         var key = GetHistoryKey(CacheKeyPrefix, pair, timestamp);
         var priceCache = await _priceCache.GetAsync(key);
             
