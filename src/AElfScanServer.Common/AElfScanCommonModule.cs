@@ -51,7 +51,6 @@ public class AElfScanCommonModule : AbpModule
         context.Services.AddSingleton<IGraphQlFactory, GraphQlFactory>();
         context.Services.AddTransient<IExchangeProvider, OkxProvider>();
         context.Services.AddTransient<IExchangeProvider, BinanceProvider>();
-        context.Services.AddTransient<IExchangeProvider, CoinGeckoProvider>();
         context.Services.AddTransient<ITokenExchangeProvider, TokenExchangeProvider>();
         context.Services.AddTransient<ITokenInfoProvider, TokenInfoProvider>();
         context.Services.AddTransient<IAddressInfoProvider, AddressInfoProvider>();

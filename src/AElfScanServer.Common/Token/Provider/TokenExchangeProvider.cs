@@ -27,7 +27,6 @@ namespace AElfScanServer.Common.Token.Provider;
 
 public interface ITokenExchangeProvider
 {
-    Task<Dictionary<string, TokenExchangeDto>> GetAsync(string baseCoin, string quoteCoin);
     Task<decimal> GetTokenPriceAsync(string baseCoin, string quoteCoin);
     Task<Dictionary<string, TokenExchangeDto>> GetHistoryAsync(string baseCoin, string quoteCoin, long timestamp);
 }
@@ -113,41 +112,7 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
       
     }
 
-    public async Task<Dictionary<string, TokenExchangeDto>> GetAsync(string baseCoin, string quoteCoin)
-    {
-        await ConnectAsync();
-        var key = GetKey(CacheKeyPrefix, baseCoin, quoteCoin);
-        var value = await GetObjectAsync<Dictionary<string, TokenExchangeDto>>(key);
-
-        if (!value.IsNullOrEmpty())
-        {
-            return value;
-        }
-        
-
-
-        // Wait to acquire the lock before proceeding with the update
-        await WriteLock.WaitAsync();
-        try
-        {
-            var asyncTasks = new List<Task<KeyValuePair<string, TokenExchangeDto>>>();
-            foreach (var provider in _exchangeProviders.Values)
-            {
-                var providerName = provider.Name().ToString();
-                asyncTasks.Add(GetExchangeAsync(provider, baseCoin, quoteCoin, providerName));
-            }
-            
-            var results = await Task.WhenAll(asyncTasks);
-            var exchangeInfos = results.Where(r => r.Value != null)
-                .ToDictionary(r => r.Key, r => r.Value);
-            await SetObjectAsync(key, exchangeInfos, TimeSpan.FromSeconds(_exchangeOptions.CurrentValue.DataExpireSeconds));
-            return exchangeInfos;
-        }
-        finally
-        {
-            WriteLock.Release();
-        }
-    }
+    
     
     public async Task<Dictionary<string, TokenExchangeDto>> GetHistoryAsync(string baseCoin, string quoteCoin, long timestamp)
     {
