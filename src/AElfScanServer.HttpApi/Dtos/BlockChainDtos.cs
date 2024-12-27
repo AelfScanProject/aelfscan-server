@@ -91,6 +91,8 @@ public class BlockchainOverviewRequestDto
 public class HomeOverviewResponseDto
 {
     public decimal TokenPriceInUsd { get; set; }
+    
+    public decimal TokenDailyPriceInUsd { get; set; }
     public decimal TokenPriceRate24h { get; set; }
     public long Transactions { get; set; }
 

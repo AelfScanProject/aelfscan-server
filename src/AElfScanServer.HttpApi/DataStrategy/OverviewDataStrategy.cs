@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
 using AElf.EntityMapping.Repositories;
 using AElf.ExceptionHandler;
+using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.ChartData;
 using AElfScanServer.Common.Dtos.MergeData;
@@ -27,7 +26,6 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nest;
-using Newtonsoft.Json;
 using Volo.Abp.Caching;
 using AddressIndex = AElfScanServer.Common.Dtos.ChartData.AddressIndex;
 
@@ -280,10 +278,11 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                 .ContinueWith(task => { overviewResp.MergeTransactions.SideChain = task.Result; }));
 
 
-            tasks.Add(_blockChainProvider.GetTokenUsd24ChangeAsync("ELF").ContinueWith(
+            tasks.Add(_tokenPriceService.GetTokenHistoryPriceAsync("ELF", CurrencyConstant.UsdCurrency, DateTime.Now.ToString("yyyyMMdd"))
+                .ContinueWith(
                 task =>
                 {
-                    overviewResp.TokenPriceRate24h = task.Result.PriceChangePercent;
+                    overviewResp.TokenDailyPriceInUsd = task.Result.Price;
                 }));
             
               tasks.Add(_tokenPriceService.GetTokenPriceAsync("ELF").ContinueWith(
@@ -350,6 +349,9 @@ public class OverviewDataStrategy : DataStrategyBase<string, HomeOverviewRespons
                 overviewResp.MergeTransactions.MainChain + overviewResp.MergeTransactions.SideChain;
             overviewResp.MergeAccounts.Total =
                 overviewResp.MergeAccounts.MainChain + overviewResp.MergeAccounts.SideChain;
+            overviewResp.TokenPriceRate24h=Math.Round(
+                (overviewResp.TokenPriceInUsd - overviewResp.TokenDailyPriceInUsd) / overviewResp.TokenDailyPriceInUsd * 100,
+                CommonConstant.PercentageValueDecimals);
             DataStrategyLogger.LogInformation("Set home page overview success: merge chain");
        
 
