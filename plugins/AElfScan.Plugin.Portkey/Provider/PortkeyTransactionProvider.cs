@@ -13,9 +13,9 @@ public class PortkeyTransactionProvider : IPortkeyTransactionProvider, ISingleto
 {
     private readonly IGraphQLHelper _graphQlHelper;
     private static Counter<long> _alarmCounter;
-    private readonly ILogger<GraphQLHelper> _logger;
-    public PortkeyTransactionProvider(IGraphQLHelper graphQlHelper,IInstrumentationProvider instrumentationProvider
-    )
+    private readonly ILogger<PortkeyTransactionProvider> _logger;
+    public PortkeyTransactionProvider(IGraphQLHelper graphQlHelper,IInstrumentationProvider instrumentationProvider,
+    ILogger<PortkeyTransactionProvider> logger)
     {
         _graphQlHelper = graphQlHelper;
         _alarmCounter = instrumentationProvider.Meter.
@@ -24,6 +24,7 @@ public class PortkeyTransactionProvider : IPortkeyTransactionProvider, ISingleto
                 "counts", 
                 "The number of Alarm"
             );
+        _logger = logger;
     }
 
 
