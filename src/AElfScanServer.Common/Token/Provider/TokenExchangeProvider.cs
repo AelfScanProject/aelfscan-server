@@ -1,64 +1,40 @@
-using 
-    System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
+using System;
 using System.Threading.Tasks;
-using AElf.ExceptionHandler;
-using AElfScanServer.Common.Dtos;
-using AElfScanServer.Common.ExceptionHandling;
 using AElfScanServer.Common.Options;
-using AElfScanServer.Common.Redis;
-using AElfScanServer.Common.ThirdPart.Exchange;
 using Aetherlink.PriceServer;
 using Aetherlink.PriceServer.Dtos;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Volo.Abp.Caching;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.Threading;
 
 namespace AElfScanServer.Common.Token.Provider;
 
 public interface ITokenExchangeProvider
 {
     Task<decimal> GetTokenPriceAsync(string baseCoin, string quoteCoin);
-    Task<Dictionary<string, TokenExchangeDto>> GetHistoryAsync(string baseCoin, string quoteCoin, long timestamp);
+    Task<decimal> GetHistoryAsync(string baseCoin, string quoteCoin, string timestamp);
 }
 
-public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider, ISingletonDependency
+public class TokenExchangeProvider : ITokenExchangeProvider, ISingletonDependency
 {
-    private const string CacheKeyPrefix = "TokenExchange";
+    private const string CacheKeyPrefix = "TokenExchangeHistory";
     private readonly ILogger<TokenExchangeProvider> _logger;
-    private readonly Dictionary<string, IExchangeProvider> _exchangeProviders;
-    private readonly IOptionsMonitor<ExchangeOptions> _exchangeOptions;
     private readonly IOptionsMonitor<NetWorkReflectionOptions> _netWorkReflectionOption;
-    
-    private readonly SemaphoreSlim WriteLock = new SemaphoreSlim(1, 1);
-    private readonly SemaphoreSlim HisWriteLock = new SemaphoreSlim(1, 1);
     private readonly IPriceServerProvider _priceServerProvider;
     private readonly IDistributedCache<string> _priceCache;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
 
 
-    public TokenExchangeProvider(IOptions<RedisCacheOptions> optionsAccessor,
-        IEnumerable<IExchangeProvider> exchangeProviders,
-        IOptionsMonitor<ExchangeOptions> exchangeOptions,
-        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger,IPriceServerProvider priceServerProvider,IDistributedCache<string> priceCache,IOptionsMonitor<GlobalOptions> globalOptions) :
-        base(optionsAccessor)
+    public TokenExchangeProvider(
+        IOptionsMonitor<NetWorkReflectionOptions> netWorkReflectionOption, ILogger<TokenExchangeProvider> logger,IPriceServerProvider priceServerProvider,IDistributedCache<string> priceCache,IOptionsMonitor<GlobalOptions> globalOptions)
     {
         _priceCache= priceCache;
         _priceServerProvider = priceServerProvider;
-        _exchangeOptions = exchangeOptions;
         _netWorkReflectionOption = netWorkReflectionOption;
         _logger = logger;
         _globalOptions = globalOptions;
-        _exchangeProviders = exchangeProviders.GroupBy(p => p.Name()).ToDictionary( g => g.Key.ToString(), g => g.First());
     }
 
 
@@ -78,8 +54,6 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
             {
                 return decimal.Parse(priceCache);
             }
-            
-        
             var res = await _priceServerProvider.GetAggregatedTokenPriceAsync(new ()
             {
                 TokenPair =pair,
@@ -108,88 +82,45 @@ public class TokenExchangeProvider : RedisCacheExtension, ITokenExchangeProvider
             _logger.LogError(e, $"GetExchangeAsync err,pair:{baseCoin}");
             throw;
         }
-        
-      
     }
 
     
     
-    public async Task<Dictionary<string, TokenExchangeDto>> GetHistoryAsync(string baseCoin, string quoteCoin, long timestamp)
+    public async Task<decimal> GetHistoryAsync(string baseCoin, string quoteCoin, string timestamp)
     {
-        await ConnectAsync();
-        var key = GetHistoryKey(CacheKeyPrefix, baseCoin, quoteCoin, timestamp);
-        var value = await GetObjectAsync<Dictionary<string, TokenExchangeDto>>(key);
-
-        if (!value.IsNullOrEmpty())
+        if (_globalOptions.CurrentValue.NftSymbolConvert.TryGetValue(baseCoin,out var s))
         {
-            return value;
-        }
-
-        // Wait to acquire the lock before proceeding with the update
-        await HisWriteLock.WaitAsync();
-        try
+            baseCoin = s;
+        };
+        var pair = $"{baseCoin}-{quoteCoin.ToLower()}";
+        var key = GetHistoryKey(CacheKeyPrefix, pair, timestamp);
+        var priceCache = await _priceCache.GetAsync(key);
+            
+        if (!priceCache.IsNullOrEmpty())
         {
-            var asyncTasks = new List<Task<KeyValuePair<string, TokenExchangeDto>>>();
-            foreach (var provider in _exchangeProviders.Values)
-            {
-                var providerName = provider.Name().ToString();
-                asyncTasks.Add(GetHistoryExchangeAsync(provider, baseCoin, quoteCoin, timestamp, providerName));
-            }
-
-            var results = await Task.WhenAll(asyncTasks);
-            var exchangeInfos = results.Where(r => r.Value != null)
-                .ToDictionary(r => r.Key, r => r.Value);
-            await SetObjectAsync(key, exchangeInfos, TimeSpan.FromDays(7));
-            return exchangeInfos;
+            return decimal.Parse(priceCache);
         }
-        finally
+        var res = await _priceServerProvider.GetDailyPriceAsync(new ()
         {
-            HisWriteLock.Release();
+            TokenPair =pair,
+            TimeStamp = timestamp
+        });
+        if (res == null || res.Data == null)
+        {
+            _logger.LogError($"GetExchangeAsync err,pair:{pair}");
+            return 0;
         }
-    }
-    
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
-        Message = "GetExchangeAsync err",
-        TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetExchangeAsync),LogTargets = ["provider","baseCoin","quoteCoin","providerName"])]
-    public virtual async Task<KeyValuePair<string, TokenExchangeDto>> GetExchangeAsync(
-        IExchangeProvider provider, string baseCoin, string quoteCoin, string providerName)
-    {
-       
-            var result = await provider.LatestAsync(MappingSymbol(baseCoin.ToUpper()), 
-                MappingSymbol(quoteCoin.ToUpper()));
-            return new KeyValuePair<string, TokenExchangeDto>(providerName, result);
-       
-    }
-    
-    [ExceptionHandler(typeof(IOException), typeof(TimeoutException), typeof(Exception),
-        Message = "GetHistoryExchangeAsync err",
-        TargetType = typeof(ExceptionHandlingService),
-        MethodName = nameof(ExceptionHandlingService.HandleExceptionGetExchangeAsync), LogTargets = ["provider","baseCoin","quoteCoin","timestamp","providerName"])]
-    public virtual async Task<KeyValuePair<string, TokenExchangeDto>> GetHistoryExchangeAsync(
-        IExchangeProvider provider, string baseCoin, string quoteCoin, long timestamp, string providerName)
-    {
-        
-            var result = await provider.HistoryAsync(MappingSymbol(baseCoin.ToUpper()), 
-                MappingSymbol(quoteCoin.ToUpper()), timestamp);
-            return new KeyValuePair<string, TokenExchangeDto>(providerName, result);
-       
-    }
+        var price = res.Data.Price / (decimal)Math.Pow(10, (double)res.Data.Decimal);
+        await _priceCache.SetAsync(key, price.ToString(), new DistributedCacheEntryOptions()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7)
 
-    private string MappingSymbol(string sourceSymbol)
-    {
-        return _netWorkReflectionOption.CurrentValue.SymbolItems.TryGetValue(sourceSymbol, out var targetSymbol)
-            ? targetSymbol
-            : sourceSymbol;
+        });
+        _logger.LogInformation($"GetHistoryAsync success,pair:{baseCoin},price:{price},decimal:{res.Data.Decimal}");
+        return price;
     }
-    
-    private string GetKey(string prefix, string baseCoin, string quoteCoin)
+    private string GetHistoryKey(string prefix, string pair, string timestamp)
     {
-        return $"{prefix}-{baseCoin}-{quoteCoin}";
-    }
-    
-    private string GetHistoryKey(string prefix, string baseCoin, string quoteCoin, long timestamp)
-    {
-        return $"{prefix}-{baseCoin}-{quoteCoin}-{timestamp}";
+        return $"{prefix}-{pair}-{timestamp}";
     }
 }

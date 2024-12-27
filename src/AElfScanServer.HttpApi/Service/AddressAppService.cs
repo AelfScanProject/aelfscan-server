@@ -624,7 +624,7 @@ public class AddressAppService : IAddressAppService
             if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
             {
                 var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
-                var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
+                var timestamp = DateTime.Now.ToString("yyyyMMdd");
                 var priceHisDto =
                     await _tokenPriceService.GetTokenHistoryPriceAsync(symbol, CurrencyConstant.UsdCurrency, timestamp);
 

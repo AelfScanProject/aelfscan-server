@@ -49,8 +49,6 @@ public class AElfScanCommonModule : AbpModule
         Configure<CollectionCreateOptions>(x => { x.AddModule(typeof(AElfScanCommonModule)); });
         context.Services.AddSingleton<IHttpProvider, HttpProvider>();
         context.Services.AddSingleton<IGraphQlFactory, GraphQlFactory>();
-        context.Services.AddTransient<IExchangeProvider, OkxProvider>();
-        context.Services.AddTransient<IExchangeProvider, BinanceProvider>();
         context.Services.AddTransient<ITokenExchangeProvider, TokenExchangeProvider>();
         context.Services.AddTransient<ITokenInfoProvider, TokenInfoProvider>();
         context.Services.AddTransient<IAddressInfoProvider, AddressInfoProvider>();

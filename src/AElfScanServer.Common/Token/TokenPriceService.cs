@@ -18,7 +18,7 @@ public interface ITokenPriceService
 {
     Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin="usdt");
 
-    Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, long timestamp);
+    Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, string timestamp);
 }
 
 public class TokenPriceService : ITokenPriceService, ISingletonDependency
@@ -63,10 +63,10 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
         Message = "GetTokenHistoryPriceAsync err",
         TargetType = typeof(ExceptionHandlingService),
         MethodName = nameof(ExceptionHandlingService.HandleExceptionGetTokenPriceAsync),LogTargets = ["baseCoin","quoteCoin","timestamp"])]
-    public virtual async Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, long timestamp)
+    public virtual async Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, string timestamp)
     {
         
-            AssertHelper.IsTrue(!baseCoin.IsNullOrEmpty() && !quoteCoin.IsNullOrEmpty() && timestamp > 0,
+            AssertHelper.IsTrue(!baseCoin.IsNullOrEmpty() && !quoteCoin.IsNullOrEmpty() ,
                 "Get token price fail, baseCoin or quoteCoin is empty.");
             if (baseCoin.ToUpper().Equals(quoteCoin.ToUpper()))
             {
@@ -74,16 +74,9 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
             }
 
             var exchange = await _tokenExchangeProvider.GetHistoryAsync(baseCoin, quoteCoin, timestamp);
-            AssertHelper.NotEmpty(exchange,
-                $"History Exchange data {baseCoin}/{quoteCoin} timestamp {timestamp} not found.",
-                baseCoin, quoteCoin, timestamp);
-            var avgExchange = exchange.Values
-                .Where(ex => ex.Exchange > 0)
-                .Average(ex => ex.Exchange);
-            AssertHelper.IsTrue(avgExchange > 0, "History Exchange amount error {avgExchange}", avgExchange);
             return new CommonTokenPriceDto
             {
-                Price = avgExchange
+                Price = exchange
             };
        
     }
