@@ -16,7 +16,7 @@ namespace AElfScanServer.Common.Token;
 
 public interface ITokenPriceService
 {
-    Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin="usdt");
+    Task<CommonTokenPriceDto> GetTokenPriceAsync(string baseCoin, string quoteCoin="usd");
 
     Task<CommonTokenPriceDto> GetTokenHistoryPriceAsync(string baseCoin, string quoteCoin, string timestamp);
 }
@@ -31,7 +31,7 @@ public class TokenPriceService : ITokenPriceService, ISingletonDependency
     {
         _logger = logger;
         _tokenExchangeProvider = tokenExchangeProvider;
-        _priceServerProvider=priceServerProvide;
+        _priceServerProvider = priceServerProvide;
     }
 
     [ExceptionHandler( typeof(Exception),

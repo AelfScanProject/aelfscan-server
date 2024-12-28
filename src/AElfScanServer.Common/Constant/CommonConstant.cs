@@ -31,7 +31,8 @@ public static class CommonConstant
 
 public class CurrencyConstant
 {
-    public const string UsdCurrency = "USDT";
+    public const string UsdCurrency = "USD";
+    public const string UsdTCurrency = "USDT";
     public const string ElfCurrency = "ELF";
 }
 

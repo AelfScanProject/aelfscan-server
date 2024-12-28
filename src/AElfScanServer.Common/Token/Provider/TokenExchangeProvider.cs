@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Options;
 using Aetherlink.PriceServer;
 using Aetherlink.PriceServer.Dtos;
@@ -45,8 +46,9 @@ public class TokenExchangeProvider : ITokenExchangeProvider, ISingletonDependenc
             if (_globalOptions.CurrentValue.NftSymbolConvert.TryGetValue(baseCoin,out var s))
             {
                 baseCoin = s;
+                quoteCoin = CurrencyConstant.UsdTCurrency;
             };
-            var pair = $"{baseCoin.ToLower()}-{quoteCoin.ToLower()}";
+            var pair = $"{baseCoin}-{quoteCoin}";
             var key = "GetTokenPrice" + pair;
             var priceCache = await _priceCache.GetAsync(key);
             
@@ -92,7 +94,7 @@ public class TokenExchangeProvider : ITokenExchangeProvider, ISingletonDependenc
         {
             baseCoin = s;
         };
-        var pair = $"{baseCoin.ToLower()}-{quoteCoin.ToLower()}";
+        var pair = $"{baseCoin}-{quoteCoin}";
         var key = GetHistoryKey(CacheKeyPrefix, pair, timestamp);
         var priceCache = await _priceCache.GetAsync(key);
             
