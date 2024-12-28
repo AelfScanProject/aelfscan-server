@@ -11,6 +11,8 @@ public class GetTransferListInput : BaseInput
 {
     [Required] public string Address { get; set; }
 
+    public string Symbol { get; set; } = "";
+
     public SymbolType TokenType { get; set; } = SymbolType.Token;
 
     public void SetDefaultSort()

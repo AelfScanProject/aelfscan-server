@@ -208,7 +208,7 @@ public class TokenService : ITokenService, ISingletonDependency
             {
                 //set others
                 var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
-                var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
+                var timestamp =  DateTime.Now.ToString("yyyyMMdd");
                 var priceHisDto =
                     await _tokenPriceService.GetTokenHistoryPriceAsync(symbol, CurrencyConstant.UsdCurrency, timestamp);
                 tokenDetailDto.Price = Math.Round(priceDto.Price, CommonConstant.UsdValueDecimals);

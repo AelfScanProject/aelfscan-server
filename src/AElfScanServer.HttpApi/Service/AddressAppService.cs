@@ -624,7 +624,7 @@ public class AddressAppService : IAddressAppService
             if (_tokenInfoOptions.CurrentValue.NonResourceSymbols.Contains(symbol))
             {
                 var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
-                var timestamp = TimeHelper.GetTimeStampFromDateTime(DateTime.Today);
+                var timestamp = DateTime.Now.ToString("yyyyMMdd");
                 var priceHisDto =
                     await _tokenPriceService.GetTokenHistoryPriceAsync(symbol, CurrencyConstant.UsdCurrency, timestamp);
 
@@ -635,8 +635,8 @@ public class AddressAppService : IAddressAppService
                     Math.Round(priceDto.Price / elfPriceDto.Price, CommonConstant.ElfValueDecimals);
                 tokenHolderInfo.ValueOfElf = Math.Round(tokenHolderInfo.Quantity * priceDto.Price / elfPriceDto.Price,
                     CommonConstant.ElfValueDecimals);
-
-                if (priceHisDto.Price > 0)
+                _logger.LogInformation("priceHisDto : {priceHis}",priceHisDto.Price);
+                if (priceDto.Price>0 && priceHisDto.Price > 0)
                 {
                     tokenHolderInfo.PriceOfUsdPercentChange24h = (double)Math.Round(
                         (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
