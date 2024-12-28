@@ -636,7 +636,7 @@ public class AddressAppService : IAddressAppService
                 tokenHolderInfo.ValueOfElf = Math.Round(tokenHolderInfo.Quantity * priceDto.Price / elfPriceDto.Price,
                     CommonConstant.ElfValueDecimals);
                 _logger.LogInformation("priceHisDto : {priceHis}",priceHisDto.Price);
-                if (priceHisDto.Price > 0)
+                if (priceDto.Price>0 && priceHisDto.Price > 0)
                 {
                     tokenHolderInfo.PriceOfUsdPercentChange24h = (double)Math.Round(
                         (priceDto.Price - priceHisDto.Price) / priceHisDto.Price * 100,
