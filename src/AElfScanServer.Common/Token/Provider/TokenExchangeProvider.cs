@@ -93,6 +93,7 @@ public class TokenExchangeProvider : ITokenExchangeProvider, ISingletonDependenc
         if (_globalOptions.CurrentValue.NftSymbolConvert.TryGetValue(baseCoin,out var s))
         {
             baseCoin = s;
+            quoteCoin = CurrencyConstant.UsdTCurrency;
         };
         var pair = $"{baseCoin}-{quoteCoin}";
         var key = GetHistoryKey(CacheKeyPrefix, pair, timestamp);
