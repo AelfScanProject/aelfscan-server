@@ -898,7 +898,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         var tasks = new List<Task>();
         foreach (var chainId in _globalOptions.CurrentValue.ChainIds)
         {
-            tasks.Add(BatchPullTransactionJob(chainId));
+           // tasks.Add(BatchPullTransactionJob(chainId));
         }
 
         await tasks.WhenAll();
