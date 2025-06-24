@@ -15,7 +15,6 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
     private const string WorkerName = "TokenTransferMonitoringWorker";
     private readonly ILogger<TokenTransferMonitoringWorker> _logger;
     private readonly IOptionsMonitor<TokenTransferMonitoringOptions> _optionsMonitor;
-    private readonly IOptionsMonitor<WorkerOptions> _workerOptions;
 
     public TokenTransferMonitoringWorker(
         AbpAsyncTimer timer,
@@ -26,53 +25,71 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
     {
         _logger = logger;
         _optionsMonitor = optionsMonitor;
-        _workerOptions = workerOptions;
         
-        var intervalSeconds = _optionsMonitor.CurrentValue.ScanConfig.IntervalSeconds;
-        timer.Period = intervalSeconds * 1000;
+        // Use WorkerOptions for timer period configuration, fallback to TokenTransferMonitoringOptions
+        var workerPeriodMinutes = workerOptions.CurrentValue.GetWorkerPeriodMinutes(WorkerName);
+        if (workerPeriodMinutes == Options.Worker.DefaultMinutes) // If not configured in WorkerOptions, use TokenTransferMonitoringOptions
+        {
+            var intervalSeconds = _optionsMonitor.CurrentValue.ScanConfig.IntervalSeconds;
+            timer.Period = intervalSeconds * 1000;
+            _logger.LogInformation("TokenTransferMonitoringWorker initialized with TokenTransferMonitoringOptions interval: {Interval}s", intervalSeconds);
+        }
+        else
+        {
+            timer.Period = workerPeriodMinutes * 60 * 1000;
+            _logger.LogInformation("TokenTransferMonitoringWorker initialized with WorkerOptions interval: {Interval} minutes", workerPeriodMinutes);
+        }
         
-        _logger.LogInformation("TokenTransferMonitoringWorker initialized with interval: {Interval}s", intervalSeconds);
+        timer.RunOnStart = true; // Ensure the worker starts immediately
+        
+        _logger.LogInformation("TokenTransferMonitoringWorker configured successfully");
     }
 
     protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
     {
-        var options = _optionsMonitor.CurrentValue;
-        
-        if (!options.EnableMonitoring)
+        try
         {
-            _logger.LogDebug("Token transfer monitoring is disabled");
-            return;
+            var options = _optionsMonitor.CurrentValue;
+            
+            if (!options.EnableMonitoring)
+            {
+                _logger.LogDebug("Token transfer monitoring is disabled");
+                return;
+            }
+
+            _logger.LogInformation("Starting token transfer monitoring scan...");
+            
+            using var scope = ServiceScopeFactory.CreateScope();
+            var monitoringService = scope.ServiceProvider.GetRequiredService<ITokenTransferMonitoringService>();
+
+            var chainIds = options.ScanConfig.ChainIds;
+            var batchSize = options.ScanConfig.BatchSize;
+
+            foreach (var chainId in chainIds)
+            {
+                try
+                {
+                    await ProcessChainTransfers(monitoringService, chainId, batchSize);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to process transfers for chain {ChainId}", chainId);
+                    // Continue processing other chains even if one fails
+                }
+            }
+
+            _logger.LogInformation("Token transfer monitoring scan completed successfully");
         }
-
-        _logger.LogInformation("Starting token transfer monitoring scan...");
-        
-        using var scope = ServiceScopeFactory.CreateScope();
-        var monitoringService = scope.ServiceProvider.GetRequiredService<ITokenTransferMonitoringService>();
-
-        var chainIds = options.ScanConfig.ChainIds;
-        var batchSize = options.ScanConfig.BatchSize;
-
-        foreach (var chainId in chainIds)
+        catch (Exception ex)
         {
-            try
-            {
-                await ProcessChainTransfers(monitoringService, chainId, batchSize);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to process transfers for chain {ChainId}", chainId);
-            }
+            _logger.LogError(ex, "Critical error in TokenTransferMonitoringWorker");
         }
-
-        _logger.LogInformation("Token transfer monitoring scan completed");
     }
 
     private async Task ProcessChainTransfers(ITokenTransferMonitoringService monitoringService, 
         string chainId, int batchSize)
     {
         _logger.LogDebug("Processing transfers for chain {ChainId}", chainId);
-
-        _logger.LogInformation("Starting to process transfers for chain {ChainId}", chainId);
 
         try
         {
@@ -85,7 +102,7 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
             if (transfers.Count > 0)
             {
                 monitoringService.ProcessTransfers(transfers);
-                _logger.LogDebug("Processed {Count} transfers for chain {ChainId}", 
+                _logger.LogInformation("Processed {Count} transfers for chain {ChainId}", 
                     transfers.Count, chainId);
             }
             else
@@ -101,6 +118,7 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process transfers for chain {ChainId}", chainId);
+            throw; // Re-throw to be caught by the caller
         }
     }
 } 
