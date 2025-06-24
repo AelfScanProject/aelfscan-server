@@ -57,7 +57,7 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
                 return;
             }
 
-            _logger.LogInformation("Starting token transfer monitoring scan...");
+            _logger.LogInformation("Starting Token transfer monitoring scan...");
             
             using var scope = ServiceScopeFactory.CreateScope();
             var monitoringService = scope.ServiceProvider.GetRequiredService<ITokenTransferMonitoringService>();
