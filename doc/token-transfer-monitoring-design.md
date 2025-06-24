@@ -1,13 +1,13 @@
 # Token Transfer Monitoring System Design
 
 ## Overview
-This document outlines the design for a comprehensive token transfer monitoring system for AElfScan. The system monitors blockchain transfer events and sends metrics to Prometheus for alerting and analysis.
+This document outlines the design for a comprehensive token transfer monitoring system for AElfScan. The system monitors blockchain transfer events using time-based incremental scanning and sends metrics to Prometheus for alerting and analysis.
 
 ## Architecture
 
 ### Core Components
-1. **TokenTransferMonitoringWorker** - Scheduled background worker
-2. **TokenTransferMonitoringService** - Business logic and data processing
+1. **TokenTransferMonitoringWorker** - Scheduled background worker with startup delay
+2. **TokenTransferMonitoringService** - Business logic and time-based data processing
 3. **OpenTelemetry Integration** - Metrics collection and transmission
 4. **Prometheus** - Metrics storage and alerting
 
@@ -16,10 +16,18 @@ This document outlines the design for a comprehensive token transfer monitoring 
 Blockchain → AElfScan Indexer → TokenTransferMonitoringWorker → TokenTransferMonitoringService → OpenTelemetry → Prometheus → Alerting
 ```
 
+### Key Features
+- **Time-based incremental scanning** (not block height based)
+- **System contract filtering** using existing GlobalOptions.ContractNames
+- **Simplified address classification** (Normal, Blacklist only)
+- **30-second startup delay** to avoid system startup overload
+- **UTC time handling** with Redis-based scan time tracking
+- **Single simplified metric** with essential dimensions
+
 ## Prometheus Metrics Design
 
 ### Single Unified Metric
-We use one comprehensive histogram metric that captures all transfer event dimensions:
+We use one simplified histogram metric that captures essential transfer event dimensions:
 
 ```prometheus
 # HELP aelf_transfer_events Token transfer events with amount and metadata
@@ -27,12 +35,12 @@ We use one comprehensive histogram metric that captures all transfer event dimen
 aelf_transfer_events{
     chain_id="AELF",
     symbol="ELF", 
-    transfer_type="transfer",
-    direction="out",
-    address="2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz...",
-    counterpart_address="2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz...",
-    address_type="normal",
-    counterpart_address_type="blacklist"
+    transfer_type="Transfer",
+    from_address="2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz...",
+    to_address="2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz...",
+    from_address_type="Normal",
+    to_address_type="Blacklist",
+    transaction_id="abc123..."
 }
 ```
 
@@ -42,17 +50,19 @@ aelf_transfer_events{
 |-------|--------|-------------|
 | `chain_id` | AELF, tDVV, tDVW | Blockchain identifier |
 | `symbol` | ELF, USDT, BTC, ETH, etc. | Token symbol |
-| `transfer_type` | transfer, burn, cross_chain_transfer, cross_chain_receive | Transfer operation type |
-| `direction` | out, in | Transfer perspective (outbound/inbound) |
-| `address` | Address string | Primary address for this record |
-| `counterpart_address` | Address string | The other party in the transfer |
-| `address_type` | normal, blacklist | Primary address classification |
-| `counterpart_address_type` | normal, blacklist | Counterpart address classification |
+| `transfer_type` | Transfer, Burn, CrossChainTransfer, CrossChainReceive | Transfer operation type |
+| `from_address` | Address string | Source address of the transfer |
+| `to_address` | Address string | Destination address of the transfer |
+| `from_address_type` | Normal, Blacklist | Source address classification |
+| `to_address_type` | Normal, Blacklist | Destination address classification |
+| `transaction_id` | Transaction hash | Unique transaction identifier for tracking |
 
-### Bidirectional Recording
-Each transfer A→B generates two metric records:
-1. **Outbound perspective**: `direction="out"` where `address=A`, `counterpart_address=B`
-2. **Inbound perspective**: `direction="in"` where `address=B`, `counterpart_address=A`
+### Histogram Buckets
+Amount distribution tracking with 4 buckets for clear categorization:
+- **10**: Micro transfers (≤10)
+- **1000**: Small transfers (10-1000)  
+- **100000**: Large transfers (1000-100000)
+- **Infinity**: Massive transfers (>100000)
 
 ## PromQL Query Examples
 
@@ -86,8 +96,13 @@ sum by (from_address, to_address) (
 # All transfers from blacklist addresses
 increase(aelf_transfer_events_count{from_address_type="Blacklist"}[1h])
 
-# Large amounts from blacklist addresses
-increase(aelf_transfer_events_sum{from_address_type="Blacklist"}[1h])
+# All transfers to blacklist addresses
+increase(aelf_transfer_events_count{to_address_type="Blacklist"}[1h])
+
+# Large amounts involving blacklist addresses
+increase(aelf_transfer_events_sum{
+  from_address_type="Blacklist" OR to_address_type="Blacklist"
+}[1h])
 ```
 
 ### 4. Cross-Chain Activity
@@ -101,6 +116,18 @@ sum by (chain_id) (
 sum by (chain_id) (
   increase(aelf_transfer_events_count{transfer_type="CrossChainTransfer"}[1h])
 )
+```
+
+### 5. Transaction Tracking
+```promql
+# Specific transaction monitoring
+aelf_transfer_events_count{transaction_id="abc123..."}
+
+# Transactions involving specific addresses
+aelf_transfer_events_count{
+  from_address="2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz..." OR
+  to_address="2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz..."
+}
 ```
 
 ## Alert Rules Configuration
@@ -119,18 +146,18 @@ groups:
       severity: warning
     annotations:
       summary: "Large ELF transfer detected"
-      description: "Transfer of {{ $value }} ELF detected"
+      description: "Transfer of {{ $value }} ELF detected from {{ $labels.from_address }}"
 
   - alert: MassiveTransferVolume
     expr: |
-      sum by (address) (
-        increase(aelf_transfer_events_sum{direction="out"}[1h])
+      sum by (from_address) (
+        increase(aelf_transfer_events_sum[1h])
       ) > 1000000
     for: 5m
     labels:
       severity: critical
     annotations:
-      summary: "Massive transfer volume from {{ $labels.address }}"
+      summary: "Massive transfer volume from {{ $labels.from_address }}"
 ```
 
 ### 2. High Frequency Alerts
@@ -139,25 +166,25 @@ groups:
   rules:
   - alert: HighFrequencyTrading
     expr: |
-      sum by (address) (
-        increase(aelf_transfer_events_count{direction="out"}[1h])
+      sum by (from_address) (
+        increase(aelf_transfer_events_count[1h])
       ) > 100
     for: 10m
     labels:
       severity: warning
     annotations:
-      summary: "High frequency trading detected from {{ $labels.address }}"
+      summary: "High frequency trading detected from {{ $labels.from_address }}"
 
   - alert: TransferBurst
     expr: |
-      sum by (address) (
-        increase(aelf_transfer_events_count{direction="out"}[5m])
+      sum by (from_address) (
+        increase(aelf_transfer_events_count[5m])
       ) > 20
     for: 0m
     labels:
       severity: critical
     annotations:
-      summary: "Transfer burst detected from {{ $labels.address }}"
+      summary: "Transfer burst detected from {{ $labels.from_address }}"
 ```
 
 ### 3. Blacklist Alerts
@@ -167,14 +194,14 @@ groups:
   - alert: BlacklistActivity
     expr: |
       increase(aelf_transfer_events_count{
-        address_type="blacklist" OR counterpart_address_type="blacklist"
+        from_address_type="Blacklist" OR to_address_type="Blacklist"
       }[1m]) > 0
     for: 0m
     labels:
       severity: critical
     annotations:
       summary: "Blacklist address activity detected"
-      description: "Transfer involving blacklist address: {{ $labels.address }}"
+      description: "Transfer involving blacklist address: from={{ $labels.from_address }}, to={{ $labels.to_address }}"
 ```
 
 ## Configuration Management
@@ -183,6 +210,8 @@ groups:
 ```json
 {
   "TokenTransferMonitoring": {
+    "EnableMonitoring": true,
+    "EnableSystemContractFilter": true,
     "BlacklistAddresses": [
       "2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz1",
       "2N6dJpBcS5TLm2Pj4GkMdj4MnLhbKu8FGDX3Mz2"
@@ -194,8 +223,57 @@ groups:
       "BatchSize": 1000,
       "RedisKeyPrefix": "token_transfer_monitoring"
     },
-    "HistogramBuckets": [10, 1000, 100000, "Infinity"],
-    "EnableMonitoring": true
+    "HistogramBuckets": [10, 1000, 100000, "Infinity"]
   }
 }
 ```
+
+### System Contract Filtering
+The system uses existing `GlobalOptions.ContractNames` configuration for system contract filtering:
+- No additional configuration needed
+- Leverages existing contract address mappings
+- Can be disabled via `EnableSystemContractFilter: false`
+
+## Implementation Details
+
+### Time-Based Scanning
+- **Incremental scanning** based on block time, not block height
+- **Default scan window**: 60 minutes backward from current time
+- **Redis state management**: Stores last scan time per chain
+- **UTC time handling**: Ensures consistent time processing across systems
+
+### Worker Startup Strategy
+- **30-second startup delay** to avoid system startup overload
+- **No immediate execution** (RunOnStart = false)
+- **Graceful startup** with other system Workers
+
+### Error Handling
+- **Chain-level isolation**: Failure in one chain doesn't affect others
+- **Comprehensive logging**: Detailed error tracking and performance metrics
+- **Graceful degradation**: Continues operation even with partial failures
+
+### Performance Optimizations
+- **Batch processing**: Configurable batch sizes for efficient data processing
+- **Safety limits**: 10,000 record limit to prevent memory issues
+- **Incremental updates**: Only processes new data since last scan
+- **Efficient Redis operations**: Minimal Redis calls with optimized key management
+
+## Monitoring and Observability
+
+### Logs
+- Worker startup and configuration
+- Scan progress and timing
+- Transfer processing statistics
+- Error conditions and recovery
+
+### Metrics
+- Transfer volume and frequency
+- Processing performance
+- System contract filtering effectiveness
+- Blacklist address activity
+
+### Health Checks
+- Redis connectivity
+- Indexer API availability  
+- Metric transmission success
+- Configuration validation

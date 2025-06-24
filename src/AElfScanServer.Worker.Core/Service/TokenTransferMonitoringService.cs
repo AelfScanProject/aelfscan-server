@@ -203,7 +203,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             var options = _optionsMonitor.CurrentValue;
             if (options.EnableSystemContractFilter && IsSystemContractTransfer(transfer.FromAddress))
             {
-                _logger.LogDebug("Skipping system contract transfer from {FromAddress}", transfer.FromAddress);
+                _logger.LogInformation("Skipping system contract transfer from {FromAddress}", transfer.FromAddress);
                 return;
             }
 
@@ -258,7 +258,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
 
             _transferEventsHistogram.Record((double)transfer.Amount, tags);
             
-            _logger.LogDebug("Sent transfer metrics for transaction {TransactionId}, amount {Amount} {Symbol}", 
+            _logger.LogInformation("Sent transfer metrics for transaction {TransactionId}, amount {Amount} {Symbol}", 
                 transfer.TransactionId, transfer.Amount, transfer.Symbol);
         }
         catch (Exception ex)
