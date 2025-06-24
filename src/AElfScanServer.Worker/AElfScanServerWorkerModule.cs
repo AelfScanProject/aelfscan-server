@@ -230,6 +230,7 @@ public class AElfScanServerWorkerModule : AbpModule
         context.AddBackgroundWorkerAsync<MergeAddressWorker>();
         context.AddBackgroundWorkerAsync<FixTokenHolderInfoWorker>();
         context.AddBackgroundWorkerAsync<TwitterSyncWorker>();
+        context.AddBackgroundWorkerAsync<TokenTransferMonitoringWorker>();
 
     }
 }
