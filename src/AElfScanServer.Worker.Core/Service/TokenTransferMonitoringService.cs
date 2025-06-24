@@ -32,19 +32,22 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly Histogram<double> _transferEventsHistogram;
     private readonly HashSet<string> _blacklistAddresses;
+    private readonly IOptionsMonitor<TokenTransferMonitoringOptions> _optionsMonitor;
 
     public TokenTransferMonitoringService(
         ITokenIndexerProvider tokenIndexerProvider,
         IDistributedCache<string> distributedCache,
         ILogger<TokenTransferMonitoringService> logger,
         IOptions<TokenTransferMonitoringOptions> options,
-        IOptionsMonitor<GlobalOptions> globalOptions)
+        IOptionsMonitor<GlobalOptions> globalOptions,
+        IOptionsMonitor<TokenTransferMonitoringOptions> optionsMonitor)
     {
         _tokenIndexerProvider = tokenIndexerProvider;
         _distributedCache = distributedCache;
         _logger = logger;
         _options = options.Value;
         _globalOptions = globalOptions;
+        _optionsMonitor = optionsMonitor;
         
         // Initialize address sets for fast lookup
         _blacklistAddresses = new HashSet<string>(_options.BlacklistAddresses, StringComparer.OrdinalIgnoreCase);
@@ -196,10 +199,11 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     {
         try
         {
-            // Skip metrics for system contract transfers
-            if (IsSystemContractTransfer(transfer.FromAddress))
+            // Filter system contract transfers if enabled
+            var options = _optionsMonitor.CurrentValue;
+            if (options.EnableSystemContractFilter && IsSystemContractTransfer(transfer.FromAddress))
             {
-                _logger.LogDebug("Skipping metrics for system contract transfer from {FromAddress}", transfer.FromAddress);
+                _logger.LogDebug("Skipping system contract transfer from {FromAddress}", transfer.FromAddress);
                 return;
             }
 
@@ -207,7 +211,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process transfer {TransactionId}", transfer.TransactionId);
+            _logger.LogError(ex, "Error processing transfer: {TransferId}", transfer.TransactionId);
         }
     }
 

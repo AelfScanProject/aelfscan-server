@@ -5,6 +5,16 @@ namespace AElfScanServer.Worker.Core.Options;
 public class TokenTransferMonitoringOptions
 {
     /// <summary>
+    /// Enable or disable token transfer monitoring, default is true
+    /// </summary>
+    public bool EnableMonitoring { get; set; } = true;
+
+    /// <summary>
+    /// Enable or disable system contract transfer filtering, default is true
+    /// </summary>
+    public bool EnableSystemContractFilter { get; set; } = true;
+
+    /// <summary>
     /// Blacklist addresses for monitoring
     /// </summary>
     public List<string> BlacklistAddresses { get; set; } = new();
@@ -18,10 +28,6 @@ public class TokenTransferMonitoringOptions
     /// Scan configuration
     /// </summary>
     public ScanConfig ScanConfig { get; set; } = new();
-    /// <summary>
-    /// Enable monitoring flag
-    /// </summary>
-    public bool EnableMonitoring { get; set; } = true;
 }
 
 public class ScanConfig
