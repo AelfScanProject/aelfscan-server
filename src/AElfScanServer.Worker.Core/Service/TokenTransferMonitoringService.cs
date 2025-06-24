@@ -40,7 +40,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         ILogger<TokenTransferMonitoringService> logger,
         IOptions<TokenTransferMonitoringOptions> options,
         IOptionsMonitor<GlobalOptions> globalOptions,
-        IOptionsMonitor<TokenTransferMonitoringOptions> optionsMonitor)
+        IOptionsMonitor<TokenTransferMonitoringOptions> optionsMonitor,IInstrumentationProvider instrumentationProvider)
     {
         _tokenIndexerProvider = tokenIndexerProvider;
         _distributedCache = distributedCache;
@@ -51,13 +51,11 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         
         // Initialize address sets for fast lookup
         _blacklistAddresses = new HashSet<string>(_options.BlacklistAddresses, StringComparer.OrdinalIgnoreCase);
-        
         // Initialize histogram with configured buckets
-        var meter = new Meter("AElfScan.TokenTransfer");
-        _transferEventsHistogram = meter.CreateHistogram<double>(
+        _transferEventsHistogram = instrumentationProvider.Meter.CreateHistogram<double>(
             "aelf_transfer_events",
-            "Token transfer events with amount distribution",
-            "ELF");
+            "ms",
+            "Token transfer events with amount distribution");
     }
 
     public async Task<List<TransferEventDto>> GetTransfersAsync(string chainId)
