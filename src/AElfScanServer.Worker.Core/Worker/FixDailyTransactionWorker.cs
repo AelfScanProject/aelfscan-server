@@ -19,7 +19,6 @@ public class FixDailyTransactionWorker : AsyncPeriodicBackgroundWorkerBase
         serviceScopeFactory)
     {
         timer.Period = 1000 * 30;
-        timer.RunOnStart = true;
         _logger = logger;
         _transactionService = transactionService;
     }

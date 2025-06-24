@@ -39,9 +39,6 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
             timer.Period = workerPeriodMinutes * 60 * 1000;
             _logger.LogInformation("TokenTransferMonitoringWorker initialized with WorkerOptions interval: {Interval} minutes", workerPeriodMinutes);
         }
-        
-        timer.RunOnStart = true; // Ensure the worker starts immediately
-        
         _logger.LogInformation("TokenTransferMonitoringWorker configured successfully");
     }
 

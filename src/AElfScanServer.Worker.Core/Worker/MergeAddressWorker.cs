@@ -18,7 +18,6 @@ public class MergeAddressWorker : AsyncPeriodicBackgroundWorkerBase
         serviceScopeFactory)
     {
         timer.Period = 1000 * 60 * 60 * 2;
-        timer.RunOnStart = true;
         _logger = logger;
         _transactionService = transactionService;
     }

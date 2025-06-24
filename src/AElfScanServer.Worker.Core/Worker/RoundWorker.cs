@@ -19,7 +19,6 @@ public class RoundWorker : AsyncPeriodicBackgroundWorkerBase
         serviceScopeFactory)
     {
         timer.Period = 1000 * 60;
-        timer.RunOnStart = true;
         _logger = logger;
         _transactionService = transactionService;
     }

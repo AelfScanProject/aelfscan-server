@@ -26,7 +26,6 @@ public class ContractFileWorker : AsyncPeriodicBackgroundWorkerBase
         serviceScopeFactory)
     {
         timer.Period = 1000 * 60 * 5;
-        timer.RunOnStart = true;
         _logger = logger;
         _workerOptions = workerOptions;
         _contractAppService = contractAppService;

@@ -38,7 +38,6 @@ public class TokenHolderPercentWorker : AsyncPeriodicBackgroundWorkerBase
         _tokenHolderPercentProvider = tokenHolderPercentProvider;
         _tokenIndexerProvider = tokenIndexerProvider;
         _workerOptions = workerOptionsMonitor;
-        Timer.RunOnStart = true;
         timer.Period = _workerOptions.CurrentValue.GetWorkerPeriodMinutes(WorkerKey) * 60 * 1000;
         var uris = options.CurrentValue.Url.ConvertAll(x => new Uri(x));
         var connectionPool = new StaticConnectionPool(uris);
