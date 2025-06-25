@@ -20,9 +20,20 @@ public class TokenTransferMonitoringOptions
     public List<string> BlacklistAddresses { get; set; } = new();
 
     /// <summary>
+    /// Addresses that are only monitored when they are recipients (to addresses)
+    /// </summary>
+    public List<string> ToOnlyMonitoredAddresses { get; set; } = new();
+
+    /// <summary>
+    /// Addresses that are only monitored for large amount transfers
+    /// </summary>
+    public List<string> LargeAmountOnlyAddresses { get; set; } = new();
+
+
+    /// <summary>
     /// List of tokens to monitor
     /// </summary>
-    public List<string> MonitoredTokens { get; set; } = new() { "ELF", "USDT", "BTC", "ETH" };
+    public List<string> MonitoredTokens { get; set; } = new() { "ELF", "USDT" };
 
     /// <summary>
     /// Scan configuration

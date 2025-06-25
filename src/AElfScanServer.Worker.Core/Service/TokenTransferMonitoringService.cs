@@ -37,6 +37,8 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     private readonly Histogram<double> _transferEventsHistogram;
     private readonly Counter<long> _transferCountsCounter;
     private readonly HashSet<string> _blacklistAddresses;
+    private readonly HashSet<string> _toOnlyMonitoredAddresses;
+    private readonly HashSet<string> _largeAmountOnlyAddresses;
     private readonly IOptionsMonitor<TokenTransferMonitoringOptions> _optionsMonitor;
 
     public TokenTransferMonitoringService(
@@ -59,10 +61,12 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         
         // Initialize address sets for fast lookup
         _blacklistAddresses = new HashSet<string>(_options.BlacklistAddresses, StringComparer.OrdinalIgnoreCase);
+        _toOnlyMonitoredAddresses = new HashSet<string>(_options.ToOnlyMonitoredAddresses, StringComparer.OrdinalIgnoreCase);
+        _largeAmountOnlyAddresses = new HashSet<string>(_options.LargeAmountOnlyAddresses, StringComparer.OrdinalIgnoreCase);
         // Initialize histogram with configured buckets
         _transferEventsHistogram = instrumentationProvider.Meter.CreateHistogram<double>(
-            "aelf_transfer_events",
-            "ms",
+            "aelf_transfer_usd_value",
+            "usd",
             "Token transfer events with amount distribution");
             
         // Initialize counter for transfer counts
@@ -189,6 +193,10 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             {
                 transfer.UsdValue = Math.Round(transfer.Amount * price, CommonConstant.UsdValueDecimals);
             }
+            
+            // Reclassify addresses with USD value context
+            transfer.FromAddressType = ClassifyAddress(transfer.FromAddress, false, transfer.UsdValue);
+            transfer.ToAddressType = ClassifyAddress(transfer.ToAddress, true, transfer.UsdValue);
             
             // Add all transfers (filtering will be done in SendTransferMetrics)
             transfers.Add(transfer);
@@ -336,7 +344,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             }
             else
             {
-                _logger.LogDebug("Sent counter metrics only for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue} below histogram threshold", 
+                _logger.LogInformation("Sent counter metrics only for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue} below histogram threshold", 
                     transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
             }
         }
@@ -360,16 +368,29 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             ToAddress = dto.To?.Address ?? "",
             Amount = dto.Quantity,
             Type = ParseTransferType(dto.Method),
-            FromAddressType = ClassifyAddress(dto.From?.Address ?? ""),
-            ToAddressType = ClassifyAddress(dto.To?.Address ?? "")
+            FromAddressType = ClassifyAddress(dto.From?.Address ?? "", false, 0m),
+            ToAddressType = ClassifyAddress(dto.To?.Address ?? "", true, 0m)
         };
     }
 
-    private AddressClassification ClassifyAddress(string address)
+    private AddressClassification ClassifyAddress(string address, bool isToAddress = false, decimal usdValue = 0m)
     {
-        return _blacklistAddresses.Contains(address) 
-            ? AddressClassification.Blacklist 
-            : AddressClassification.Normal;
+        if (string.IsNullOrEmpty(address))
+            return AddressClassification.Normal;
+
+        // Check blacklist first (highest priority)
+        if (_blacklistAddresses.Contains(address))
+            return AddressClassification.Blacklist;
+
+        // Check ToOnlyMonitored addresses (only when it's a recipient address)
+        if (isToAddress && _toOnlyMonitoredAddresses.Contains(address))
+            return AddressClassification.ToOnlyMonitored;
+
+        // Check LargeAmountOnly addresses (only for large transfers)
+        if (_largeAmountOnlyAddresses.Contains(address) )
+            return AddressClassification.LargeAmountOnly;
+
+        return AddressClassification.Normal;
     }
 
     private static TransferType ParseTransferType(string method)

@@ -29,7 +29,9 @@ public enum TransferType
 public enum AddressClassification
 {
     Normal,
-    Blacklist
+    Blacklist,
+    ToOnlyMonitored,
+    LargeAmountOnly
 }
 
 /// <summary>
