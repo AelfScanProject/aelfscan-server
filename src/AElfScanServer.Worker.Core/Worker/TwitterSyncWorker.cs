@@ -24,7 +24,6 @@ public class TwitterSyncWorker : AsyncPeriodicBackgroundWorkerBase
         serviceScopeFactory)
     {
         timer.Period = workerOptions.CurrentValue.GetWorkerPeriodMinutes(WorkerName) * 60 * 1000;
-        timer.RunOnStart = true;
         _logger = logger;
         _adsService = adsService;
     }

@@ -20,7 +20,6 @@ public class FixTokenHolderInfoWorker : AsyncPeriodicBackgroundWorkerBase
         serviceScopeFactory)
     {
         timer.Period = 1000 * 60 * 5;
-        timer.RunOnStart = true;
         _logger = logger;
         _addressService = addressService;
     }

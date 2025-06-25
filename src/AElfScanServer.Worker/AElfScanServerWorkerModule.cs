@@ -208,6 +208,7 @@ public class AElfScanServerWorkerModule : AbpModule
 
     public override void OnApplicationInitialization(ApplicationInitializationContext context)
     {
+        context.AddBackgroundWorkerAsync<TokenTransferMonitoringWorker>();
         context.AddBackgroundWorkerAsync<MonthlyActiveAddressWorker>();
         context.AddBackgroundWorkerAsync<TransactionIndexWorker>();
         context.AddBackgroundWorkerAsync<LogEventWorker>();
@@ -223,13 +224,14 @@ public class AElfScanServerWorkerModule : AbpModule
         context.AddBackgroundWorkerAsync<BlockSizeWorker>();
         context.AddBackgroundWorkerAsync<CurrentBpProduceWorker>();
         context.AddBackgroundWorkerAsync<FixDailyTransactionWorker>();
-        context.AddBackgroundWorkerAsync<ContractFileWorker>();
         context.AddBackgroundWorkerAsync<TokenHolderPercentWorker>();
         context.AddBackgroundWorkerAsync<TokenInfoWorker>();
         context.AddBackgroundWorkerAsync<DeleteMergeBlocksWorker>();
         context.AddBackgroundWorkerAsync<MergeAddressWorker>();
         context.AddBackgroundWorkerAsync<FixTokenHolderInfoWorker>();
         context.AddBackgroundWorkerAsync<TwitterSyncWorker>();
+        
+        context.AddBackgroundWorkerAsync<ContractFileWorker>();
 
     }
 }

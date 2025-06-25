@@ -3,6 +3,7 @@ using AElf.Indexing.Elasticsearch;
 using AElfScanServer.HttpApi.DataStrategy;
 using AElfScanServer.Common.Options;
 using AElfScanServer.HttpApi;
+using AElfScanServer.Worker.Core.Options;
 using AElfScanServer.Worker.Core.Provider;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AutoMapper;
@@ -24,5 +25,6 @@ public class AElfScanServerWorkerCoreModule : AbpModule
         context.Services.AddSingleton<LatestTransactionDataStrategy, LatestTransactionDataStrategy>();
         var configuration = context.Services.GetConfiguration();
         Configure<PullTransactionChainIdsOptions>(configuration.GetSection("PullTransactionChainIds"));
+        Configure<TokenTransferMonitoringOptions>(configuration.GetSection("TokenTransferMonitoring"));
     }
 }
