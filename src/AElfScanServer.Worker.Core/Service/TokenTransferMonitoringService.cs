@@ -331,14 +331,28 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             };
 
             // Always record counter (for all transfers)
-            _transferCountsCounter.Add(1, outboundTags);
-            _transferCountsCounter.Add(1, inboundTags);
-            
+
+            if (!transfer.FromAddress.IsNullOrEmpty())
+            {
+                _transferCountsCounter.Add(1, outboundTags);
+            }
+
+            if (!transfer.ToAddress.IsNullOrEmpty())
+            {
+                _transferCountsCounter.Add(1, inboundTags);
+            }
             // Only record histogram for high-value transfers
             if (isHighValue)
             {
-                _transferUSDEventsHistogram.Record((double)transfer.UsdValue, outboundTags);
-                _transferUSDEventsHistogram.Record((double)transfer.UsdValue, inboundTags);
+                if (!transfer.FromAddress.IsNullOrEmpty())
+                {
+                    _transferUSDEventsHistogram.Record((double)transfer.UsdValue, outboundTags);
+                }
+
+                if (!transfer.ToAddress.IsNullOrEmpty())
+                {
+                    _transferUSDEventsHistogram.Record((double)transfer.UsdValue, inboundTags);
+                }
                 _logger.LogInformation("Sent transfer metrics for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue}", 
                     transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
             }
