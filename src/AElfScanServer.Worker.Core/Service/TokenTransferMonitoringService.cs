@@ -66,7 +66,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         // Initialize histogram with configured buckets
         _transferEventsHistogram = instrumentationProvider.Meter.CreateHistogram<double>(
             "aelf_transfer_usd_value",
-            "usd",
+            "ms",
             "Token transfer events with amount distribution");
             
         // Initialize counter for transfer counts
