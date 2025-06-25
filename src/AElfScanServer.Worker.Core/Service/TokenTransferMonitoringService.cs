@@ -339,7 +339,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
                 _transferCountsCounter.Add(1, outboundTags);
             }
 
-            if (!transfer.ToAddress.IsNullOrEmpty())
+            if (!transfer.ToAddress.IsNullOrEmpty() || !IsSystemContractTransfer(transfer.ToAddress))
             {
                 _transferCountsCounter.Add(1, inboundTags);
             }
@@ -351,7 +351,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
                     _transferUSDEventsHistogram.Record((double)transfer.UsdValue, outboundTags);
                 }
 
-                if (!transfer.ToAddress.IsNullOrEmpty())
+                if (!transfer.ToAddress.IsNullOrEmpty() || !IsSystemContractTransfer(transfer.ToAddress))
                 {
                     _transferUSDEventsHistogram.Record((double)transfer.UsdValue, inboundTags);
                 }
