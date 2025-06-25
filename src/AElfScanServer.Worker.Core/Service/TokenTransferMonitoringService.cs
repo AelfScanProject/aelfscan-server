@@ -26,7 +26,6 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     private const int SafetyRecordLimit = 10000;
     private const int DefaultScanTimeMinutes = -60;
     private const string LastScanTimeKey = "last_scan_time";
-    private const decimal MinUsdValueThreshold = 0m;
     
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IDistributedCache<string> _distributedCache;
@@ -305,8 +304,11 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     {
         try
         {
+            // Get current options for dynamic configuration
+            var currentOptions = _optionsMonitor.CurrentValue;
+            
             // Determine if this is a high-value transfer once
-            var isHighValue = transfer.UsdValue >= MinUsdValueThreshold;
+            var isHighValue = transfer.UsdValue >= currentOptions.MinUsdValueThreshold;
             
             // Record outbound transaction (from perspective)
             var outboundTags = new KeyValuePair<string, object?>[]

@@ -29,11 +29,15 @@ public class TokenTransferMonitoringOptions
     /// </summary>
     public List<string> LargeAmountOnlyAddresses { get; set; } = new();
 
+    /// <summary>
+    /// Minimum USD value threshold for histogram recording, default is 0
+    /// </summary>
+    public decimal MinUsdValueThreshold { get; set; } = 0m;
 
     /// <summary>
     /// List of tokens to monitor
     /// </summary>
-    public List<string> MonitoredTokens { get; set; } = new() { "ELF", "USDT" };
+    public List<string> MonitoredTokens { get; set; } = new() { "ELF", "USDT", "BTC", "ETH" };
 
     /// <summary>
     /// Scan configuration
