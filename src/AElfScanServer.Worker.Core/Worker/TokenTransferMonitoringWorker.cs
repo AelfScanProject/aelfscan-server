@@ -86,7 +86,7 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
     private async Task ProcessChainTransfers(ITokenTransferMonitoringService monitoringService, 
         string chainId, int batchSize)
     {
-        _logger.LogDebug("Processing transfers for chain {ChainId}", chainId);
+        _logger.LogInformation("Processing transfers for chain {ChainId}", chainId);
 
         try
         {
@@ -104,7 +104,7 @@ public class TokenTransferMonitoringWorker : AsyncPeriodicBackgroundWorkerBase
             }
             else
             {
-                _logger.LogDebug("No new transfers found for chain {ChainId}", chainId);
+                _logger.LogInformation("No new transfers found for chain {ChainId}", chainId);
             }
             
             var duration = DateTime.UtcNow - startTime;
