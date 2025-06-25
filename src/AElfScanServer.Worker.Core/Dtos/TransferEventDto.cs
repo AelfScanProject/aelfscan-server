@@ -12,6 +12,7 @@ public class TransferEventDto
     public string FromAddress { get; set; }
     public string ToAddress { get; set; }
     public decimal Amount { get; set; }
+    public decimal UsdValue { get; set; }
     public TransferType Type { get; set; }
     public AddressClassification FromAddressType { get; set; }
     public AddressClassification ToAddressType { get; set; }

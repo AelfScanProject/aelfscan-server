@@ -5,10 +5,12 @@ using System.Threading.Tasks;
 using System.Diagnostics.Metrics;
 using System.Globalization;
 using AElf.OpenTelemetry;
+using AElfScanServer.Common.Constant;
 using AElfScanServer.Common.Dtos;
 using AElfScanServer.Common.Dtos.Input;
 using AElfScanServer.Common.IndexerPluginProvider;
 using AElfScanServer.Common.Options;
+using AElfScanServer.Common.Token;
 using AElfScanServer.Worker.Core.Dtos;
 using AElfScanServer.Worker.Core.Options;
 using Microsoft.Extensions.Logging;
@@ -24,13 +26,16 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     private const int SafetyRecordLimit = 10000;
     private const int DefaultScanTimeMinutes = -60;
     private const string LastScanTimeKey = "last_scan_time";
+    private const decimal MinUsdValueThreshold = 0.1m;
     
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IDistributedCache<string> _distributedCache;
     private readonly ILogger<TokenTransferMonitoringService> _logger;
     private readonly TokenTransferMonitoringOptions _options;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
+    private readonly ITokenPriceService _tokenPriceService;
     private readonly Histogram<double> _transferEventsHistogram;
+    private readonly Counter<long> _transferCountsCounter;
     private readonly HashSet<string> _blacklistAddresses;
     private readonly IOptionsMonitor<TokenTransferMonitoringOptions> _optionsMonitor;
 
@@ -40,7 +45,9 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         ILogger<TokenTransferMonitoringService> logger,
         IOptions<TokenTransferMonitoringOptions> options,
         IOptionsMonitor<GlobalOptions> globalOptions,
-        IOptionsMonitor<TokenTransferMonitoringOptions> optionsMonitor,IInstrumentationProvider instrumentationProvider)
+        IOptionsMonitor<TokenTransferMonitoringOptions> optionsMonitor,
+        IInstrumentationProvider instrumentationProvider,
+        ITokenPriceService tokenPriceService)
     {
         _tokenIndexerProvider = tokenIndexerProvider;
         _distributedCache = distributedCache;
@@ -48,6 +55,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         _options = options.Value;
         _globalOptions = globalOptions;
         _optionsMonitor = optionsMonitor;
+        _tokenPriceService = tokenPriceService;
         
         // Initialize address sets for fast lookup
         _blacklistAddresses = new HashSet<string>(_options.BlacklistAddresses, StringComparer.OrdinalIgnoreCase);
@@ -56,6 +64,12 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             "aelf_transfer_events",
             "ms",
             "Token transfer events with amount distribution");
+            
+        // Initialize counter for transfer counts
+        _transferCountsCounter = instrumentationProvider.Meter.CreateCounter<long>(
+            "aelf_transfer_counts",
+            "counts",
+            "Token transfer counts by various dimensions");
     }
 
     public async Task<List<TransferEventDto>> GetTransfersAsync(string chainId)
@@ -135,16 +149,57 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             return (new List<TransferEventDto>(), 0, false, null);
         }
 
-        var transfers = result.List
+        var filteredList = result.List
             .Where(item => _options.MonitoredTokens.Contains(item.Symbol))
-            .Select(ConvertToTransferEventDto)
             .ToList();
+
+        if (!filteredList.Any())
+        {
+            return (new List<TransferEventDto>(), 0, false, null);
+        }
+
+        // Get unique symbols for price lookup
+        var uniqueSymbols = filteredList.Select(x => x.Symbol).Distinct().ToList();
+        var priceDict = new Dictionary<string, decimal>();
+        
+        // Fetch prices for all unique symbols
+        foreach (var symbol in uniqueSymbols)
+        {
+            try
+            {
+                var priceDto = await _tokenPriceService.GetTokenPriceAsync(symbol, CurrencyConstant.UsdCurrency);
+                priceDict[symbol] = priceDto.Price;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get price for symbol {Symbol}, using 0", symbol);
+                priceDict[symbol] = 0m;
+            }
+        }
+
+        // Convert all transfers and calculate USD value
+        var transfers = new List<TransferEventDto>();
+        
+        foreach (var item in filteredList)
+        {
+            var transfer = ConvertToTransferEventDto(item);
+            
+            // Calculate USD value
+            if (priceDict.TryGetValue(item.Symbol, out var price))
+            {
+                transfer.UsdValue = Math.Round(transfer.Amount * price, CommonConstant.UsdValueDecimals);
+            }
+            
+            // Add all transfers (filtering will be done in SendTransferMetrics)
+            transfers.Add(transfer);
+        }
 
         var maxHeight = result.List.Max(x => x.BlockHeight);
         
         // Track the latest block time from the data
         var latestBlockTime = result.List.Max(x => x.DateTime);
         
+        // Return all transfers for processing
         return (transfers, maxHeight, true, latestBlockTime);
     }
 
@@ -242,22 +297,48 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     {
         try
         {
-            var tags = new KeyValuePair<string, object?>[]
+            // Determine if this is a high-value transfer once
+            var isHighValue = transfer.UsdValue >= MinUsdValueThreshold;
+            
+            // Record outbound transaction (from perspective)
+            var outboundTags = new KeyValuePair<string, object?>[]
             {
                 new("chain_id", transfer.ChainId),
                 new("symbol", transfer.Symbol),
                 new("transfer_type", transfer.Type.ToString()),
-                new("from_address", transfer.FromAddress),
-                new("to_address", transfer.ToAddress),
-                new("from_address_type", transfer.FromAddressType.ToString()),
-                new("to_address_type", transfer.ToAddressType.ToString()),
-                new("transaction_id", transfer.TransactionId),
+                new("address", transfer.FromAddress),
+                new("direction", "outbound"),
+                new("address_type", transfer.FromAddressType.ToString()),
             };
 
-            _transferEventsHistogram.Record((double)transfer.Amount, tags);
+            // Record inbound transaction (to perspective)
+            var inboundTags = new KeyValuePair<string, object?>[]
+            {
+                new("chain_id", transfer.ChainId),
+                new("symbol", transfer.Symbol),
+                new("transfer_type", transfer.Type.ToString()),
+                new("address", transfer.ToAddress),
+                new("direction", "inbound"),
+                new("address_type", transfer.ToAddressType.ToString()),
+            };
+
+            // Always record counter (for all transfers)
+            _transferCountsCounter.Add(1, outboundTags);
+            _transferCountsCounter.Add(1, inboundTags);
             
-            _logger.LogInformation("Sent transfer metrics for transaction {TransactionId}, amount {Amount} {Symbol}", 
-                transfer.TransactionId, transfer.Amount, transfer.Symbol);
+            // Only record histogram for high-value transfers
+            if (isHighValue)
+            {
+                _transferEventsHistogram.Record((double)transfer.Amount, outboundTags);
+                _transferEventsHistogram.Record((double)transfer.Amount, inboundTags);
+                _logger.LogInformation("Sent transfer metrics for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue}", 
+                    transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
+            }
+            else
+            {
+                _logger.LogDebug("Sent counter metrics only for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue} below histogram threshold", 
+                    transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
+            }
         }
         catch (Exception ex)
         {
