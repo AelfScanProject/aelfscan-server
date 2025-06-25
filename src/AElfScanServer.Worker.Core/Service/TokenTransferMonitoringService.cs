@@ -26,7 +26,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     private const int SafetyRecordLimit = 10000;
     private const int DefaultScanTimeMinutes = -60;
     private const string LastScanTimeKey = "last_scan_time";
-    private const decimal MinUsdValueThreshold = 0.1m;
+    private const decimal MinUsdValueThreshold = 0m;
     
     private readonly ITokenIndexerProvider _tokenIndexerProvider;
     private readonly IDistributedCache<string> _distributedCache;
