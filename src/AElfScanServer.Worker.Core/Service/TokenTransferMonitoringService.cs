@@ -34,7 +34,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     private readonly TokenTransferMonitoringOptions _options;
     private readonly IOptionsMonitor<GlobalOptions> _globalOptions;
     private readonly ITokenPriceService _tokenPriceService;
-    private readonly Histogram<double> _transferEventsHistogram;
+    private readonly Histogram<double> _transferUSDEventsHistogram;
     private readonly Counter<long> _transferCountsCounter;
     private readonly HashSet<string> _blacklistAddresses;
     private readonly HashSet<string> _toOnlyMonitoredAddresses;
@@ -64,7 +64,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         _toOnlyMonitoredAddresses = new HashSet<string>(_options.ToOnlyMonitoredAddresses, StringComparer.OrdinalIgnoreCase);
         _largeAmountOnlyAddresses = new HashSet<string>(_options.LargeAmountOnlyAddresses, StringComparer.OrdinalIgnoreCase);
         // Initialize histogram with configured buckets
-        _transferEventsHistogram = instrumentationProvider.Meter.CreateHistogram<double>(
+        _transferUSDEventsHistogram = instrumentationProvider.Meter.CreateHistogram<double>(
             "aelf_transfer_usd_value",
             "ms",
             "Token transfer events with amount distribution");
@@ -337,8 +337,8 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             // Only record histogram for high-value transfers
             if (isHighValue)
             {
-                _transferEventsHistogram.Record((double)transfer.Amount, outboundTags);
-                _transferEventsHistogram.Record((double)transfer.Amount, inboundTags);
+                _transferUSDEventsHistogram.Record((double)transfer.UsdValue, outboundTags);
+                _transferUSDEventsHistogram.Record((double)transfer.UsdValue, inboundTags);
                 _logger.LogInformation("Sent transfer metrics for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue}", 
                     transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
             }
