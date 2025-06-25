@@ -194,8 +194,8 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             }
             
             // Reclassify addresses with USD value context
-            transfer.FromAddressType = ClassifyAddress(transfer.FromAddress, false, transfer.UsdValue);
-            transfer.ToAddressType = ClassifyAddress(transfer.ToAddress, true, transfer.UsdValue);
+            transfer.FromAddressType = ClassifyAddress(transfer.FromAddress);
+            transfer.ToAddressType = ClassifyAddress(transfer.ToAddress);
             
             // Add all transfers (filtering will be done in SendTransferMetrics)
             transfers.Add(transfer);
@@ -384,12 +384,12 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             ToAddress = dto.To?.Address ?? "",
             Amount = dto.Quantity,
             Type = ParseTransferType(dto.Method),
-            FromAddressType = ClassifyAddress(dto.From?.Address ?? "", false, 0m),
-            ToAddressType = ClassifyAddress(dto.To?.Address ?? "", true, 0m)
+            FromAddressType = ClassifyAddress(dto.From?.Address ?? ""),
+            ToAddressType = ClassifyAddress(dto.To?.Address ?? "")
         };
     }
 
-    private AddressClassification ClassifyAddress(string address, bool isToAddress = false, decimal usdValue = 0m)
+    private AddressClassification ClassifyAddress(string address)
     {
         if (string.IsNullOrEmpty(address))
             return AddressClassification.Normal;
@@ -399,7 +399,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             return AddressClassification.Blacklist;
 
         // Check ToOnlyMonitored addresses (only when it's a recipient address)
-        if (isToAddress && _toOnlyMonitoredAddresses.Contains(address))
+        if (_toOnlyMonitoredAddresses.Contains(address))
             return AddressClassification.ToOnlyMonitored;
 
         // Check LargeAmountOnly addresses (only for large transfers)
