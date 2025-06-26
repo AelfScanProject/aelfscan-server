@@ -30,6 +30,11 @@ public class TokenTransferMonitoringOptions
     public List<string> LargeAmountOnlyAddresses { get; set; } = new();
 
     /// <summary>
+    /// Addresses to ignore completely - no metrics will be recorded for these addresses
+    /// </summary>
+    public List<string> IgnoreAddresses { get; set; } = new();
+
+    /// <summary>
     /// Minimum USD value threshold for histogram recording, default is 0
     /// </summary>
     public decimal MinUsdValueThreshold { get; set; } = 0m;

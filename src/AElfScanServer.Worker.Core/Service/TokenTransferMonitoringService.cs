@@ -38,6 +38,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
     private readonly HashSet<string> _blacklistAddresses;
     private readonly HashSet<string> _toOnlyMonitoredAddresses;
     private readonly HashSet<string> _largeAmountOnlyAddresses;
+    private readonly HashSet<string> _ignoreAddresses;
     private readonly IOptionsMonitor<TokenTransferMonitoringOptions> _optionsMonitor;
 
     public TokenTransferMonitoringService(
@@ -62,6 +63,7 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         _blacklistAddresses = new HashSet<string>(_options.BlacklistAddresses, StringComparer.OrdinalIgnoreCase);
         _toOnlyMonitoredAddresses = new HashSet<string>(_options.ToOnlyMonitoredAddresses, StringComparer.OrdinalIgnoreCase);
         _largeAmountOnlyAddresses = new HashSet<string>(_options.LargeAmountOnlyAddresses, StringComparer.OrdinalIgnoreCase);
+        _ignoreAddresses = new HashSet<string>(_options.IgnoreAddresses, StringComparer.OrdinalIgnoreCase);
         // Initialize histogram with configured buckets
         _transferUSDEventsHistogram = instrumentationProvider.Meter.CreateHistogram<double>(
             "aelf_transfer_usd_value",
@@ -310,58 +312,88 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
             // Determine if this is a high-value transfer once
             var isHighValue = transfer.UsdValue >= currentOptions.MinUsdValueThreshold;
             
-            // Record outbound transaction (from perspective)
-            var outboundTags = new KeyValuePair<string, object?>[]
+            // Record outbound transaction (from perspective) - skip if fromAddress is ignore type
+            if (transfer.FromAddressType != AddressClassification.Ignore && !transfer.FromAddress.IsNullOrEmpty())
             {
-                new("chain_id", transfer.ChainId),
-                new("symbol", transfer.Symbol),
-                new("transfer_type", transfer.Type.ToString()),
-                new("address", transfer.FromAddress),
-                new("direction", "outbound"),
-                new("address_type", transfer.FromAddressType.ToString()),
-            };
+                var outboundTags = new KeyValuePair<string, object?>[]
+                {
+                    new("chain_id", transfer.ChainId),
+                    new("symbol", transfer.Symbol),
+                    new("transfer_type", transfer.Type.ToString()),
+                    new("address", transfer.FromAddress),
+                    new("direction", "outbound"),
+                    new("address_type", transfer.FromAddressType.ToString()),
+                };
 
-            // Record inbound transaction (to perspective)
-            var inboundTags = new KeyValuePair<string, object?>[]
-            {
-                new("chain_id", transfer.ChainId),
-                new("symbol", transfer.Symbol),
-                new("transfer_type", transfer.Type.ToString()),
-                new("address", transfer.ToAddress),
-                new("direction", "inbound"),
-                new("address_type", transfer.ToAddressType.ToString()),
-            };
-
-            // Always record counter (for all transfers)
-
-            if (!transfer.FromAddress.IsNullOrEmpty())
-            {
+                // Always record counter
                 _transferCountsCounter.Add(1, outboundTags);
-            }
 
-            if (!transfer.ToAddress.IsNullOrEmpty() || !IsSystemContractTransfer(transfer.ToAddress))
-            {
-                _transferCountsCounter.Add(1, inboundTags);
-            }
-            // Only record histogram for high-value transfers
-            if (isHighValue)
-            {
-                if (!transfer.FromAddress.IsNullOrEmpty())
+                // Only record histogram for high-value transfers
+                if (isHighValue)
                 {
                     _transferUSDEventsHistogram.Record((double)transfer.UsdValue, outboundTags);
                 }
+            }
+            else if (transfer.FromAddressType == AddressClassification.Ignore)
+            {
+                _logger.LogInformation("Skipping outbound metrics for transaction {TransactionId} from ignore address {FromAddress}", 
+                    transfer.TransactionId, transfer.FromAddress);
+            }
 
-                if (!transfer.ToAddress.IsNullOrEmpty() || !IsSystemContractTransfer(transfer.ToAddress))
+            // Record inbound transaction (to perspective) - skip if toAddress is ignore type
+            if (transfer.ToAddressType != AddressClassification.Ignore && 
+                !transfer.ToAddress.IsNullOrEmpty() && 
+                !IsSystemContractTransfer(transfer.ToAddress))
+            {
+                var inboundTags = new KeyValuePair<string, object?>[]
+                {
+                    new("chain_id", transfer.ChainId),
+                    new("symbol", transfer.Symbol),
+                    new("transfer_type", transfer.Type.ToString()),
+                    new("address", transfer.ToAddress),
+                    new("direction", "inbound"),
+                    new("address_type", transfer.ToAddressType.ToString()),
+                };
+
+                // Always record counter
+                _transferCountsCounter.Add(1, inboundTags);
+
+                // Only record histogram for high-value transfers
+                if (isHighValue)
                 {
                     _transferUSDEventsHistogram.Record((double)transfer.UsdValue, inboundTags);
                 }
-                _logger.LogInformation("Sent transfer metrics for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue}", 
-                    transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
+            }
+            else if (transfer.ToAddressType == AddressClassification.Ignore)
+            {
+                _logger.LogInformation("Skipping inbound metrics for transaction {TransactionId} to ignore address {ToAddress}", 
+                    transfer.TransactionId, transfer.ToAddress);
+            }
+
+            // Log transaction processing summary
+            var recordedMetrics = new List<string>();
+            if (transfer.FromAddressType != AddressClassification.Ignore && !transfer.FromAddress.IsNullOrEmpty())
+                recordedMetrics.Add("outbound");
+            if (transfer.ToAddressType != AddressClassification.Ignore && !transfer.ToAddress.IsNullOrEmpty() && !IsSystemContractTransfer(transfer.ToAddress))
+                recordedMetrics.Add("inbound");
+
+            if (recordedMetrics.Any())
+            {
+                if (isHighValue)
+                {
+                    _logger.LogInformation("Sent transfer metrics ({Directions}) for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue}", 
+                        string.Join(", ", recordedMetrics), transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
+                }
+                else
+                {
+                    _logger.LogInformation("Sent counter metrics only ({Directions}) for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue} below histogram threshold", 
+                        string.Join(", ", recordedMetrics), transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
+                }
             }
             else
             {
-                _logger.LogInformation("Sent counter metrics only for transaction {TransactionId}, amount {Amount} {Symbol}, USD value {UsdValue} below histogram threshold", 
-                    transfer.TransactionId, transfer.Amount, transfer.Symbol, transfer.UsdValue);
+                _logger.LogInformation("No metrics recorded for transaction {TransactionId} - both addresses are ignore type or system contracts", 
+                    transfer.TransactionId);
             }
         }
         catch (Exception ex)
@@ -394,7 +426,11 @@ public class TokenTransferMonitoringService : ITokenTransferMonitoringService, I
         if (string.IsNullOrEmpty(address))
             return AddressClassification.Normal;
 
-        // Check blacklist first (highest priority)
+        // Check ignore addresses first (highest priority)
+        if (_ignoreAddresses.Contains(address))
+            return AddressClassification.Ignore;
+
+        // Check blacklist (second highest priority)
         if (_blacklistAddresses.Contains(address))
             return AddressClassification.Blacklist;
 
