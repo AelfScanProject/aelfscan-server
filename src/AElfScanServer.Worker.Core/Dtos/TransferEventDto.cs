@@ -31,7 +31,8 @@ public enum AddressClassification
     Normal,
     Blacklist,
     ToOnlyMonitored,
-    LargeAmountOnly
+    LargeAmountOnly,
+    Ignore
 }
 
 /// <summary>
