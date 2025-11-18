@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -171,7 +172,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
     private static long BpStakedAmount = 100000;
     private static int BatchUpdateMaxSize = 1000;
     private static object _lock = new object();
-    private static long PullLogEventTransactionInterval = 100 - 1;
+    private static ConcurrentDictionary<string, long> PullLogEventTransactionInterval = new ConcurrentDictionary<string, long>();
     private static Timer timer;
     private static long PullTransactioninterval = 500 - 1;
 
@@ -1003,18 +1004,24 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
         await ConnectAsync();
         var redisValue = RedisDatabase.StringGet(RedisKeyHelper.LogEventTransactionLastBlockHeight(chainId));
         lastBlockHeight = redisValue.IsNullOrEmpty ? 2 : long.Parse(redisValue) + 1;
+        if (!PullLogEventTransactionInterval.TryGetValue(chainId, out var pullInterval))
+        {
+            pullInterval = 99; // 100 - 1
+            PullLogEventTransactionInterval[chainId] = pullInterval;
+        }
         _logger.LogInformation(
             "BatchParseLogEventJob {ChainId} lastBlockHeight {LastBlockHeight} PullLogEventTransactionInterval {PullLogEventTransactionInterval}",
-            chainId, lastBlockHeight, PullLogEventTransactionInterval);
+            chainId, lastBlockHeight, pullInterval);
         while (true)
         {
             
-                if (PullLogEventTransactionInterval != 0)
+                if (pullInterval != 0)
                 {
                     var latestBlocksAsync = await _aelfIndexerProvider.GetLatestSummariesAsync(chainId);
                     if (lastBlockHeight >= latestBlocksAsync.First().LatestBlockHeight)
                     {
-                        PullLogEventTransactionInterval = 0;
+                        pullInterval = 0;
+                        PullLogEventTransactionInterval[chainId] = pullInterval;
                     }
 
                     _logger.LogInformation(
@@ -1024,7 +1031,7 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
 
                 var batchTransactionList =
                     await GetBatchTransactionList(chainId, lastBlockHeight,
-                        lastBlockHeight + PullLogEventTransactionInterval);
+                        lastBlockHeight + pullInterval);
 
 
                 if (batchTransactionList.IsNullOrEmpty())
@@ -1036,9 +1043,9 @@ public class TransactionService : AbpRedisCache, ITransactionService, ITransient
                 _logger.LogInformation("BatchParseLogEventJob :{chainId},start:{startBlockHeight}", chainId,
                     lastBlockHeight);
                 await ParseLogEventList(batchTransactionList, chainId);
-                lastBlockHeight += PullLogEventTransactionInterval + 1;
+                lastBlockHeight += pullInterval + 1;
                 RedisDatabase.StringSet(RedisKeyHelper.LogEventTransactionLastBlockHeight(chainId),
-                    lastBlockHeight + PullLogEventTransactionInterval);
+                    lastBlockHeight + pullInterval);
                 await Task.Delay(1000 * 1);
         }
     }
