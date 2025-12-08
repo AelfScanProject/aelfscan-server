@@ -1,0 +1,12 @@
+{
+  "apollo": {
+    "UseApollo" : false,
+    "AppId": "aelfscan-server",
+    "MetaServer": "http://192.168.67.7:8080,http://192.168.66.35:8080",
+    "Namespaces": [
+      "common-appsettings.json",
+      "chains-appsettings.json",
+      "worker-appsettings.json"
+    ]
+  }
+}
