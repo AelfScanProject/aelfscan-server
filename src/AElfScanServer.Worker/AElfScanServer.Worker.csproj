@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>AElfScanServer.Worker</RootNamespace>
+        <PreserveCompilationReferences>true</PreserveCompilationReferences>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AElfScanServer.Worker.Core\AElfScanServer.Worker.Core.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AElf.EntityMapping" Version="1.1.0" />
+        <PackageReference Include="AElf.ExceptionHandler.ABP" Version="8.2.0" />
+        <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0"/>
+        <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+        <PackageReference Include="System.Threading.Tasks" Version="4.3.0"/>
+        <PackageReference Include="Volo.Abp.Autofac" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.BackgroundJobs.RabbitMQ" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.Caching.StackExchangeRedis" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.Identity.Application" Version="8.2.0" />
+        <PackageReference Include="Volo.Abp.Swashbuckle" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.Caching" Version="8.2.0"/>
+        <PackageReference Include="Volo.Abp.Caching.StackExchangeRedis" Version="8.2.0"/>
+        <PackageReference Include="Com.Ctrip.Framework.Apollo.Configuration" Version="2.10.2" />
+        <PackageReference Include="Orleans.Providers.MongoDB" Version="8.0.3" />
+        <PackageReference Include="AWSSDK.S3" Version="3.7.401.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Update="appsettings.json">
+            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </Content>
+    </ItemGroup>
+
+
+</Project>

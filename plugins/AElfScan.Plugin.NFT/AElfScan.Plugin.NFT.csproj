@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>NFT</RootNamespace>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\AElfScanServer.Common\AElfScanServer.Common.csproj" />
+        <ProjectReference Include="..\..\src\AElfScanServer.Common\AElfScanServer.Common.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Folder Include="backend\Provider\" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Compile Remove="backend\Provider\NftCollectionHolderProvider.cs" />
+      <Compile Remove="backend\Dtos\Indexer\IndexerTransferInfoDto.cs" />
+      <Compile Remove="backend\Dtos\Indexer\IndexerTokenHolderInfoDto.cs" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="AElf.EntityMapping" Version="1.1.0" />
+      <PackageReference Include="AetherlinkPriceServer" Version="1.0.5" />
+    </ItemGroup>
+</Project>
